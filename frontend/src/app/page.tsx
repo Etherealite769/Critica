@@ -16,7 +16,7 @@ export default function Home() {
 
           <div className="flex flex-wrap gap-4 pt-2">
             <a
-              href="#"
+              href="/auth"
               className="rounded-full bg-cyan-400 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300"
             >
               Get Started
