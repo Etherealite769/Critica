@@ -87,16 +87,27 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-# Database - Using MongoDB with MongoEngine
-# No traditional SQL database configuration needed
+# Database Configuration
+# Primary database: MongoDB (via MongoEngine)
+# SQLite for Django ORM and authentication
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
 
 # MongoDB Connection
 MONGO_URI = os.getenv('MONGO_URI')
-connect(
-    'CriticaDB',
-    host=MONGO_URI,
-    serverSelectionTimeoutMS=5000,
-)
+if MONGO_URI:
+    connect(
+        'CriticaDB',
+        host=MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+    )
+else:
+    # Default to local MongoDB for development
+    connect('CriticaDB', host='mongodb://localhost:27017/CriticaDB')
 
 
 # Password validation
