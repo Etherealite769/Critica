@@ -132,7 +132,7 @@ export default function SignUpForm() {
 
 const s: Record<string, React.CSSProperties> = {
   inner: { fontFamily: "'Courier Prime', monospace", position: 'relative', zIndex: 1, padding: '24px' },
-  hdrWrap: { textAlign: 'left', marginBottom: '16px', display: 'flex' },
+  hdrWrap: { textAlign: 'left', marginBottom: '16px', display: 'flex', justifyContent: 'flex-start' },
   hdr: { background: '#1a1209', color: '#f0e6cc', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: '12px', borderRadius: '1px', maxWidth: '400px' },
   logo: { position: 'relative', width: '36px', height: '22px', flexShrink: 0 },
   oval1: { width: '24px', height: '15px', borderRadius: '50%', background: '#6A4CFF', position: 'absolute', left: 0, top: '3px' },
