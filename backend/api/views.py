@@ -30,6 +30,16 @@ def generate_jwt_token(user_id):
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
+def verify_jwt_token(token):
+    """Verify JWT token and return email"""
+    try:
+        import jwt
+        from django.conf import settings
+        decoded = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        return decoded.get('email')
+    except Exception:
+        return None
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def api_root(request):
@@ -157,3 +167,59 @@ def login(request):
         return Response({
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_progression(request):
+    """
+    Get user's progression data (streak, XP, skill node progress)
+    Required header: X-User-Email: <email>
+    """
+    try:
+        # Extract email from custom header
+        email = request.headers.get('X-User-Email', '')
+        
+        if not email:
+            # Return default values if no email provided
+            return Response({
+                'streak': 0,
+                'total_xp': 0,
+                'skill_node_progress': []
+            }, status=status.HTTP_200_OK)
+        
+        # Find user
+        user = User.objects(email=email).first()
+        
+        if not user:
+            # Return default values if user not found
+            return Response({
+                'streak': 0,
+                'total_xp': 0,
+                'skill_node_progress': []
+            }, status=status.HTTP_200_OK)
+        
+        # Build skill node progress response
+        skill_progress = []
+        if user.skill_node_progress:
+            for node in user.skill_node_progress:
+                skill_progress.append({
+                    'skill_node_id': node.skill_node_id,
+                    'completed_exercises': node.completed_exercises,
+                    'total_exercises': node.total_exercises,
+                    'is_unlocked': node.is_unlocked,
+                    'is_completed': node.is_completed
+                })
+        
+        return Response({
+            'streak': user.streak,
+            'total_xp': user.total_xp,
+            'skill_node_progress': skill_progress
+        }, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+        # Return default values on error
+        return Response({
+            'streak': 0,
+            'total_xp': 0,
+            'skill_node_progress': []
+        }, status=status.HTTP_200_OK)
