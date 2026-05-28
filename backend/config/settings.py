@@ -67,6 +67,14 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'api',
+    'api.progression',
+    'api.scaffold',
+    'api.lexical',
+    'api.modules.logic_thread',
+    'api.modules.snap_gap',
+    'api.modules.tap_clues',
+    'api.modules.fact_scanner',
+    'api.seed',
 ]
 
 MIDDLEWARE = [
@@ -166,7 +174,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'api.authentication.CustomJWTAuthentication', # Point to the file above
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
