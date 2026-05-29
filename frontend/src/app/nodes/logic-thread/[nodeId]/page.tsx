@@ -19,7 +19,7 @@ type Phase       = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery'
 type SubmitState = 'idle' | 'submitting' | 'correct' | 'incorrect'
 
 // ── Canvas geometry ──────────────────────────────────────────
-const CW = 740, CH = 400, CARD_W = 186, CARD_H = 112
+const CW = 900, CH = 520, CARD_W = 230, CARD_H = 138
 
 const SCATTER = [
   { x: 52,  y: 38  },
@@ -90,12 +90,12 @@ function LessonScreen({ node, onContinue }: { node: NodeData; onContinue: () => 
       <div style={{ maxWidth: 640, width: '100%', background: '#2b2b2b',
         border: '1px solid #444', borderRadius: 4, padding: 48 }}>
         <div style={stampS}>MICRO-LESSON</div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
           {node.title}
         </h2>
         <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>{node.focus}</p>
         <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '16px 0' }} />
-        <p style={{ fontSize: 13, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
+        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
           {node.micro_lesson_text}
         </p>
         <button onClick={onContinue} style={btnPrimary}>Continue →</button>
@@ -111,7 +111,7 @@ function DeepDiveScreen({ node, onContinue }: { node: NodeData; onContinue: () =
       <div style={{ maxWidth: 700, width: '100%', background: '#2b2b2b',
         border: '1px solid #444', borderRadius: 4, padding: 48 }}>
         <div style={stampS}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 11, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
           Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
         </p>
         <p style={{ fontSize: 14, lineHeight: 1.95, color: '#ddd', background: '#222',
@@ -284,7 +284,7 @@ export default function LogicThreadPage() {
             onClick={() => fetchHint(Math.min(wrongCount + 1, 3))}
             style={{
               writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+              fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
               color: '#999', background: 'none', border: 'none',
               cursor: 'pointer', padding: '10px 4px', fontFamily: FONT,
               transition: 'color 0.15s',
@@ -299,7 +299,7 @@ export default function LogicThreadPage() {
             onClick={() => router.push('/dashboard')}
             style={{
               writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
+              fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
               color: '#666', background: 'none', border: 'none',
               cursor: 'pointer', padding: '10px 4px', fontFamily: FONT,
               transition: 'color 0.15s',
@@ -325,7 +325,7 @@ export default function LogicThreadPage() {
           <div style={{ padding: '10px 20px 8px', textAlign: 'center', background: '#b8b3ab' }}>
             <div style={{
               display: 'inline-block', border: '1.5px solid #888',
-              padding: '5px 20px', fontSize: 10, fontWeight: 700,
+              padding: '5px 20px', fontSize: 14, fontWeight: 700,
               letterSpacing: '0.1em', color: '#333',
               background: 'rgba(255,255,255,0.25)',
             }}>
@@ -443,7 +443,7 @@ export default function LogicThreadPage() {
                   }}
                 >
                   <p style={{
-                    margin: 0, fontSize: 11, lineHeight: 1.7,
+                    margin: 0, fontSize: 14, lineHeight: 1.7,
                     color: '#1a1a1a', fontFamily: FONT,
                     fontWeight: inChain ? 600 : 400,
                   }}>
@@ -527,7 +527,7 @@ export default function LogicThreadPage() {
                 color: '#f0ece4',
                 border: 'none', borderRadius: 2,
                 padding: '10px 26px',
-                fontSize: 11, fontWeight: 700,
+                fontSize: 13, fontWeight: 700,
                 letterSpacing: '0.14em',
                 cursor: allChained && submitState === 'idle' ? 'pointer' : 'not-allowed',
                 fontFamily: FONT, transition: 'background 0.2s',
