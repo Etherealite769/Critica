@@ -172,6 +172,98 @@ const S = {
   } as React.CSSProperties,
 }
 
+// ── Sub-screens ───────────────────────────────────
+function LoadScreen() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      fontFamily: F, color: '#ddd', fontSize: 13, letterSpacing: '0.1em' }}>
+      LOADING NODE...
+    </div>
+  )
+}
+
+function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+      flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      fontFamily: F, gap: 16 }}>
+      <p style={{ color: '#ff6b6b', fontSize: 13 }}>{msg}</p>
+      <button onClick={onBack} style={S.btnSm}>← DASHBOARD</button>
+    </div>
+  )
+}
+
+function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
+      <div style={{ maxWidth: 640, width: '100%', background: '#2b2b2b',
+        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+        <div style={S.stamp}>MICRO-LESSON</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
+          {node.title}
+        </h2>
+        <p style={{ fontSize: 13, color: '#aaa', margin: '0 0 16px' }}>{node.focus}</p>
+        <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '16px 0' }} />
+        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
+          {node.micro_lesson_text}
+        </p>
+        <button onClick={onContinue} style={S.btnPrimary}>Continue →</button>
+      </div>
+    </div>
+  )
+}
+
+function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
+      <div style={{ maxWidth: 700, width: '100%', background: '#2b2b2b',
+        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+        <div style={S.stamp}>DEEP DIVE READING</div>
+        <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
+          Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
+        </p>
+        <p style={{ fontSize: 14, lineHeight: 1.95, color: '#ddd', background: '#222',
+          border: '1px solid #444', borderRadius: 4, padding: 28, margin: '0 0 32px' }}>
+          {node.reading_passage}
+        </p>
+        <button onClick={onContinue} style={S.btnPrimary}>I have finished reading →</button>
+      </div>
+    </div>
+  )
+}
+
+function MasteryScreen({ node, data, onDashboard, onNext }:
+  { node: SnapNodeData; data: any; onDashboard: () => void; onNext: () => void }) {
+  return (
+    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
+      <div style={{ maxWidth: 480, width: '100%', background: '#0e1e0e',
+        border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center' }}>
+        <div style={{ ...S.stamp, color: '#4ddd94', borderColor: '#4ddd94',
+          fontSize: 16, padding: '8px 24px' }}>
+          ✓ NODE MASTERED
+        </div>
+        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: F }}>
+          {node.title}
+        </h2>
+        <p style={{ fontSize: 13, color: '#aaa', margin: '0 0 28px' }}>
+          Streak: {data?.streak ?? 0} days
+        </p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {data?.next_node && (
+            <button onClick={onNext} style={S.btnPrimary}>NEXT NODE →</button>
+          )}
+          <button onClick={onDashboard} style={S.btnSm}>← DASHBOARD</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Tutorial Popup ────────────────────────────────
 function SnapGapTutorialPopup({
   open,
   step,
@@ -197,7 +289,7 @@ function SnapGapTutorialPopup({
     const complete = index < step
     const active = index === step
     return (
-      <div style={{
+      <div key={label} style={{
         width: 156, height: 76,
         border: '1px solid #777',
         background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
@@ -359,41 +451,35 @@ export default function SnapInGapPage() {
   const params = useParams()
   const nodeId = params.nodeId as string
 
-  // core state
-  const [phase, setPhase]           = useState<Phase>('loading')
-  const [snapNode, setSnapNode]     = useState<SnapNodeData | null>(null)
-  const [errorMsg, setErrorMsg]     = useState('')
+  const [phase,       setPhase]       = useState<Phase>('loading')
+  const [snapNode,    setSnapNode]     = useState<SnapNodeData | null>(null)
+  const [errorMsg,    setErrorMsg]    = useState('')
 
-  // task state
-  const [pairIdx, setPairIdx]       = useState(0)
-  const [board, setBoard]           = useState<Record<string, string>>({})
-  const [locked, setLocked]         = useState<string[]>([])
-  const [tileState, setTileState]   = useState<TileState>('idle')
-  const [wrongs, setWrongs]         = useState(0)
+  const [pairIdx,     setPairIdx]     = useState(0)
+  const [board,       setBoard]       = useState<Record<string, string>>({})
+  const [locked,      setLocked]      = useState<string[]>([])
+  const [tileState,   setTileState]   = useState<TileState>('idle')
+  const [wrongs,      setWrongs]      = useState(0)
   const [masteryData, setMasteryData] = useState<any>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting,  setSubmitting]  = useState(false)
 
   // feedback state
-  const [fbText, setFbText]         = useState('')
-  const [hintText, setHintText]     = useState('')
-  const [hintTier, setHintTier]     = useState(0)
-  const [drawer, setDrawer]         = useState(false)
-  const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
+  const [fbText,        setFbText]        = useState('')
+  const [hintText,      setHintText]      = useState('')
+  const [hintTier,      setHintTier]      = useState(0)
+  const [drawer,        setDrawer]        = useState(false)
+  const [tutorialOpen,  setTutorialOpen]  = useState(false)
+  const [tutorialStep,  setTutorialStep]  = useState(0)
 
-  // timer
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
 
   // ── load ─────────────────────────────────────────
   useEffect(() => {
     apiFetch(`/nodes/snap-gap/${nodeId}/`)
-      .then((d: SnapNodeData) => {
-        setSnapNode(d)
-        setPhase('micro_lesson')
-      })
+      .then((d: SnapNodeData) => { setSnapNode(d); setPhase('micro_lesson') })
       .catch((e: any) => {
-        if (e?.status === 401)            { router.push('/auth');      return }
+        if (e?.status === 401)              { router.push('/auth');      return }
         if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
         setErrorMsg(e?.error ?? 'Failed to load node.')
         setPhase('error')
@@ -430,23 +516,16 @@ export default function SnapInGapPage() {
   }, [phase]) // eslint-disable-line
 
   // ── feedback ──────────────────────────────────────
-  const callFeedback = useCallback(async (
-    pair_id: string,
-    tile: string,
-    inactivity: boolean,
-  ) => {
+  const callFeedback = useCallback(async (pair_id: string, tile: string, inactivity: boolean) => {
     try {
-      const res = await apiFetch(
-        `/nodes/snap-gap/${nodeId}/feedback/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            pair_id,
-            selected_tile: tile,
-            inactivity_seconds: inactivity ? 60 : inactiveRef.current,
-          }),
-        },
-      )
+      const res = await apiFetch(`/nodes/snap-gap/${nodeId}/feedback/`, {
+        method: 'POST',
+        body: JSON.stringify({
+          pair_id,
+          selected_tile: tile,
+          inactivity_seconds: inactivity ? 60 : inactiveRef.current,
+        }),
+      })
       setFbText(res.explanation ?? '')
       setHintText(res.hint ?? '')
       setHintTier(res.hint_tier ?? 0)
@@ -462,31 +541,20 @@ export default function SnapInGapPage() {
   const handleTile = async (tile: string) => {
     if (!snapNode || tileState !== 'idle' || drawer) return
     resetTimer()
-
     const pair = snapNode.sentence_pairs[pairIdx]
     if (!pair) return
-
     try {
-      const res = await apiFetch(
-        `/nodes/snap-gap/${nodeId}/evaluate-gap/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            pair_id: pair.pair_id,
-            selected_tile: tile,
-          }),
-        },
-      )
-
+      const res = await apiFetch(`/nodes/snap-gap/${nodeId}/evaluate-gap/`, {
+        method: 'POST',
+        body: JSON.stringify({ pair_id: pair.pair_id, selected_tile: tile }),
+      })
       if (res.result === 'correct') {
         setTileState('correct')
         setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
         setLocked(prev => [...prev, pair.pair_id])
         setTimeout(() => {
           setTileState('idle')
-          if (pairIdx < snapNode.sentence_pairs.length - 1) {
-            setPairIdx(i => i + 1)
-          }
+          if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
         }, 900)
       } else {
         setTileState('incorrect')
@@ -494,9 +562,7 @@ export default function SnapInGapPage() {
         setTimeout(() => setTileState('idle'), 600)
         await callFeedback(pair.pair_id, tile, false)
       }
-    } catch {
-      setErrorMsg('Evaluation failed.')
-    }
+    } catch { setErrorMsg('Evaluation failed.') }
   }
 
   // ── submit ────────────────────────────────────────
@@ -504,248 +570,63 @@ export default function SnapInGapPage() {
     if (!snapNode || submitting) return
     setSubmitting(true)
     try {
-      const res = await apiFetch(
-        `/nodes/snap-gap/${nodeId}/mastery/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ board_state: board }),
-        },
-      )
-      if (res.status === 'mastered') {
-        setMasteryData(res)
-        setPhase('mastery')
-      }
+      const res = await apiFetch(`/nodes/snap-gap/${nodeId}/mastery/`, {
+        method: 'POST',
+        body: JSON.stringify({ board_state: board }),
+      })
+      if (res.status === 'mastered') { setMasteryData(res); setPhase('mastery') }
     } catch (e: any) {
-      setFbText(
-        e?.status === 'incomplete'
-          ? 'Some pairs are incorrect. Check and retry.'
-          : 'Submission failed. Please try again.',
-      )
+      setFbText(e?.status === 'incomplete'
+        ? 'Some pairs are incorrect. Check and retry.'
+        : 'Submission failed. Please try again.')
       setHintText('')
       setDrawer(true)
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
-  // ── phase: loading ────────────────────────────────
-  if (phase === 'loading') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#6b6b6b',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: F, color: '#ddd',
-        fontSize: 13, letterSpacing: '0.1em',
-      }}>
-        LOADING NODE...
-      </div>
-    )
-  }
+  // ── phase guards ──────────────────────────────────
+  if (phase === 'loading')      return <LoadScreen />
+  if (phase === 'error')        return <ErrorScreen msg={errorMsg} onBack={() => router.push('/dashboard')} />
+  if (phase === 'micro_lesson') return <LessonScreen node={snapNode!} onContinue={() => setPhase(snapNode!.deep_dive_required ? 'deep_dive' : 'task')} />
+  if (phase === 'deep_dive')    return <DeepDiveScreen node={snapNode!} onContinue={() => setPhase('task')} />
+  if (phase === 'mastery')      return (
+    <MasteryScreen
+      node={snapNode!} data={masteryData}
+      onDashboard={() => router.push('/dashboard')}
+      onNext={() => masteryData?.next_node && router.push(`/nodes/snap-gap/${masteryData.next_node}`)}
+    />
+  )
 
-  // ── phase: error ──────────────────────────────────
-  if (phase === 'error') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#1e1e1e',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        fontFamily: F, gap: 16,
-      }}>
-        <p style={{ color: '#ff6b6b', fontSize: 13 }}>
-          {errorMsg}
-        </p>
-        <button
-          style={S.btnSm}
-          onClick={() => router.push('/dashboard')}
-        >
-          ← DASHBOARD
-        </button>
-      </div>
-    )
-  }
+  // ── TASK PHASE ────────────────────────────────────
+  const currentPair = snapNode!.sentence_pairs[pairIdx]
+  const allDone     = locked.length === snapNode!.sentence_pairs.length
 
-  // ── phase: micro_lesson ───────────────────────────
-  if (phase === 'micro_lesson') {
-    return (
-      <div style={{
-        ...S.page,
-        background: '#6b6b6b',
-        padding: 40,
-      }}>
-        <div style={S.card}>
-          <div style={S.stamp}>MICRO-LESSON</div>
-          <h2 style={S.h2}>{snapNode!.title}</h2>
-          <p style={S.sub}>{snapNode!.focus}</p>
-          <hr style={S.hr} />
-          <p style={S.body}>{snapNode!.micro_lesson_text}</p>
-          <button
-            style={S.btnPrimary}
-            onClick={() =>
-              setPhase(
-                snapNode!.deep_dive_required
-                  ? 'deep_dive'
-                  : 'task',
-              )
-            }
-          >
-            Continue →
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── phase: deep_dive ──────────────────────────────
-  if (phase === 'deep_dive') {
-    return (
-      <div style={{
-        ...S.page,
-        background: '#6b6b6b',
-        padding: 40,
-      }}>
-        <div style={{ ...S.card, maxWidth: 700 }}>
-          <div style={S.stamp}>DEEP DIVE READING</div>
-          <p style={{
-            fontSize: 11, color: '#888',
-            margin: '0 0 20px', lineHeight: 1.7,
-            fontFamily: F,
-          }}>
-            Read the full passage carefully before
-            the task unlocks.
-          </p>
-          <p style={{
-            fontSize: 14, lineHeight: 1.95,
-            color: '#ddd', background: '#222',
-            border: '1px solid #444',
-            borderRadius: 4, padding: 28,
-            margin: '0 0 32px', fontFamily: F,
-          }}>
-            {snapNode!.reading_passage}
-          </p>
-          <button
-            style={S.btnPrimary}
-            onClick={() => setPhase('task')}
-          >
-            I have finished reading →
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── phase: mastery ────────────────────────────────
-  if (phase === 'mastery') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#1e1e1e',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontFamily: F,
-      }}>
-        <div style={{
-          maxWidth: 480, width: '100%',
-          background: '#0e1e0e',
-          border: '2px solid #4ddd94',
-          borderRadius: 4, padding: 52,
-          textAlign: 'center',
-        }}>
-          <div style={{
-            ...S.stamp,
-            color: '#4ddd94',
-            borderColor: '#4ddd94',
-            fontSize: 16,
-            padding: '8px 24px',
-          }}>
-            ✓ NODE MASTERED
-          </div>
-          <h2 style={{
-            fontSize: 20, color: '#4ddd94',
-            margin: '8px 0 16px', fontFamily: F,
-          }}>
-            {snapNode!.title}
-          </h2>
-          <p style={{
-            fontSize: 12, color: '#aaa',
-            margin: '0 0 28px', fontFamily: F,
-          }}>
-            Streak: {masteryData?.streak ?? 0} days
-          </p>
-          <div style={{
-            display: 'flex', gap: 12,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}>
-            {masteryData?.next_node && (
-              <button
-                style={S.btnPrimary}
-                onClick={() =>
-                  router.push(
-                    `/nodes/snap-gap/${masteryData.next_node}`,
-                  )
-                }
-              >
-                NEXT NODE →
-              </button>
-            )}
-            <button
-              style={S.btnSm}
-              onClick={() => router.push('/dashboard')}
-            >
-              ← DASHBOARD
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── phase: task ───────────────────────────────────
-  const currentPair   = snapNode!.sentence_pairs[pairIdx]
-  const allDone       = locked.length === snapNode!.sentence_pairs.length
-
-  const openTutorial = () => {
-    setTutorialStep(0)
-    setTutorialOpen(true)
-  }
-
+  const openTutorial  = () => { setTutorialStep(0); setTutorialOpen(true) }
   const closeTutorial = () => setTutorialOpen(false)
-
-  const nextTutorialStep = () => {
-    setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
-  }
-
-  const prevTutorialStep = () => {
-    setTutorialStep(prev => Math.max(prev - 1, 0))
-  }
+  const nextTutorialStep = () => setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
+  const prevTutorialStep = () => setTutorialStep(prev => Math.max(prev - 1, 0))
 
   return (
-    <div style={S.page}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'stretch',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.55)',
-        borderRadius: 6,
-      }}>
+    <div style={{ minHeight: '100vh', background: '#686664',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
+      <div style={{ display: 'flex', alignItems: 'stretch',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.55)', borderRadius: 6 }}>
 
-        {/* sidebar */}
+        {/* ── SIDEBAR ── */}
         <div style={{
-          width: 34, background: '#2b2b2b',
+          width: 40, background: '#2b2b2b',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 0',
-          borderRadius: '6px 0 0 6px',
+          padding: '14px 0', borderRadius: '6px 0 0 6px',
           borderRight: '1px solid #1a1a1a',
         }}>
           <button
             onClick={() => callFeedback(currentPair?.pair_id ?? '', '', false)}
             style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#999',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: F, transition: 'color 0.15s',
+              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+              color: '#999', background: 'none', border: 'none',
+              cursor: 'pointer', padding: '10px 4px', fontFamily: F,
             }}
             onMouseEnter={e => (e.currentTarget.style.color = '#eee')}
             onMouseLeave={e => (e.currentTarget.style.color = '#999')}
@@ -755,13 +636,10 @@ export default function SnapInGapPage() {
           <button
             onClick={() => router.push('/dashboard')}
             style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#666',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: F, transition: 'color 0.15s',
+              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
+              color: '#666', background: 'none', border: 'none',
+              cursor: 'pointer', padding: '10px 4px', fontFamily: F,
             }}
             onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
             onMouseLeave={e => (e.currentTarget.style.color = '#666')}
@@ -770,30 +648,19 @@ export default function SnapInGapPage() {
           </button>
         </div>
 
-        {/* board */}
+        {/* ── BOARD ── */}
         <div style={{
-          background: '#b8b3ab',
-          borderRadius: '0 6px 6px 0',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          width: 700,
+          background: '#b8b3ab', borderRadius: '0 6px 6px 0',
+          overflow: 'hidden', display: 'flex', flexDirection: 'column', width: 900,
         }}>
 
           {/* banner */}
-          <div style={{
-            padding: '10px 20px 8px',
-            textAlign: 'center',
-            background: '#b8b3ab',
-          }}>
+          <div style={{ padding: '12px 20px 10px', textAlign: 'center', background: '#b8b3ab' }}>
             <div style={{
-              display: 'inline-block',
-              border: '1.5px solid #888',
-              padding: '5px 20px',
-              fontSize: 10, fontWeight: 700,
+              display: 'inline-block', border: '1.5px solid #888',
+              padding: '7px 24px', fontSize: 14, fontWeight: 700,
               letterSpacing: '0.1em', color: '#333',
-              background: 'rgba(255,255,255,0.25)',
-              fontFamily: F,
+              background: 'rgba(255,255,255,0.25)', fontFamily: F,
             }}>
               <span style={{ color: '#444' }}>OBJECTIVE: </span>
               <span style={{ color: '#b03030' }}>
@@ -803,97 +670,56 @@ export default function SnapInGapPage() {
           </div>
 
           {/* progress dots */}
-          <div style={{
-            padding: '6px 24px 4px',
-            display: 'flex', gap: 8,
-            justifyContent: 'center',
-          }}>
+          <div style={{ padding: '6px 24px 4px', display: 'flex', gap: 8, justifyContent: 'center' }}>
             {snapNode!.sentence_pairs.map((p, i) => (
               <div key={p.pair_id} style={{
-                width: 28, height: 6, borderRadius: 3,
-                background: locked.includes(p.pair_id)
-                  ? '#4ddd94'
-                  : i === pairIdx
-                  ? '#55aaff'
-                  : '#888',
+                width: 34, height: 8, borderRadius: 4,
+                background: locked.includes(p.pair_id) ? '#4ddd94' : i === pairIdx ? '#55aaff' : '#888',
                 transition: 'background 0.3s',
               }} />
             ))}
           </div>
 
-          {/* sentence pair */}
-          <div style={{ padding: '24px 32px 16px', flex: 1 }}>
+          {/* sentence pair area */}
+          <div style={{ padding: '28px 40px 20px', flex: 1 }}>
             {currentPair && (
               <div>
                 {/* sentence A */}
                 <div style={{
-                  background: '#fff',
-                  border: '1.5px solid #ccc',
-                  borderRadius: 5,
-                  padding: '14px 18px',
-                  fontSize: 13, lineHeight: 1.7,
-                  color: '#1a1a1a', fontFamily: F,
-                  marginBottom: 12,
+                  background: '#fff', border: '1.5px solid #ccc',
+                  borderRadius: 5, padding: '16px 20px',
+                  fontSize: 14, lineHeight: 1.75,
+                  color: '#1a1a1a', fontFamily: F, marginBottom: 14,
                 }}>
                   {currentPair.sentence_a}
                 </div>
 
-                {/* gap */}
-                <div style={{
-                  display: 'flex', alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '8px 0', gap: 10,
-                }}>
+                {/* gap slot */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px 0', gap: 12 }}>
+                  <div style={{ flex: 1, height: 1, background: '#888', opacity: 0.5 }} />
                   <div style={{
-                    flex: 1, height: 1,
-                    background: '#888', opacity: 0.5,
-                  }} />
-                  <div style={{
-                    border: tileState === 'correct'
-                      ? '2px solid #4ddd94'
-                      : tileState === 'incorrect'
-                      ? '2px solid #cc3333'
-                      : '2px dashed #888',
-                    borderRadius: 4,
-                    padding: '6px 20px',
-                    fontSize: 11, fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    color: tileState === 'correct'
-                      ? '#4ddd94'
-                      : tileState === 'incorrect'
-                      ? '#cc3333'
-                      : '#888',
-                    background: tileState === 'correct'
-                      ? 'rgba(77,221,148,0.1)'
-                      : tileState === 'incorrect'
-                      ? 'rgba(204,51,51,0.1)'
-                      : 'rgba(255,255,255,0.3)',
-                    fontFamily: F,
-                    minWidth: 160,
-                    textAlign: 'center',
-                    transition: 'all 0.25s',
+                    border: tileState === 'correct'   ? '2px solid #4ddd94' :
+                            tileState === 'incorrect' ? '2px solid #cc3333' : '2px dashed #888',
+                    borderRadius: 4, padding: '8px 24px',
+                    fontSize: 13, fontWeight: 700, letterSpacing: '0.12em',
+                    color: tileState === 'correct'   ? '#4ddd94' :
+                           tileState === 'incorrect' ? '#cc3333' : '#888',
+                    background: tileState === 'correct'   ? 'rgba(77,221,148,0.1)' :
+                                tileState === 'incorrect' ? 'rgba(204,51,51,0.1)'  : 'rgba(255,255,255,0.3)',
+                    fontFamily: F, minWidth: 180, textAlign: 'center', transition: 'all 0.25s',
                   }}>
-                    {tileState === 'correct'
-                      ? `✓ ${board[currentPair.pair_id] ?? ''}`
-                      : tileState === 'incorrect'
-                      ? '✕ INCORRECT'
-                      : '[ SELECT A TILE ]'}
+                    {tileState === 'correct'   ? `✓ ${board[currentPair.pair_id] ?? ''}` :
+                     tileState === 'incorrect' ? '✕ INCORRECT' : '[ SELECT A TILE ]'}
                   </div>
-                  <div style={{
-                    flex: 1, height: 1,
-                    background: '#888', opacity: 0.5,
-                  }} />
+                  <div style={{ flex: 1, height: 1, background: '#888', opacity: 0.5 }} />
                 </div>
 
                 {/* sentence B */}
                 <div style={{
-                  background: '#fff',
-                  border: '1.5px solid #ccc',
-                  borderRadius: 5,
-                  padding: '14px 18px',
-                  fontSize: 13, lineHeight: 1.7,
-                  color: '#1a1a1a', fontFamily: F,
-                  marginTop: 12,
+                  background: '#fff', border: '1.5px solid #ccc',
+                  borderRadius: 5, padding: '16px 20px',
+                  fontSize: 14, lineHeight: 1.75,
+                  color: '#1a1a1a', fontFamily: F, marginTop: 14,
                 }}>
                   {currentPair.sentence_b}
                 </div>
@@ -902,11 +728,9 @@ export default function SnapInGapPage() {
 
             {allDone && (
               <div style={{
-                textAlign: 'center',
-                padding: '20px 0 8px',
-                fontSize: 11, color: '#4ddd94',
-                fontWeight: 700, letterSpacing: '0.1em',
-                fontFamily: F,
+                textAlign: 'center', padding: '24px 0 8px',
+                fontSize: 13, color: '#4ddd94',
+                fontWeight: 700, letterSpacing: '0.1em', fontFamily: F,
               }}>
                 ALL GAPS BRIDGED — SUBMIT WHEN READY
               </div>
@@ -914,51 +738,30 @@ export default function SnapInGapPage() {
           </div>
 
           {/* tile dock */}
-          <div style={{
-            background: '#a8a39b',
-            borderTop: '1px solid #888',
-            padding: '14px 24px',
-          }}>
+          <div style={{ background: '#a8a39b', borderTop: '1px solid #888', padding: '16px 28px' }}>
             <div style={{
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.12em', color: '#555',
-              marginBottom: 10, fontFamily: F,
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+              color: '#555', marginBottom: 12, fontFamily: F,
             }}>
               TRANSITION TILE DOCK
             </div>
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 8,
-            }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {snapNode!.transition_tile_dock.map(tile => (
                 <button
                   key={tile}
                   disabled={tileState !== 'idle' || allDone}
                   onClick={() => handleTile(tile)}
                   style={{
-                    padding: '8px 16px',
-                    background: '#f0ece4',
-                    border: '1.5px solid #888',
-                    borderRadius: 3,
-                    fontSize: 11, fontWeight: 700,
+                    padding: '10px 20px',
+                    background: '#f0ece4', border: '1.5px solid #888',
+                    borderRadius: 3, fontSize: 13, fontWeight: 700,
                     fontFamily: F,
-                    cursor: tileState !== 'idle' || allDone
-                      ? 'not-allowed' : 'pointer',
-                    opacity: tileState !== 'idle' || allDone
-                      ? 0.5 : 1,
-                    color: '#1a1a1a',
-                    transition: 'all 0.12s',
-                    letterSpacing: '0.04em',
+                    cursor: tileState !== 'idle' || allDone ? 'not-allowed' : 'pointer',
+                    opacity: tileState !== 'idle' || allDone ? 0.5 : 1,
+                    color: '#1a1a1a', transition: 'all 0.12s', letterSpacing: '0.04em',
                   }}
-                  onMouseEnter={e => {
-                    if (tileState === 'idle' && !allDone) {
-                      e.currentTarget.style.background = '#1a1a1a'
-                      e.currentTarget.style.color = '#f0ece4'
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = '#f0ece4'
-                    e.currentTarget.style.color = '#1a1a1a'
-                  }}
+                  onMouseEnter={e => { if (tileState === 'idle' && !allDone) { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#f0ece4' } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f0ece4'; e.currentTarget.style.color = '#1a1a1a' }}
                 >
                   {tile}
                 </button>
@@ -968,10 +771,8 @@ export default function SnapInGapPage() {
 
           {/* submit bar */}
           <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 24px 14px',
-            background: '#b8b3ab',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 24px 16px', background: '#b8b3ab',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={openTutorial} style={S.tutorialBtn}>
@@ -996,16 +797,14 @@ export default function SnapInGapPage() {
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 background: submitting ? '#555' : allDone ? '#2b2b2b' : '#888',
-                color: '#f0ece4',
-                border: 'none', borderRadius: 2,
-                padding: '10px 26px',
-                fontSize: 11, fontWeight: 700,
+                color: '#f0ece4', border: 'none', borderRadius: 2,
+                padding: '12px 30px', fontSize: 13, fontWeight: 700,
                 letterSpacing: '0.14em',
                 cursor: allDone && !submitting ? 'pointer' : 'not-allowed',
                 fontFamily: F, transition: 'background 0.2s',
               }}
             >
-              {submitting ? 'CHECKING...' : 'SUBMIT →'}
+              {submitting ? 'CHECKING...' : <>SUBMIT <span style={{ fontSize: 18, lineHeight: 1 }}>→</span></>}
             </button>
           </div>
         </div>
@@ -1024,72 +823,37 @@ export default function SnapInGapPage() {
       {drawer && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#180a0a',
-          border: '2px solid #cc3333', borderBottom: 'none',
-          padding: '20px 32px 28px',
-          zIndex: 200, maxHeight: 300, overflowY: 'auto',
-          fontFamily: F,
+          background: '#180a0a', border: '2px solid #cc3333', borderBottom: 'none',
+          padding: '20px 36px 28px', zIndex: 200, maxHeight: 300,
+          overflowY: 'auto', fontFamily: F,
         }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', marginBottom: 12,
-          }}>
-            <div style={{
-              ...S.stamp,
-              color: '#ff6b6b', borderColor: '#ff6b6b',
-              marginBottom: 0,
-            }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ ...S.stamp, color: '#ff6b6b', borderColor: '#ff6b6b', marginBottom: 0 }}>
               FEEDBACK
             </div>
             <button
               onClick={() => { setDrawer(false); resetTimer() }}
-              style={{
-                background: 'none', border: 'none',
-                color: '#ff6b6b', fontSize: 18,
-                cursor: 'pointer', fontFamily: F,
-              }}
+              style={{ background: 'none', border: 'none', color: '#ff6b6b', fontSize: 20, cursor: 'pointer', fontFamily: F }}
             >
               ✕
             </button>
           </div>
-
           {fbText && (
-            <p style={{
-              fontSize: 13, color: '#ddd',
-              lineHeight: 1.7, marginBottom: 12,
-              fontFamily: F,
-            }}>
+            <p style={{ fontSize: 14, color: '#ddd', lineHeight: 1.7, marginBottom: 12, fontFamily: F }}>
               {fbText}
             </p>
           )}
-
           {hintText && (
-            <div style={{
-              background: '#2b1010',
-              border: '1px solid #663333',
-              borderRadius: 3, padding: 12,
-              marginBottom: 16,
-            }}>
-              <div style={{
-                fontSize: 9, fontWeight: 700,
-                letterSpacing: '0.12em', color: '#aa5533',
-                marginBottom: 6, fontFamily: F,
-              }}>
+            <div style={{ background: '#2b1010', border: '1px solid #663333', borderRadius: 3, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: '#aa5533', marginBottom: 6, fontFamily: F }}>
                 SCAFFOLD HINT — TIER {hintTier}
               </div>
-              <p style={{
-                fontSize: 12, color: '#ddd',
-                lineHeight: 1.7, margin: 0, fontFamily: F,
-              }}>
+              <p style={{ fontSize: 13, color: '#ddd', lineHeight: 1.7, margin: 0, fontFamily: F }}>
                 {hintText}
               </p>
             </div>
           )}
-
-          <button
-            style={S.btnSm}
-            onClick={() => { setDrawer(false); resetTimer() }}
-          >
+          <button style={S.btnSm} onClick={() => { setDrawer(false); resetTimer() }}>
             Close and reattempt
           </button>
         </div>

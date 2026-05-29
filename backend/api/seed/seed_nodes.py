@@ -19,7 +19,7 @@ from api.modules.tap_clues.mongo_models import (
 from api.modules.fact_scanner.mongo_models import (
     ArticleDocument)
 
-NODES = [
+LOGIC_NODES = [
     {
         'node_id': 'log_node_01',
         'title':   'Narration Patterns',
@@ -304,7 +304,7 @@ NODES = [
     },
 ]
 
-for node in NODES:
+for node in LOGIC_NODES:
     if not LogicThreadNodeDocument.objects(
             node_id=node['node_id']).first():
         LogicThreadNodeDocument(**node).save()
