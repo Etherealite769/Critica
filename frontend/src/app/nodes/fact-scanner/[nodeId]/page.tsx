@@ -76,6 +76,7 @@ const CRITERION_COLOR: Record<string, string> = {
   PURPOSE:    '#d35400',
 }
 
+
 // ── Main component ───────────────────────────────
 export default function FactScannerPage() {
   const router = useRouter()
@@ -92,12 +93,13 @@ export default function FactScannerPage() {
   const [flawReasons, setFlawReasons]   = useState<Record<string, string>>({})
   const [evaluating, setEvaluating]     = useState<string | null>(null)
   const [wrongs, setWrongs]             = useState(0)
-  const [masteryData, setMasteryData]   = useState<any>(null)
+  const [masteryData, setMasteryData]   = useState<Record<string, unknown> | null>(null)
   const [submitting, setSubmitting]     = useState(false)
 
   // feedback state
   const [fbText, setFbText]   = useState('')
   const [drawer, setDrawer]   = useState(false)
+
 
   // hint overlay
   const [hintOverlay, setHintOverlay]         = useState(false)
@@ -115,13 +117,41 @@ export default function FactScannerPage() {
         setFactNode(d)
         setPhase('micro_lesson')
       })
-      .catch((e: any) => {
-        if (e?.status === 401)               { router.push('/auth');      return }
-        if (e?.error === 'Node is locked.')  { router.push('/dashboard'); return }
-        setErrorMsg(e?.error ?? 'Failed to load node.')
+      .catch((e) => {
+        if ((e as any)?.status === 401)               { router.push('/auth');      return }
+        if ((e as any)?.error === 'Node is locked.')  { router.push('/dashboard'); return }
+        setErrorMsg((e as any)?.error ?? 'Failed to load node.')
         setPhase('error')
       })
   }, [nodeId]) // eslint-disable-line
+
+  // ── Hint ───────────────────────────────────
+  const fetchHint = useCallback(async (
+    isInactivity = false,
+  ) => {
+    try {
+      const res = await apiFetch(
+        `/nodes/fact-scanner/${nodeId}/feedback/`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            sentence_id:        '',
+            inactivity_seconds: isInactivity ? 61 : inactiveRef.current,
+          }),
+        },
+      )
+      const text = res.hint
+        || res.explanation
+        || 'Re-read the micro-lesson and apply the criterion to each sentence carefully.'
+      setHintOverlayText(text)
+      setHintOverlayTier(res.hint_tier ?? 0)
+      setHintOverlay(true)
+    } catch {
+      setHintOverlayText(
+        'Re-read the micro-lesson and apply the criterion to each sentence carefully.')
+      setHintOverlay(true)
+    }
+  }, [nodeId])
 
   // ── Timer ──────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -166,32 +196,7 @@ export default function FactScannerPage() {
   }, [nodeId])
 
   // ── Hint ───────────────────────────────────
-  const fetchHint = useCallback(async (
-    isInactivity = false,
-  ) => {
-    try {
-      const res = await apiFetch(
-        `/nodes/fact-scanner/${nodeId}/feedback/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            sentence_id:        '',
-            inactivity_seconds: 61,
-          }),
-        },
-      )
-      const text = res.hint
-        || res.explanation
-        || 'Re-read the micro-lesson and apply the criterion to each sentence carefully.'
-      setHintOverlayText(text)
-      setHintOverlayTier(res.hint_tier ?? 0)
-      setHintOverlay(true)
-    } catch {
-      setHintOverlayText(
-        'Re-read the micro-lesson and apply the criterion to each sentence carefully.')
-      setHintOverlay(true)
-    }
-  }, [nodeId])
+  
 
   // ── Sentence tap ───────────────────────────
   const handleSentenceTap = async (
@@ -249,9 +254,9 @@ export default function FactScannerPage() {
         setMasteryData(res)
         setPhase('mastery')
       }
-    } catch (e: any) {
+    } catch (e) {
       setFbText(
-        e?.status === 'incomplete'
+        (e as any)?.status === 'incomplete'
           ? 'Some flawed sentences were missed. Keep scanning.'
           : 'Submission failed. Please try again.',
       )
@@ -260,6 +265,8 @@ export default function FactScannerPage() {
       setSubmitting(false)
     }
   }
+
+  
 
   // ── Phase: loading ─────────────────────────
   if (phase === 'loading') {
@@ -479,17 +486,6 @@ export default function FactScannerPage() {
   }
 
   // ── Phase: task ────────────────────────────
-  const allQuarantined =
-    factNode!.article_sentences.filter(
-      s => quarantined.includes(s.sentence_id)
-    ).length > 0
-    && factNode!.article_sentences.every(s => {
-      // We don't know which are flawed on client
-      // allQuarantined is driven by submit button
-      // which the backend controls
-      return true
-    })
-
   // Better: track total quarantined count
   // Submit activates when at least 1 quarantined
   // Backend validates the full set
@@ -823,7 +819,7 @@ export default function FactScannerPage() {
         </div>
       </div>
 
-      {/* hint overlay — matches all modules */}
+        {/* hint overlay — matches all modules */}
       {hintOverlay && (
         <div style={{
           position: 'fixed', inset: 0,
