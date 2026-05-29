@@ -30,107 +30,280 @@ const NODE_META: Record<string, {
   title: string
   focus: string
   icon:  string
+  level?: string
+  type?:  string
 }> = {
+  // ── LOGIC THREAD — NARRATION ───────────────
   log_node_01: {
-    title: 'Narration Patterns',
-    focus: 'Mapping the narration pattern of '
-           + 'text development',
-    icon:  '⊕',
+    title: 'Narration — Basics',
+    focus: 'Identify simple time-order signals',
+    icon: '⊕', level: 'BASICS', type: 'NARRATION',
   },
   log_node_02: {
-    title: 'Definition Patterns',
-    focus: 'Mapping the definition pattern of '
-           + 'text development',
-    icon:  '⊕',
+    title: 'Narration — Intermediate',
+    focus: 'Sequence events using multiple time markers',
+    icon: '⊕', level: 'INTERMEDIATE', type: 'NARRATION',
   },
   log_node_03: {
-    title: 'Comparison & Contrast Patterns',
-    focus: 'Mapping both comparison and contrast '
-           + 'patterns of text development',
-    icon:  '⊕',
+    title: 'Narration — Advanced',
+    focus: 'Map complex chronological narrative development',
+    icon: '⊕', level: 'ADVANCED', type: 'NARRATION',
   },
+  // ── LOGIC THREAD — DEFINITION ─────────────
   log_node_04: {
-    title: 'Cause and Effect Patterns',
-    focus: 'Mapping the cause-effect pattern of '
-           + 'text development',
-    icon:  '⊕',
+    title: 'Definition — Basics',
+    focus: 'Identify a simple three-part definition',
+    icon: '⊕', level: 'BASICS', type: 'DEFINITION',
   },
+  log_node_05: {
+    title: 'Definition — Intermediate',
+    focus: 'Map a multi-part definition with characteristics',
+    icon: '⊕', level: 'INTERMEDIATE', type: 'DEFINITION',
+  },
+  log_node_06: {
+    title: 'Definition — Advanced',
+    focus: 'Map a full academic definition with examples',
+    icon: '⊕', level: 'ADVANCED', type: 'DEFINITION',
+  },
+  // ── LOGIC THREAD — COMPARISON ─────────────
+  log_node_07: {
+    title: 'Comparison & Contrast — Basics',
+    focus: 'Identify simple similarity and difference signals',
+    icon: '⊕', level: 'BASICS', type: 'COMPARISON',
+  },
+  log_node_08: {
+    title: 'Comparison & Contrast — Intermediate',
+    focus: 'Map a four-part compare and contrast structure',
+    icon: '⊕', level: 'INTERMEDIATE', type: 'COMPARISON',
+  },
+  log_node_09: {
+    title: 'Comparison & Contrast — Advanced',
+    focus: 'Map a complex multi-criteria comparison text',
+    icon: '⊕', level: 'ADVANCED', type: 'COMPARISON',
+  },
+  // ── LOGIC THREAD — CAUSE & EFFECT ─────────
+  log_node_10: {
+    title: 'Cause & Effect — Basics',
+    focus: 'Identify a simple cause and its direct effect',
+    icon: '⊕', level: 'BASICS', type: 'CAUSE-EFFECT',
+  },
+  log_node_11: {
+    title: 'Cause & Effect — Intermediate',
+    focus: 'Map a chained cause-effect academic argument',
+    icon: '⊕', level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
+  },
+  log_node_12: {
+    title: 'Cause & Effect — Advanced',
+    focus: 'Map complex cascading cause-effect relationships',
+    icon: '⊕', level: 'ADVANCED', type: 'CAUSE-EFFECT',
+  },
+  // ── SNAP-IN GAP — ADDITION ────────────────
   snp_node_01: {
-    title: 'Addition & Sequence Transitions',
-    focus: 'Transitions like furthermore, next, '
-           + 'additionally',
-    icon:  '⊞',
+    title: 'Addition & Sequence — Basics',
+    focus: 'Identify the simplest addition transition',
+    icon: '⊞', level: 'BASICS', type: 'ADDITION',
   },
   snp_node_02: {
-    title: 'Contrast & Opposition Transitions',
-    focus: 'Transitions like however, '
-           + 'on the other hand',
-    icon:  '⊞',
+    title: 'Addition & Sequence — Intermediate',
+    focus: 'Use addition and sequence in two-pair context',
+    icon: '⊞', level: 'INTERMEDIATE', type: 'ADDITION',
   },
   snp_node_03: {
-    title: 'Cause & Effect Transitions',
-    focus: 'Transitions like therefore, '
-           + 'consequently',
-    icon:  '⊞',
+    title: 'Addition & Sequence — Advanced',
+    focus: 'Apply complex addition transitions academically',
+    icon: '⊞', level: 'ADVANCED', type: 'ADDITION',
   },
+  // ── SNAP-IN GAP — CONTRAST ────────────────
   snp_node_04: {
-    title: 'Conclusion Signal Transitions',
-    focus: 'Transitions like ultimately, '
-           + 'in conclusion',
-    icon:  '⊞',
+    title: 'Contrast & Opposition — Basics',
+    focus: 'Identify the most basic contrast transition',
+    icon: '⊞', level: 'BASICS', type: 'CONTRAST',
   },
+  snp_node_05: {
+    title: 'Contrast & Opposition — Intermediate',
+    focus: 'Use contrast transitions in two-pair context',
+    icon: '⊞', level: 'INTERMEDIATE', type: 'CONTRAST',
+  },
+  snp_node_06: {
+    title: 'Contrast & Opposition — Advanced',
+    focus: 'Apply nuanced contrast in academic arguments',
+    icon: '⊞', level: 'ADVANCED', type: 'CONTRAST',
+  },
+  // ── SNAP-IN GAP — CAUSE & EFFECT ──────────
+  snp_node_07: {
+    title: 'Cause & Effect — Basics',
+    focus: 'Identify the simplest cause-effect transition',
+    icon: '⊞', level: 'BASICS', type: 'CAUSE-EFFECT',
+  },
+  snp_node_08: {
+    title: 'Cause & Effect — Intermediate',
+    focus: 'Distinguish between two cause-effect signals',
+    icon: '⊞', level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
+  },
+  snp_node_09: {
+    title: 'Cause & Effect — Advanced',
+    focus: 'Apply cause-effect transitions academically',
+    icon: '⊞', level: 'ADVANCED', type: 'CAUSE-EFFECT',
+  },
+  // ── SNAP-IN GAP — CONCLUSION ──────────────
+  snp_node_10: {
+    title: 'Conclusion Signals — Basics',
+    focus: 'Identify the simplest conclusion transition',
+    icon: '⊞', level: 'BASICS', type: 'CONCLUSION',
+  },
+  snp_node_11: {
+    title: 'Conclusion Signals — Intermediate',
+    focus: 'Apply two different conclusion transitions',
+    icon: '⊞', level: 'INTERMEDIATE', type: 'CONCLUSION',
+  },
+  snp_node_12: {
+    title: 'Conclusion Signals — Advanced',
+    focus: 'Apply advanced conclusion signals academically',
+    icon: '⊞', level: 'ADVANCED', type: 'CONCLUSION',
+  },
+  // ── TAP THE CLUES — SYNONYM ───────────────
   tap_node_01: {
-    title: 'Synonym Clues',
-    focus: 'Finding words nearby with similar '
-           + 'meanings',
-    icon:  '🔍',
+    title: 'Synonym Clues — Basics',
+    focus: 'Find one synonym clue right beside the word',
+    icon: '🔍', level: 'BASICS', type: 'SYNONYM',
   },
   tap_node_02: {
-    title: 'Definition Clues',
-    focus: 'Spotting exact definitions embedded '
-           + 'in the text',
-    icon:  '🔍',
+    title: 'Synonym Clues — Intermediate',
+    focus: 'Find two synonym clues in context',
+    icon: '🔍', level: 'INTERMEDIATE', type: 'SYNONYM',
   },
   tap_node_03: {
-    title: 'Antonym & Contrast Clues',
-    focus: 'Identifying opposite words that hint '
-           + 'at the target word\'s meaning',
-    icon:  '🔍',
+    title: 'Synonym Clues — Advanced',
+    focus: 'Unlock two words using synonym clues',
+    icon: '🔍', level: 'ADVANCED', type: 'SYNONYM',
   },
+  // ── TAP THE CLUES — DEFINITION ────────────
   tap_node_04: {
-    title: 'Example & Inference Clues',
-    focus: 'Deducing meaning from scenarios '
-           + 'described nearby',
-    icon:  '🔍',
+    title: 'Definition Clues — Basics',
+    focus: 'Spot a single embedded definition clue',
+    icon: '🔍', level: 'BASICS', type: 'DEFINITION',
   },
+  tap_node_05: {
+    title: 'Definition Clues — Intermediate',
+    focus: 'Find two definition clue words in context',
+    icon: '🔍', level: 'INTERMEDIATE', type: 'DEFINITION',
+  },
+  tap_node_06: {
+    title: 'Definition Clues — Advanced',
+    focus: 'Unlock two words using definition clues',
+    icon: '🔍', level: 'ADVANCED', type: 'DEFINITION',
+  },
+  // ── TAP THE CLUES — ANTONYM ───────────────
+  tap_node_07: {
+    title: 'Antonym & Contrast Clues — Basics',
+    focus: 'Find one antonym clue near the word',
+    icon: '🔍', level: 'BASICS', type: 'ANTONYM',
+  },
+  tap_node_08: {
+    title: 'Antonym & Contrast Clues — Intermediate',
+    focus: 'Find two antonym clues in academic context',
+    icon: '🔍', level: 'INTERMEDIATE', type: 'ANTONYM',
+  },
+  tap_node_09: {
+    title: 'Antonym & Contrast Clues — Advanced',
+    focus: 'Unlock two words using antonym clues',
+    icon: '🔍', level: 'ADVANCED', type: 'ANTONYM',
+  },
+  // ── TAP THE CLUES — EXAMPLE/INFERENCE ─────
+  tap_node_10: {
+    title: 'Example & Inference Clues — Basics',
+    focus: 'Infer word meaning from one nearby example',
+    icon: '🔍', level: 'BASICS', type: 'INFERENCE',
+  },
+  tap_node_11: {
+    title: 'Example & Inference Clues — Intermediate',
+    focus: 'Infer meaning from two example clues',
+    icon: '🔍', level: 'INTERMEDIATE', type: 'INFERENCE',
+  },
+  tap_node_12: {
+    title: 'Example & Inference Clues — Advanced',
+    focus: 'Unlock two words using inference clues',
+    icon: '🔍', level: 'ADVANCED', type: 'INFERENCE',
+  },
+  // ── FACT SCANNER — CURRENCY ───────────────
   fac_node_01: {
-    title: 'Currency',
-    focus: 'Identifying outdated information',
-    icon:  '🔎',
+    title: 'Currency — Basics',
+    focus: 'Spot a very obviously outdated source',
+    icon: '🔎', level: 'BASICS', type: 'CURRENCY',
   },
   fac_node_02: {
-    title: 'Relevance',
-    focus: 'Spotting off-topic or mismatched '
-           + 'information',
-    icon:  '🔎',
+    title: 'Currency — Intermediate',
+    focus: 'Identify a moderately outdated source',
+    icon: '🔎', level: 'INTERMEDIATE', type: 'CURRENCY',
   },
   fac_node_03: {
-    title: 'Authority',
-    focus: 'Highlighting unsupported claims '
-           + 'or missing credentials',
-    icon:  '🔎',
+    title: 'Currency — Advanced',
+    focus: 'Detect a subtly outdated claim',
+    icon: '🔎', level: 'ADVANCED', type: 'CURRENCY',
   },
+  // ── FACT SCANNER — RELEVANCE ──────────────
   fac_node_04: {
-    title: 'Accuracy',
-    focus: 'Identifying factual errors or '
-           + 'unverified data',
-    icon:  '🔎',
+    title: 'Relevance — Basics',
+    focus: 'Spot a completely off-topic sentence',
+    icon: '🔎', level: 'BASICS', type: 'RELEVANCE',
   },
   fac_node_05: {
-    title: 'Purpose',
-    focus: 'Quarantining extreme bias '
-           + 'or hidden agendas',
-    icon:  '🔎',
+    title: 'Relevance — Intermediate',
+    focus: 'Identify a moderately off-topic sentence',
+    icon: '🔎', level: 'INTERMEDIATE', type: 'RELEVANCE',
+  },
+  fac_node_06: {
+    title: 'Relevance — Advanced',
+    focus: 'Detect a subtly irrelevant sentence',
+    icon: '🔎', level: 'ADVANCED', type: 'RELEVANCE',
+  },
+  // ── FACT SCANNER — AUTHORITY ──────────────
+  fac_node_07: {
+    title: 'Authority — Basics',
+    focus: 'Spot an obviously unverified claim',
+    icon: '🔎', level: 'BASICS', type: 'AUTHORITY',
+  },
+  fac_node_08: {
+    title: 'Authority — Intermediate',
+    focus: 'Identify a moderately unverified source',
+    icon: '🔎', level: 'INTERMEDIATE', type: 'AUTHORITY',
+  },
+  fac_node_09: {
+    title: 'Authority — Advanced',
+    focus: 'Detect a subtly unqualified claim',
+    icon: '🔎', level: 'ADVANCED', type: 'AUTHORITY',
+  },
+  // ── FACT SCANNER — ACCURACY ───────────────
+  fac_node_10: {
+    title: 'Accuracy — Basics',
+    focus: 'Spot a wildly inaccurate claim',
+    icon: '🔎', level: 'BASICS', type: 'ACCURACY',
+  },
+  fac_node_11: {
+    title: 'Accuracy — Intermediate',
+    focus: 'Identify a moderately inaccurate claim',
+    icon: '🔎', level: 'INTERMEDIATE', type: 'ACCURACY',
+  },
+  fac_node_12: {
+    title: 'Accuracy — Advanced',
+    focus: 'Detect a subtly fabricated statistic',
+    icon: '🔎', level: 'ADVANCED', type: 'ACCURACY',
+  },
+  // ── FACT SCANNER — PURPOSE ────────────────
+  fac_node_13: {
+    title: 'Purpose — Basics',
+    focus: 'Spot overtly biased or insulting language',
+    icon: '🔎', level: 'BASICS', type: 'PURPOSE',
+  },
+  fac_node_14: {
+    title: 'Purpose — Intermediate',
+    focus: 'Identify moderately biased framing',
+    icon: '🔎', level: 'INTERMEDIATE', type: 'PURPOSE',
+  },
+  fac_node_15: {
+    title: 'Purpose — Advanced',
+    focus: 'Detect subtly manipulative academic language',
+    icon: '🔎', level: 'ADVANCED', type: 'PURPOSE',
   },
 }
 

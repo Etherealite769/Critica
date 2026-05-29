@@ -2,45 +2,91 @@
 from .mongo_models import StudentProfileDocument
 
 NODE_UNLOCK_MAP = {
+    # ── Logic Thread ──────────────────────────
     'log_node_01': 'log_node_02',
     'log_node_02': 'log_node_03',
     'log_node_03': 'log_node_04',
-    'log_node_04': None,
+    'log_node_04': 'log_node_05',
+    'log_node_05': 'log_node_06',
+    'log_node_06': 'log_node_07',
+    'log_node_07': 'log_node_08',
+    'log_node_08': 'log_node_09',
+    'log_node_09': 'log_node_10',
+    'log_node_10': 'log_node_11',
+    'log_node_11': 'log_node_12',
+    'log_node_12': None,
 
+    # ── Snap-in Gap ───────────────────────────
     'snp_node_01': 'snp_node_02',
     'snp_node_02': 'snp_node_03',
     'snp_node_03': 'snp_node_04',
-    'snp_node_04': None,
+    'snp_node_04': 'snp_node_05',
+    'snp_node_05': 'snp_node_06',
+    'snp_node_06': 'snp_node_07',
+    'snp_node_07': 'snp_node_08',
+    'snp_node_08': 'snp_node_09',
+    'snp_node_09': 'snp_node_10',
+    'snp_node_10': 'snp_node_11',
+    'snp_node_11': 'snp_node_12',
+    'snp_node_12': None,
 
+    # ── Tap the Clues ─────────────────────────
     'tap_node_01': 'tap_node_02',
     'tap_node_02': 'tap_node_03',
     'tap_node_03': 'tap_node_04',
-    'tap_node_04': None,
+    'tap_node_04': 'tap_node_05',
+    'tap_node_05': 'tap_node_06',
+    'tap_node_06': 'tap_node_07',
+    'tap_node_07': 'tap_node_08',
+    'tap_node_08': 'tap_node_09',
+    'tap_node_09': 'tap_node_10',
+    'tap_node_10': 'tap_node_11',
+    'tap_node_11': 'tap_node_12',
+    'tap_node_12': None,
 
+    # ── Fact Scanner ──────────────────────────
     'fac_node_01': 'fac_node_02',
     'fac_node_02': 'fac_node_03',
     'fac_node_03': 'fac_node_04',
     'fac_node_04': 'fac_node_05',
-    'fac_node_05': None,
+    'fac_node_05': 'fac_node_06',
+    'fac_node_06': 'fac_node_07',
+    'fac_node_07': 'fac_node_08',
+    'fac_node_08': 'fac_node_09',
+    'fac_node_09': 'fac_node_10',
+    'fac_node_10': 'fac_node_11',
+    'fac_node_11': 'fac_node_12',
+    'fac_node_12': 'fac_node_13',
+    'fac_node_13': 'fac_node_14',
+    'fac_node_14': 'fac_node_15',
+    'fac_node_15': None,
 }
 
 MODULE_NODES = {
     'logic_thread': [
-        'log_node_01', 'log_node_02',
-        'log_node_03', 'log_node_04',
+        'log_node_01', 'log_node_02', 'log_node_03',
+        'log_node_04', 'log_node_05', 'log_node_06',
+        'log_node_07', 'log_node_08', 'log_node_09',
+        'log_node_10', 'log_node_11', 'log_node_12',
     ],
     'snap_gap': [
-        'snp_node_01', 'snp_node_02',
-        'snp_node_03', 'snp_node_04',
+        'snp_node_01', 'snp_node_02', 'snp_node_03',
+        'snp_node_04', 'snp_node_05', 'snp_node_06',
+        'snp_node_07', 'snp_node_08', 'snp_node_09',
+        'snp_node_10', 'snp_node_11', 'snp_node_12',
     ],
     'tap_clues': [
-        'tap_node_01', 'tap_node_02',
-        'tap_node_03', 'tap_node_04',
+        'tap_node_01', 'tap_node_02', 'tap_node_03',
+        'tap_node_04', 'tap_node_05', 'tap_node_06',
+        'tap_node_07', 'tap_node_08', 'tap_node_09',
+        'tap_node_10', 'tap_node_11', 'tap_node_12',
     ],
     'fact_scanner': [
-        'fac_node_01', 'fac_node_02',
-        'fac_node_03', 'fac_node_04',
-        'fac_node_05',
+        'fac_node_01', 'fac_node_02', 'fac_node_03',
+        'fac_node_04', 'fac_node_05', 'fac_node_06',
+        'fac_node_07', 'fac_node_08', 'fac_node_09',
+        'fac_node_10', 'fac_node_11', 'fac_node_12',
+        'fac_node_13', 'fac_node_14', 'fac_node_15',
     ],
 }
 
@@ -51,7 +97,6 @@ MODULE_ENTRY_NODES = {
     'fact_scanner': 'fac_node_01',
 }
 
-# These are always unlocked for every student
 ALWAYS_UNLOCKED = [
     'log_node_01',
     'snp_node_01',
@@ -75,9 +120,6 @@ class ProgressionManagementService:
             )
             profile.save()
 
-        # Ensure all entry nodes are always
-        # unlocked regardless of when the
-        # account was created
         changed = False
         for node_id in ALWAYS_UNLOCKED:
             if node_id not in \
@@ -92,7 +134,6 @@ class ProgressionManagementService:
 
     @staticmethod
     def is_node_unlocked(student_id, node_id):
-        # Entry nodes are always unlocked
         if node_id in ALWAYS_UNLOCKED:
             return True
         profile = StudentProfileDocument.objects(
