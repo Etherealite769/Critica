@@ -67,7 +67,7 @@ class EvaluateSentenceView(APIView):
             node_id=node_id,
             module='fact_scanner',
             is_correct=is_correct,
-            sentence_id=sentence_id,
+            word_id=sentence_id,
         )
 
         if is_correct:
