@@ -24,16 +24,31 @@ class ScaffoldEngineService:
         return all_wrong or timed_out
 
     @staticmethod
-    def get_hint_tier(student_id):
+    def get_hint_tier(student_id, node_id=''):
         from api.progression.mongo_models import (
             StudentProfileDocument)
+        from api.progression.services import (
+            MODULE_NODES)
         profile = StudentProfileDocument.objects(
             student_id=student_id).first()
-        completed = (len(profile.completed_nodes)
-                     if profile else 0)
-        if   completed >= 6: return 1
-        elif completed >= 3: return 2
-        else:                return 3
+        if not profile:
+            return 3
+        # Determine which module this node belongs to
+        module_nodes = []
+        for nodes in MODULE_NODES.values():
+            if node_id in nodes:
+                module_nodes = nodes
+                break
+        if module_nodes:
+            completed = sum(
+                1 for n in profile.completed_nodes
+                if n in module_nodes)
+        else:
+            completed = len(profile.completed_nodes)
+        total = len(module_nodes) if module_nodes else 12
+        if   completed >= total * 0.5: return 1
+        elif completed >= total * 0.25: return 2
+        else:                           return 3
 
     @staticmethod
     def log_attempt(student_id, node_id, module,

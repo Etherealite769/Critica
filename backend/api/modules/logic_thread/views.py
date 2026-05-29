@@ -126,7 +126,7 @@ class FeedbackView(APIView):
         if ScaffoldEngineService.should_trigger(
                 student_id, node_id, inactivity):
             hint_tier = ScaffoldEngineService\
-                .get_hint_tier(student_id)
+                .get_hint_tier(student_id, node_id)
             hint = node.get_hint(hint_tier)
 
         return Response({
