@@ -28,25 +28,148 @@ interface SnapNodeData {
 type Phase     = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 type TileState = 'idle' | 'correct' | 'incorrect'
 
+const SNAP_GAP_TUTORIAL_KEY =
+  'critica_tutorial_seen_snap_gap_first_node'
+
+const TUTORIAL_STEPS = [
+  {
+    label: 'Read the passage',
+    code: 'TUT-SIG-001',
+    text: 'In Snap-in-Gap, you will see a passage with blank gaps missing transition words. A tile bank on the right holds word options.\n\nYour mission: drag or click the correct tile into each gap to restore the paragraph\'s logical flow.',
+    board: 'passage',
+    notes: [
+      'Drag a tile to fill the gap',
+      'Gap turns teal when filled',
+      'Click gap to clear it',
+    ],
+  },
+  {
+    label: 'Pick a tile',
+    code: 'TUT-SIG-002',
+    text: 'Look at the word tile bank on the right. Read the context before and after each gap. Ask yourself: is this a contrast? A result? An addition? Then click a tile to select it, it will highlight gold.',
+    board: 'tiles',
+    notes: [
+      'Gold outline = current selected',
+      'Faded tiles are already used',
+      'Drag or click to place in gap',
+    ],
+  },
+  {
+    label: 'Fill the gap',
+    code: 'TUT-SIG-003',
+    text: 'After selecting a tile, click a gap in the passage to place it or drag the tile directly onto the gap. The gap will snap closed and turn teal. Click a filled gap to clear it and try again.',
+    board: 'beforeAfter',
+    notes: [
+      'Teal snap = tile placed',
+      'Click filled gap to clear',
+      'One tile per gap only',
+    ],
+  },
+  {
+    label: 'Submit',
+    code: 'TUT-SIG-004',
+    text: 'When all gaps are filled, the Submit button activates. Hit it to check your answers. Correct gaps stay teal, wrong gaps turn red and clear giving you a chance to retry only the incorrect ones.',
+    board: 'submit',
+    notes: [
+      'Bar fills as gaps are placed',
+      'Submit unlocks at 4/4 filled',
+      'Partial retry on wrong answers',
+    ],
+  },
+] as const
+
 // ── Shared styles ──────────────────────────────────
 const F = "'Courier New', Courier, monospace"
 
-const stampS: React.CSSProperties = {
-  display: 'inline-block', border: '2px solid #888',
-  padding: '3px 14px', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.15em', color: '#aaa',
-  marginBottom: 12, fontFamily: F,
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 24px', background: '#f0ece4',
-  border: '2px solid #888', borderRadius: 2, color: '#111',
-  fontFamily: F, fontSize: 13, fontWeight: 700,
-  cursor: 'pointer', letterSpacing: '0.08em',
-}
-const btnSm: React.CSSProperties = {
-  padding: '7px 16px', background: 'transparent',
-  border: '1px solid #555', borderRadius: 2, color: '#aaa',
-  fontFamily: F, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+const S = {
+  page: {
+    minHeight: '100vh',
+    background: '#686664',
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    fontFamily: F,
+  },
+  card: {
+    maxWidth: 640,
+    width: '100%',
+    background: '#2b2b2b',
+    border: '1px solid #444',
+    borderRadius: 4,
+    padding: 48,
+    fontFamily: F,
+  },
+  stamp: {
+    display: 'inline-block' as const,
+    border: '2px solid #888',
+    padding: '3px 14px',
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.15em',
+    color: '#aaa',
+    marginBottom: 12,
+    fontFamily: F,
+  } as React.CSSProperties,
+  h2: {
+    fontSize: 20,
+    fontWeight: 700,
+    color: '#f0ece4',
+    margin: '0 0 6px',
+    fontFamily: F,
+  } as React.CSSProperties,
+  sub: {
+    fontSize: 12,
+    color: '#aaa',
+    margin: '0 0 16px',
+    fontFamily: F,
+  } as React.CSSProperties,
+  body: {
+    fontSize: 13,
+    lineHeight: 1.85,
+    color: '#ccc',
+    margin: '0 0 32px',
+    fontFamily: F,
+  } as React.CSSProperties,
+  hr: {
+    border: 'none',
+    borderTop: '1px solid #444',
+    margin: '16px 0',
+  } as React.CSSProperties,
+  btnPrimary: {
+    padding: '10px 24px',
+    background: '#f0ece4',
+    border: '2px solid #888',
+    borderRadius: 2,
+    color: '#111',
+    fontFamily: F,
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+    letterSpacing: '0.08em',
+  } as React.CSSProperties,
+  btnSm: {
+    padding: '7px 16px',
+    background: 'transparent',
+    border: '1px solid #555',
+    borderRadius: 2,
+    color: '#aaa',
+    fontFamily: F,
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: 'pointer',
+  } as React.CSSProperties,
+  tutorialBtn: {
+    padding: '7px 14px',
+    background: '#2b2b2b',
+    border: '1px solid #555',
+    borderRadius: 2,
+    color: '#f0ece4',
+    fontFamily: F,
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    cursor: 'pointer',
+  } as React.CSSProperties,
 }
 
 // ── Sub-screens ───────────────────────────────────
@@ -66,7 +189,7 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
       flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: F, gap: 16 }}>
       <p style={{ color: '#ff6b6b', fontSize: 13 }}>{msg}</p>
-      <button onClick={onBack} style={btnSm}>← DASHBOARD</button>
+      <button onClick={onBack} style={S.btnSm}>← DASHBOARD</button>
     </div>
   )
 }
@@ -77,7 +200,7 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
       <div style={{ maxWidth: 640, width: '100%', background: '#2b2b2b',
         border: '1px solid #444', borderRadius: 4, padding: 48 }}>
-        <div style={stampS}>MICRO-LESSON</div>
+        <div style={S.stamp}>MICRO-LESSON</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
           {node.title}
         </h2>
@@ -86,7 +209,7 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
         <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
           {node.micro_lesson_text}
         </p>
-        <button onClick={onContinue} style={btnPrimary}>Continue →</button>
+        <button onClick={onContinue} style={S.btnPrimary}>Continue →</button>
       </div>
     </div>
   )
@@ -98,7 +221,7 @@ function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: 
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
       <div style={{ maxWidth: 700, width: '100%', background: '#2b2b2b',
         border: '1px solid #444', borderRadius: 4, padding: 48 }}>
-        <div style={stampS}>DEEP DIVE READING</div>
+        <div style={S.stamp}>DEEP DIVE READING</div>
         <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
           Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
         </p>
@@ -106,7 +229,7 @@ function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: 
           border: '1px solid #444', borderRadius: 4, padding: 28, margin: '0 0 32px' }}>
           {node.reading_passage}
         </p>
-        <button onClick={onContinue} style={btnPrimary}>I have finished reading →</button>
+        <button onClick={onContinue} style={S.btnPrimary}>I have finished reading →</button>
       </div>
     </div>
   )
@@ -119,7 +242,7 @@ function MasteryScreen({ node, data, onDashboard, onNext }:
       alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
       <div style={{ maxWidth: 480, width: '100%', background: '#0e1e0e',
         border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center' }}>
-        <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94',
+        <div style={{ ...S.stamp, color: '#4ddd94', borderColor: '#4ddd94',
           fontSize: 16, padding: '8px 24px' }}>
           ✓ NODE MASTERED
         </div>
@@ -131,9 +254,191 @@ function MasteryScreen({ node, data, onDashboard, onNext }:
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {data?.next_node && (
-            <button onClick={onNext} style={btnPrimary}>NEXT NODE →</button>
+            <button onClick={onNext} style={S.btnPrimary}>NEXT NODE →</button>
           )}
-          <button onClick={onDashboard} style={btnSm}>← DASHBOARD</button>
+          <button onClick={onDashboard} style={S.btnSm}>← DASHBOARD</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Tutorial Popup ────────────────────────────────
+function SnapGapTutorialPopup({
+  open,
+  step,
+  onBack,
+  onNext,
+  onClose,
+  onStart,
+}: {
+  open: boolean
+  step: number
+  onBack: () => void
+  onNext: () => void
+  onClose: () => void
+  onStart: () => void
+}) {
+  if (!open) return null
+
+  const current = TUTORIAL_STEPS[step]
+  const isFirst = step === 0
+  const isLast = step === TUTORIAL_STEPS.length - 1
+
+  const stepBox = (label: string, index: number) => {
+    const complete = index < step
+    const active = index === step
+    return (
+      <div key={label} style={{
+        width: 156, height: 76,
+        border: '1px solid #777',
+        background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
+        color: '#111',
+        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', textAlign: 'center',
+        fontFamily: F, fontSize: 12, fontWeight: 700,
+      }}>
+        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: '50%',
+            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
+            color: complete ? '#fff' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700,
+          }}>{complete ? '✓' : index + 1}</div>
+        </div>
+        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
+      </div>
+    )
+  }
+
+  const renderBoard = () => {
+    if (current.board === 'passage') {
+      return (
+        <div style={{ padding: '18px 16px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 10 }}>EXAMPLE GAP</div>
+          <div style={{ fontFamily: F, fontSize: 12, color: '#222', lineHeight: 1.4 }}>
+            Reading is essential.
+            <span style={{ display: 'inline-block', width: 96, height: 20, border: '1px dashed #9a9a9a', background: '#e9e9e9', verticalAlign: 'middle', margin: '0 6px' }} />
+            it builds critical thinking.
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'tiles') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>WORD TILE BANK</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {['FURTHERMORE', 'HOWEVER', 'ALTHOUGH', 'HENCE'].map((tile, i) => (
+              <div key={tile} style={{
+                padding: '8px 12px', minWidth: 92, textAlign: 'center',
+                border: `2px solid ${i === 0 ? '#f0c400' : '#888'}`,
+                background: i === 3 ? '#efefef' : '#fff',
+                color: i === 3 ? '#bdbdbd' : '#111',
+                fontFamily: F, fontWeight: 700, fontSize: 11,
+              }}>{tile}</div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'beforeAfter') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>BEFORE & AFTER</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', rowGap: 12, alignItems: 'center' }}>
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: '#111' }}>BEFORE :</div>
+            <div style={{ width: 88, height: 20, border: '1px dashed #9a9a9a', background: '#e9e9e9' }} />
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: '#111' }}>AFTER :</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 8px', border: '1px solid #59baf7', background: '#d8efff', color: '#0f5f9a', fontFamily: F, fontSize: 11, fontWeight: 700, width: 'fit-content' }}>FURTHERMORE</div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '16px 14px 12px' }}>
+        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>PROGRESS BAR</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ flex: 1, height: 10, background: '#efefef', border: '1px solid #555', overflow: 'hidden' }}>
+            <div style={{ width: '75%', height: '100%', background: '#111' }} />
+          </div>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', minWidth: 28, textAlign: 'right' }}>3 / 4</div>
+        </div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '8px 12px', background: '#ddd', border: '1px solid #888', fontFamily: F, fontSize: 12, fontWeight: 700 }}>SUBMIT →</div>
+      </div>
+    )
+  }
+
+  const primaryLabel = isLast ? 'START TRAINING →' : 'NEXT →'
+  const secondaryLabel = isFirst ? 'EXIT TUTORIAL' : 'BACK'
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)',
+      zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, fontFamily: F,
+    }}>
+      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{current.code}</div>
+        </div>
+
+        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
+            <div style={{ width: 120, textAlign: 'center' }}>
+              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+                </div>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+            </div>
+
+            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+              {TUTORIAL_STEPS.map((stepItem, index) => stepBox(stepItem.label, index))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
+            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
+              {renderBoard()}
+            </div>
+
+            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#222', marginBottom: 10 }}>QUICK NOTES</div>
+              {current.notes.map((note, index) => (
+                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>
+                  {note}
+                  {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {secondaryLabel}
+            </button>
+            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {primaryLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -158,10 +463,13 @@ export default function SnapInGapPage() {
   const [masteryData, setMasteryData] = useState<any>(null)
   const [submitting,  setSubmitting]  = useState(false)
 
-  const [fbText,    setFbText]    = useState('')
-  const [hintText,  setHintText]  = useState('')
-  const [hintTier,  setHintTier]  = useState(0)
-  const [drawer,    setDrawer]    = useState(false)
+  // feedback state
+  const [fbText,        setFbText]        = useState('')
+  const [hintText,      setHintText]      = useState('')
+  const [hintTier,      setHintTier]      = useState(0)
+  const [drawer,        setDrawer]        = useState(false)
+  const [tutorialOpen,  setTutorialOpen]  = useState(false)
+  const [tutorialStep,  setTutorialStep]  = useState(0)
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
@@ -177,6 +485,17 @@ export default function SnapInGapPage() {
         setPhase('error')
       })
   }, [nodeId]) // eslint-disable-line
+
+  useEffect(() => {
+    if (phase !== 'task' || nodeId !== 'snp_node_01') return
+
+    const seen = localStorage.getItem(SNAP_GAP_TUTORIAL_KEY)
+    if (seen === '1') return
+
+    localStorage.setItem(SNAP_GAP_TUTORIAL_KEY, '1')
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }, [phase, nodeId])
 
   // ── timer ─────────────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -281,6 +600,11 @@ export default function SnapInGapPage() {
   // ── TASK PHASE ────────────────────────────────────
   const currentPair = snapNode!.sentence_pairs[pairIdx]
   const allDone     = locked.length === snapNode!.sentence_pairs.length
+
+  const openTutorial  = () => { setTutorialStep(0); setTutorialOpen(true) }
+  const closeTutorial = () => setTutorialOpen(false)
+  const nextTutorialStep = () => setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
+  const prevTutorialStep = () => setTutorialStep(prev => Math.max(prev - 1, 0))
 
   return (
     <div style={{ minHeight: '100vh', background: '#686664',
@@ -450,14 +774,23 @@ export default function SnapInGapPage() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '12px 24px 16px', background: '#b8b3ab',
           }}>
-            <span style={{ fontSize: 12, color: '#666', fontWeight: 700, letterSpacing: '0.08em', fontFamily: F }}>
-              {locked.length} / {snapNode!.sentence_pairs.length} PAIRS BRIDGED
-              {wrongs > 0 && (
-                <span style={{ marginLeft: 14, color: '#b03030' }}>
-                  ATTEMPTS: {wrongs}
-                </span>
-              )}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button onClick={openTutorial} style={S.tutorialBtn}>
+                Show tutorial
+              </button>
+              <span style={{
+                fontSize: 10, color: '#666',
+                fontWeight: 700, letterSpacing: '0.08em',
+                fontFamily: F,
+              }}>
+                {locked.length} / {snapNode!.sentence_pairs.length} PAIRS BRIDGED
+                {wrongs > 0 && (
+                  <span style={{ marginLeft: 14, color: '#b03030' }}>
+                    ATTEMPTS: {wrongs}
+                  </span>
+                )}
+              </span>
+            </div>
             <button
               disabled={!allDone || submitting}
               onClick={handleSubmit}
@@ -477,6 +810,15 @@ export default function SnapInGapPage() {
         </div>
       </div>
 
+      <SnapGapTutorialPopup
+        open={tutorialOpen}
+        step={tutorialStep}
+        onClose={closeTutorial}
+        onBack={prevTutorialStep}
+        onNext={nextTutorialStep}
+        onStart={() => setTutorialOpen(false)}
+      />
+
       {/* feedback drawer */}
       {drawer && (
         <div style={{
@@ -486,7 +828,7 @@ export default function SnapInGapPage() {
           overflowY: 'auto', fontFamily: F,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ ...stampS, color: '#ff6b6b', borderColor: '#ff6b6b', marginBottom: 0 }}>
+            <div style={{ ...S.stamp, color: '#ff6b6b', borderColor: '#ff6b6b', marginBottom: 0 }}>
               FEEDBACK
             </div>
             <button
@@ -511,7 +853,7 @@ export default function SnapInGapPage() {
               </p>
             </div>
           )}
-          <button style={btnSm} onClick={() => { setDrawer(false); resetTimer() }}>
+          <button style={S.btnSm} onClick={() => { setDrawer(false); resetTimer() }}>
             Close and reattempt
           </button>
         </div>
