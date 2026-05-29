@@ -35,6 +35,56 @@ interface DefinitionPanel {
 type Phase = 'loading' | 'micro_lesson' | 'deep_dive'
            | 'task'    | 'mastery'      | 'error'
 
+const TAP_CLUES_TUTORIAL_KEY =
+  'critica_tutorial_seen_tap_clues_first_node'
+
+const TUTORIAL_STEPS = [
+  {
+    label: 'Overview',
+    code: 'TUT-TTC-001',
+    text: 'In Tap the Clues, a target word in the passage is locked. Its meaning is hidden. Your job is to find surrounding words that implicitly reveal its definition, then tap them to fill the Found Clues Tracker.',
+    board: 'target',
+    notes: [
+      'Gold underline = target word',
+      'Teal highlight = your clue',
+      'Locked stamp = not yet solved',
+    ],
+  },
+  {
+    label: 'Find clues',
+    code: 'TUT-TTC-002',
+    text: 'Look for words that indirectly describe the target word. Think about synonyms, cause-effect, or tone clues. Words like command, dismissing, and imperious all hint at meaning even if they are not direct definitions.',
+    board: 'strongWeak',
+    notes: [
+      'Strong clues match the meaning',
+      'Weak clues are too general',
+      'Need 3-4 strong clues',
+    ],
+  },
+  {
+    label: 'Tap words',
+    code: 'TUT-TTC-003',
+    text: 'Click any word in the passage to add it as a clue. It highlights teal and fills a slot in the Found Clues Tracker on the right. Fill all 4 slots before you can submit. You cannot tap the target word itself.',
+    board: 'tracker',
+    notes: [
+      'Slot fills on each tap',
+      'Tap filled slot to remove',
+      '4 slots total to fill',
+    ],
+  },
+  {
+    label: 'Unlock word',
+    code: 'TUT-TTC-004',
+    text: 'With all clue slots filled, hit Submit Clues. If your clues are strong enough, the LOCKED stamp becomes UNLOCKED and the definition is revealed. Weak clues trigger a retry with a hint about what to look for.',
+    board: 'unlock',
+    notes: [
+      'Stamp flips to OPEN',
+      'Weak clues = retry + hint',
+      'Definition revealed on unlock',
+    ],
+  },
+] as const
+
 // ── Style constants ─────────────────────────────
 const F = "'Courier New', Courier, monospace"
 
@@ -73,6 +123,199 @@ const S = {
     fontWeight:   700,
     cursor:       'pointer',
   } as React.CSSProperties,
+  tutorialBtn: {
+    padding: '7px 14px',
+    background: '#2b2b2b',
+    border: '1px solid #555',
+    borderRadius: 2,
+    color: '#f0ece4',
+    fontFamily: F,
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    cursor: 'pointer',
+  } as React.CSSProperties,
+}
+
+function TapCluesTutorialPopup({
+  open,
+  step,
+  onBack,
+  onNext,
+  onClose,
+  onStart,
+}: {
+  open: boolean
+  step: number
+  onBack: () => void
+  onNext: () => void
+  onClose: () => void
+  onStart: () => void
+}) {
+  if (!open) return null
+
+  const current = TUTORIAL_STEPS[step]
+  const isFirst = step === 0
+  const isLast = step === TUTORIAL_STEPS.length - 1
+
+  const stepCard = (label: string, index: number) => {
+    const complete = index < step
+    const active = index === step
+    return (
+      <div style={{
+        width: 156, height: 76,
+        border: '1px solid #777',
+        background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
+        color: '#111',
+        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', textAlign: 'center',
+        fontFamily: F, fontSize: 12, fontWeight: 700,
+      }}>
+        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: '50%',
+            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
+            color: complete ? '#fff' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700,
+          }}>{complete ? '✓' : index + 1}</div>
+        </div>
+        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
+      </div>
+    )
+  }
+
+  const renderBoard = () => {
+    if (current.board === 'target') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>THE TARGET WORD</div>
+          <div style={{ fontFamily: F, fontSize: 22, lineHeight: 1.45, color: '#111', wordSpacing: '0.12em' }}>
+            A tone of <span style={{ color: '#caa400', fontWeight: 700, textDecoration: 'underline' }}>peremptory</span> authority is often associated with those who <span style={{ color: '#2f8fcb', fontWeight: 700 }}>command</span> without question.
+          </div>
+          <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ display: 'inline-block', transform: 'rotate(-8deg)', color: '#c45a50', border: '1px solid #d6a8a0', borderRadius: '50%', padding: '8px 10px', fontSize: 12, fontWeight: 700 }}>LOCKED</span>
+            <span style={{ fontSize: 13, color: '#222', fontFamily: F }}>→ tap clues to unlock</span>
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'strongWeak') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>STRONG VS WEAK CLUES</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ padding: '8px 10px', border: '1px solid #58baf7', background: '#d8efff', color: '#0f5f9a', fontFamily: F, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+              Strong: "command", "imperious", "dismissing" signal authority/abruptness
+            </div>
+            <div style={{ padding: '8px 10px', border: '1px solid #cda25a', background: '#efe3d0', color: '#8a5c12', fontFamily: F, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+              Weak: "tone", "often", "those" too generic, no semantic link
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'tracker') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>FOUND CLUES TRACKER</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: F, fontSize: 12, color: '#111' }}>
+            <div><span style={{ color: '#2f8fcb', fontWeight: 700 }}>[1]</span> command — signals ordering without discussion</div>
+            <div><span style={{ color: '#2f8fcb', fontWeight: 700 }}>[2]</span> imperious — near-synonym</div>
+            <div><span style={{ fontWeight: 700 }}>[3]</span> - TAP A WORD -</div>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '16px 14px 12px' }}>
+        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>LOCK STATE CHANGE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontFamily: F, fontSize: 13, color: '#111' }}>
+          <span style={{ color: '#c45a50', border: '1px solid #e3b3ab', borderRadius: '50%', padding: '8px 10px', transform: 'rotate(-6deg)' }}>LOCKED</span>
+          <span>→</span>
+          <span style={{ color: '#2ca04f', border: '1px solid #a8d6b3', borderRadius: '50%', padding: '8px 8px', transform: 'rotate(6deg)' }}>UNLOCKED</span>
+        </div>
+        <div style={{ display: 'flex', gap: 34, marginTop: 14, fontFamily: F, fontSize: 11, color: '#333' }}>
+          <div>before submit</div>
+          <div>after unlock</div>
+        </div>
+      </div>
+    )
+  }
+
+  const primaryLabel = isLast ? 'START TRAINING →' : 'NEXT →'
+  const secondaryLabel = isFirst ? 'EXIT TUTORIAL' : 'BACK'
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)',
+      zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, fontFamily: F,
+    }}>
+      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{current.code}</div>
+        </div>
+
+        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
+            <div style={{ width: 120, textAlign: 'center' }}>
+              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+                </div>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+            </div>
+
+            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+              {TUTORIAL_STEPS.map((stepItem, index) => stepCard(stepItem.label, index))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
+            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
+              {renderBoard()}
+            </div>
+
+            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#111', marginBottom: 10 }}>QUICK NOTES</div>
+              {current.notes.map((note, index) => (
+                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#111' }}>
+                  {note}
+                  {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {secondaryLabel}
+            </button>
+            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {primaryLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Helper: split passage into word tokens ──────
@@ -144,6 +387,8 @@ export default function TapCluesPage() {
   // feedback state
   const [fbText, setFbText]     = useState('')
   const [drawer, setDrawer]     = useState(false)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
 
   // hint overlay (matches Module 1/2 format)
   const [hintOverlay, setHintOverlay]         = useState(false)
@@ -168,6 +413,17 @@ export default function TapCluesPage() {
         setPhase('error')
       })
   }, [nodeId]) // eslint-disable-line
+
+  useEffect(() => {
+    if (phase !== 'task' || nodeId !== 'tap_node_01') return
+
+    const seen = localStorage.getItem(TAP_CLUES_TUTORIAL_KEY)
+    if (seen === '1') return
+
+    localStorage.setItem(TAP_CLUES_TUTORIAL_KEY, '1')
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }, [phase, nodeId])
 
   // ── Timer ──────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -601,6 +857,21 @@ export default function TapCluesPage() {
   const allUnlocked =
     unlockedWords.length === tapNode!.locked_words.length
 
+  const openTutorial = () => {
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }
+
+  const closeTutorial = () => setTutorialOpen(false)
+
+  const nextTutorialStep = () => {
+    setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
+  }
+
+  const prevTutorialStep = () => {
+    setTutorialStep(prev => Math.max(prev - 1, 0))
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -851,14 +1122,19 @@ export default function TapCluesPage() {
             padding: '10px 24px 14px',
             background: '#b8b3ab',
           }}>
-            <span style={{
-              fontSize: 10, color: '#666',
-              fontWeight: 700, letterSpacing: '0.08em',
-              fontFamily: F,
-            }}>
-              {unlockedWords.length} /{' '}
-              {tapNode!.locked_words.length} WORDS UNLOCKED
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button onClick={openTutorial} style={S.tutorialBtn}>
+                Show tutorial
+              </button>
+              <span style={{
+                fontSize: 10, color: '#111',
+                fontWeight: 700, letterSpacing: '0.08em',
+                fontFamily: F,
+              }}>
+                {unlockedWords.length} / {' '}
+                {tapNode!.locked_words.length} WORDS UNLOCKED
+              </span>
+            </div>
             <button
               disabled={!allUnlocked || submitting}
               onClick={handleSubmitMastery}
@@ -886,6 +1162,15 @@ export default function TapCluesPage() {
           </div>
         </div>
       </div>
+
+      <TapCluesTutorialPopup
+        open={tutorialOpen}
+        step={tutorialStep}
+        onClose={closeTutorial}
+        onBack={prevTutorialStep}
+        onNext={nextTutorialStep}
+        onStart={() => setTutorialOpen(false)}
+      />
 
       {/* definition panel */}
       {defPanel && (
