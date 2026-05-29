@@ -10,6 +10,9 @@ django.setup()
 from api.modules.logic_thread.mongo_models import (
     LogicThreadNodeDocument)
 
+from api.modules.snap_gap.mongo_models import (
+    CoherenceNodeDocument)
+
 NODES = [
     {
         'node_id': 'log_node_01',
@@ -305,3 +308,304 @@ for node in NODES:
         print(f"Already exists: {node['node_id']}")
 
 print('\nDone.')
+
+# ── Module 2 seed data ──────────────────────────
+SNAP_GAP_NODES = [
+    {
+        'node_id': 'snp_node_01',
+        'title':   'Addition and Sequence '
+                   'Transitions',
+        'focus':   'Transitions like furthermore, '
+                   'next, additionally',
+        'micro_lesson_text': (
+            'Addition transitions connect ideas '
+            'by adding more information. Sequence '
+            'transitions show order. Key words: '
+            'furthermore, additionally, next, '
+            'also, in addition, first, then.'
+        ),
+        'reading_passage': '',
+        'word_count': 0,
+        'sentence_pairs': [
+            {
+                'pair_id':    'pair_01',
+                'sentence_a': 'Regular exercise '
+                              'improves '
+                              'cardiovascular health.',
+                'sentence_b': 'it strengthens '
+                              'muscles and boosts '
+                              'mental well-being.',
+            },
+            {
+                'pair_id':    'pair_02',
+                'sentence_a': 'To write a strong '
+                              'essay, start with '
+                              'a clear thesis.',
+                'sentence_b': 'support your '
+                              'argument with '
+                              'specific evidence.',
+            },
+        ],
+        'transition_tile_dock': [
+            'Furthermore', 'However',
+            'Therefore', 'Next',
+            'Nevertheless', 'In addition',
+        ],
+        'correct_tile_map': {
+            'pair_01': 'Furthermore',
+            'pair_02': 'Next',
+        },
+        'tile_error_explanations': {
+            'pair_01__However': (
+                '"However" signals contrast. These '
+                'sentences add to the same idea, '
+                'not oppose it.'),
+            'pair_01__Therefore': (
+                '"Therefore" signals a conclusion. '
+                'The second sentence adds a benefit, '
+                'not a result.'),
+            'pair_02__Furthermore': (
+                '"Furthermore" works but "Next" is '
+                'more precise for step-by-step '
+                'instructions.'),
+        },
+        'scaffold_hints': [
+            {'tier': 1,
+             'hint_text': 'These sentences build '
+                          'on the same topic. Look '
+                          'for a word that adds.'},
+            {'tier': 2,
+             'hint_text': 'Addition words: '
+                          'furthermore, additionally, '
+                          'in addition. Sequence '
+                          'words: next, then, first.'},
+            {'tier': 3,
+             'hint_text': 'Pair 01 needs an addition '
+                          'word. Pair 02 is a '
+                          'sequence — use "Next".'},
+        ],
+    },
+    {
+        'node_id': 'snp_node_02',
+        'title':   'Contrast and Opposition '
+                   'Transitions',
+        'focus':   'Transitions like however, '
+                   'on the other hand',
+        'micro_lesson_text': (
+            'Contrast transitions signal that the '
+            'second idea opposes or differs from '
+            'the first. Key words: however, '
+            'on the other hand, nevertheless, '
+            'whereas, although, yet.'
+        ),
+        'reading_passage': '',
+        'word_count': 0,
+        'sentence_pairs': [
+            {
+                'pair_id':    'pair_01',
+                'sentence_a': 'Many students '
+                              'believe they are '
+                              'strong readers.',
+                'sentence_b': 'their test scores '
+                              'consistently show '
+                              'low comprehension.',
+            },
+            {
+                'pair_id':    'pair_02',
+                'sentence_a': 'Digital libraries '
+                              'offer instant access '
+                              'to millions of books.',
+                'sentence_b': 'many readers still '
+                              'prefer physical '
+                              'books.',
+            },
+        ],
+        'transition_tile_dock': [
+            'However', 'Therefore',
+            'Furthermore', 'Nevertheless',
+            'As a result', 'In addition',
+        ],
+        'correct_tile_map': {
+            'pair_01': 'However',
+            'pair_02': 'Nevertheless',
+        },
+        'tile_error_explanations': {
+            'pair_01__Therefore': (
+                '"Therefore" implies the second '
+                'sentence is a result. These '
+                'sentences show an opposing idea.'),
+            'pair_02__Furthermore': (
+                '"Furthermore" adds information. '
+                'These sentences contrast digital '
+                'and physical reading.'),
+        },
+        'scaffold_hints': [
+            {'tier': 1,
+             'hint_text': 'The second sentence '
+                          'contradicts the first. '
+                          'Look for a contrast word.'},
+            {'tier': 2,
+             'hint_text': 'Contrast words: however, '
+                          'nevertheless, on the '
+                          'other hand, yet.'},
+            {'tier': 3,
+             'hint_text': 'Use "however" for pair '
+                          '01 and "nevertheless" '
+                          'for pair 02.'},
+        ],
+    },
+    {
+        'node_id': 'snp_node_03',
+        'title':   'Cause and Effect Transitions',
+        'focus':   'Transitions like therefore, '
+                   'consequently',
+        'micro_lesson_text': (
+            'Cause and effect transitions show '
+            'that one event causes another. '
+            'Key words: therefore, consequently, '
+            'as a result, thus, because of this, '
+            'for this reason.'
+        ),
+        'reading_passage': '',
+        'word_count': 0,
+        'sentence_pairs': [
+            {
+                'pair_id':    'pair_01',
+                'sentence_a': 'The student did '
+                              'not review her '
+                              'notes before the exam.',
+                'sentence_b': 'she struggled to '
+                              'answer several '
+                              'key questions.',
+            },
+            {
+                'pair_id':    'pair_02',
+                'sentence_a': 'The river flooded '
+                              'the nearby farmlands.',
+                'sentence_b': 'many families were '
+                              'forced to evacuate '
+                              'their homes.',
+            },
+        ],
+        'transition_tile_dock': [
+            'Therefore', 'However',
+            'Furthermore', 'Consequently',
+            'Nevertheless', 'In addition',
+        ],
+        'correct_tile_map': {
+            'pair_01': 'Therefore',
+            'pair_02': 'Consequently',
+        },
+        'tile_error_explanations': {
+            'pair_01__However': (
+                '"However" signals contrast. The '
+                'second sentence is a result of '
+                'not reviewing, not an opposing '
+                'idea.'),
+            'pair_02__Furthermore': (
+                '"Furthermore" adds information. '
+                'The evacuation is a direct '
+                'result of the flood.'),
+        },
+        'scaffold_hints': [
+            {'tier': 1,
+             'hint_text': 'The second sentence '
+                          'happened because of '
+                          'the first.'},
+            {'tier': 2,
+             'hint_text': 'Cause-effect words: '
+                          'therefore, consequently, '
+                          'as a result.'},
+            {'tier': 3,
+             'hint_text': 'Use "therefore" for '
+                          'pair 01 and '
+                          '"consequently" for '
+                          'pair 02.'},
+        ],
+    },
+    {
+        'node_id': 'snp_node_04',
+        'title':   'Conclusion Signal Transitions',
+        'focus':   'Transitions like ultimately, '
+                   'in conclusion',
+        'micro_lesson_text': (
+            'Conclusion transitions signal that '
+            'the writer is summarizing or closing '
+            'an argument. Key words: in conclusion, '
+            'ultimately, to summarize, in summary, '
+            'overall, to conclude.'
+        ),
+        'reading_passage': '',
+        'word_count': 0,
+        'sentence_pairs': [
+            {
+                'pair_id':    'pair_01',
+                'sentence_a': 'Critical reading '
+                              'builds analytical '
+                              'thinking, vocabulary, '
+                              'and evaluation skills.',
+                'sentence_b': 'it is one of the '
+                              'most valuable academic '
+                              'skills a student '
+                              'can develop.',
+            },
+            {
+                'pair_id':    'pair_02',
+                'sentence_a': 'Evidence shows that '
+                              'gamified learning '
+                              'increases engagement '
+                              'and retention.',
+                'sentence_b': 'incorporating game '
+                              'mechanics into '
+                              'education is worth '
+                              'pursuing.',
+            },
+        ],
+        'transition_tile_dock': [
+            'In conclusion', 'However',
+            'Furthermore', 'Ultimately',
+            'Nevertheless', 'Therefore',
+        ],
+        'correct_tile_map': {
+            'pair_01': 'Ultimately',
+            'pair_02': 'In conclusion',
+        },
+        'tile_error_explanations': {
+            'pair_01__However': (
+                '"However" signals contrast. '
+                'The second sentence summarizes '
+                'and concludes the argument.'),
+            'pair_02__Furthermore': (
+                '"Furthermore" adds more '
+                'information. The second sentence '
+                'is drawing a final conclusion.'),
+        },
+        'scaffold_hints': [
+            {'tier': 1,
+             'hint_text': 'The second sentence '
+                          'wraps up the argument. '
+                          'Look for a closing word.'},
+            {'tier': 2,
+             'hint_text': 'Conclusion words: '
+                          'ultimately, in conclusion, '
+                          'in summary, overall.'},
+            {'tier': 3,
+             'hint_text': 'Use "ultimately" for '
+                          'pair 01 and '
+                          '"in conclusion" for '
+                          'pair 02.'},
+        ],
+    },
+]
+
+for node_data in SNAP_GAP_NODES:
+    if not CoherenceNodeDocument.objects(
+            node_id=node_data['node_id']).first():
+        CoherenceNodeDocument(
+            **node_data
+        ).save()
+        print(f"Seeded {node_data['node_id']}: "
+              f"{node_data['title']}")
+    else:
+        print(f"Already exists: "
+              f"{node_data['node_id']}")
