@@ -27,6 +27,56 @@ interface FactNodeData {
 type Phase = 'loading' | 'micro_lesson' | 'deep_dive'
            | 'task'    | 'mastery'      | 'error'
 
+const FACT_SCANNER_TUTORIAL_KEY =
+  'critica_tutorial_seen_fact_scanner_first_node'
+
+const TUTORIAL_STEPS = [
+  {
+    label: 'Overview',
+    code: 'TUT-FS-001',
+    text: 'Fact Scanner gives you a passage containing structural or factual flaws, unsupported claims, logical errors, or false statements. Your job is to identify and mark the flawed sentences before they corrupt the argument.',
+    board: 'overview',
+    notes: [
+      'Teal = clean sentence',
+      'Strikethrough = detected flaw',
+      'Scan carefully - flaws are subtle',
+    ],
+  },
+  {
+    label: 'Read Carefully',
+    code: 'TUT-FS-002',
+    text: 'Read the passage sentence by sentence. Ask: Is this claim supported? Does it contradict something earlier? Is it an overgeneralization? Flaws are often hidden in absolute language "always," "never," "all," "none."',
+    board: 'patterns',
+    notes: [
+      'Watch for "all"/"never"/"always"',
+      'Unsupported = a flaw',
+      'Context matters - read fully',
+    ],
+  },
+  {
+    label: 'Mark Flaws',
+    code: 'TUT-FS-003',
+    text: "Click any sentence in the passage you believe contains a flaw it will be quarantined with a red underline. Click it again to unmark. A flaw counter on the right panel tracks how many you've flagged. You must find all flaws",
+    board: 'marked',
+    notes: [
+      'Red underline = flagged flaw',
+      'Click again to unflag',
+      'Counter updates in real time',
+    ],
+  },
+  {
+    label: 'Submit Scan',
+    code: 'TUT-FS-004',
+    text: "When you've flagged all suspected flaws, hit Submit Scan. Correctly identified flaws turn teal. Missed flaws are highlighted in amber. False positives (correct sentences you flagged) are shown in gray.",
+    board: 'results',
+    notes: [
+      'Teal = correct flag',
+      'Amber = missed flag',
+      'Gray = false positive',
+    ],
+  },
+] as const
+
 // ── Styles ──────────────────────────────────────
 const F = "'Courier New', Courier, monospace"
 
@@ -65,6 +115,18 @@ const S = {
     fontWeight:   700,
     cursor:       'pointer',
   } as React.CSSProperties,
+  tutorialBtn: {
+    padding:       '7px 14px',
+    background:    '#2b2b2b',
+    border:        '1px solid #555',
+    borderRadius:  2,
+    color:         '#f0ece4',
+    fontFamily:    F,
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: '0.08em',
+    cursor:        'pointer',
+  } as React.CSSProperties,
 }
 
 // ── CRAAP criterion color map ────────────────────
@@ -74,6 +136,238 @@ const CRITERION_COLOR: Record<string, string> = {
   AUTHORITY:  '#c0392b',
   ACCURACY:   '#16a085',
   PURPOSE:    '#d35400',
+}
+
+function FactScannerTutorialPopup({
+  open,
+  step,
+  onBack,
+  onNext,
+  onClose,
+  onStart,
+}: {
+  open: boolean
+  step: number
+  onBack: () => void
+  onNext: () => void
+  onClose: () => void
+  onStart: () => void
+}) {
+  if (!open) return null
+
+  const current = TUTORIAL_STEPS[step]
+  const tutorialCode = `TUT-FS-${String(step + 1).padStart(3, '0')}`
+  const isFirst = step === 0
+  const isLast = step === TUTORIAL_STEPS.length - 1
+
+  const navItem = (label: string, index: number) => {
+    const complete = index < step
+    const active = index === step
+
+    return (
+      <div
+        key={label}
+        style={{
+          width: 156,
+          height: 76,
+          border: '1px solid #777',
+          background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
+          color: '#111',
+          boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          textAlign: 'center',
+          fontFamily: F,
+          fontSize: 12,
+          fontWeight: 700,
+        }}
+      >
+        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
+          <div style={{
+            width: 24,
+            height: 24,
+            borderRadius: '50%',
+            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
+            color: complete ? '#fff' : '#111',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 11,
+            fontWeight: 700,
+          }}>
+            {complete ? '✓' : index + 1}
+          </div>
+        </div>
+        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
+      </div>
+    )
+  }
+
+  const renderBoard = () => {
+    if (current.board === 'overview') {
+      return (
+        <div style={{ padding: '18px 16px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 10 }}>
+            PASSAGE WITH FLAWS
+          </div>
+          <div style={{ fontFamily: F, fontSize: 16, lineHeight: 1.35, color: '#222' }}>
+            Critical reading builds skills.
+            <span style={{ color: '#1f8fcb', fontWeight: 700 }}> Evidence must be verified.</span>
+            <span style={{ color: '#c23b3b', textDecoration: 'line-through', textDecorationThickness: 2 }}> All sources online are reliable.</span>
+            Analysis strengthens arguments.
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'patterns') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
+            FLAW PATTERNS TO WATCH
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[
+              ['Overgeneralization:', ' "All studies agree that..."'],
+              ['Unsupported Claim:', ' "This is obviously true"'],
+              ['False Fact:', ' "A statement that contradicts known evidence."'],
+            ].map(([label, example]) => (
+              <div key={label} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 6px',
+                background: '#c9c7c2',
+                border: '1px solid #8c8c8c',
+                fontFamily: F,
+                fontSize: 10,
+                color: '#222',
+              }}>
+                <span style={{ fontWeight: 700 }}>{label}</span>
+                <span style={{ fontWeight: 400 }}>{example}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+
+    if (current.board === 'marked') {
+      return (
+        <div style={{ padding: '16px 14px 12px' }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
+            MARKED FLAW
+          </div>
+          <div style={{ fontFamily: F, fontSize: 16, lineHeight: 1.4, color: '#b23b3b', fontWeight: 700, textDecoration: 'underline', textDecorationThickness: 3, textUnderlineOffset: 4, marginBottom: 18 }}>
+            All online sources are completely reliable.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: F, fontSize: 12, color: '#222', fontWeight: 700 }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#b03a3a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>2</div>
+            FLAWS FLAGGED SO FAR
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ padding: '16px 14px 12px' }}>
+        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
+          SCAN RESULTS
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingLeft: 8 }}>
+          {[
+            ['#1da7df', 'Correctly flagged flaw'],
+            ['#caa300', 'Missed flaw (not flagged)'],
+            ['#c7d1c9', 'False positive (clean sentence flagged)'],
+          ].map(([color, label]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: F, fontSize: 10, color: '#2d2d2d', fontWeight: 700 }}>
+              <div style={{ width: 12, height: 12, background: color, border: '1px solid #dcdcdc' }} />
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const primaryLabel = isLast ? 'START TRAINING →' : 'NEXT →'
+  const secondaryLabel = isFirst ? 'EXIT TUTORIAL' : 'BACK'
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(0,0,0,0.48)',
+      zIndex: 150,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 20,
+      fontFamily: F,
+    }}>
+      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{tutorialCode}</div>
+        </div>
+
+        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
+            <div style={{ width: 120, textAlign: 'center' }}>
+              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+                </div>
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+            </div>
+
+            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+              {TUTORIAL_STEPS.map((stepItem, index) => navItem(stepItem.label, index))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
+            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
+              {renderBoard()}
+            </div>
+
+            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#222', marginBottom: 10 }}>QUICK NOTES</div>
+              {current.notes.map((note, index) => (
+                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>
+                  {note}
+                  {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {secondaryLabel}
+            </button>
+            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+              {primaryLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 
@@ -100,6 +394,9 @@ export default function FactScannerPage() {
   const [fbText, setFbText]   = useState('')
   const [drawer, setDrawer]   = useState(false)
 
+  const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [tutorialStep, setTutorialStep] = useState(0)
+
 
   // hint overlay
   const [hintOverlay, setHintOverlay]         = useState(false)
@@ -124,6 +421,15 @@ export default function FactScannerPage() {
         setPhase('error')
       })
   }, [nodeId]) // eslint-disable-line
+
+  useEffect(() => {
+    if (phase !== 'task') return
+    const seen = localStorage.getItem(FACT_SCANNER_TUTORIAL_KEY)
+    if (seen) return
+    localStorage.setItem(FACT_SCANNER_TUTORIAL_KEY, '1')
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }, [phase])
 
   // ── Hint ───────────────────────────────────
   const fetchHint = useCallback(async (
@@ -264,6 +570,21 @@ export default function FactScannerPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const openTutorial = () => {
+    setTutorialStep(0)
+    setTutorialOpen(true)
+  }
+
+  const closeTutorial = () => setTutorialOpen(false)
+
+  const nextTutorialStep = () => {
+    setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
+  }
+
+  const prevTutorialStep = () => {
+    setTutorialStep(prev => Math.max(prev - 1, 0))
   }
 
   
@@ -602,6 +923,12 @@ export default function FactScannerPage() {
             </div>
           </div>
 
+          <div style={{ padding: '0 24px 4px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={openTutorial} style={S.tutorialBtn}>
+              Show tutorial
+            </button>
+          </div>
+
           {/* progress */}
           <div style={{
             padding: '6px 24px 2px',
@@ -930,6 +1257,15 @@ export default function FactScannerPage() {
           </button>
         </div>
       )}
+
+      <FactScannerTutorialPopup
+        open={tutorialOpen}
+        step={tutorialStep}
+        onClose={closeTutorial}
+        onBack={prevTutorialStep}
+        onNext={nextTutorialStep}
+        onStart={() => setTutorialOpen(false)}
+      />
     </div>
   )
 }
