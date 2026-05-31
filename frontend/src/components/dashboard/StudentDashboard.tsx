@@ -793,13 +793,13 @@ export default function StudentDashboard() {
                                 }
                               }}
                               className={`font-mono
-                                text-[13px] font-bold
+                                text-xs font-bold
                                 uppercase tracking-wide
                                 text-center leading-snug
                                 flex-shrink-0
-                                whitespace-pre-wrap
-                                px-4 py-3
-                                rounded-xl
+                                whitespace-nowrap
+                                px-4 py-2.5
+                                rounded-lg
                                 border border-[#D4C0A0]/40
                                 transition-all
                                 ${isLocked
@@ -810,12 +810,12 @@ export default function StudentDashboard() {
                                 }`}
                             >
                                {isDone
-                                 ? 'RESET\nNODE'
+                                 ? 'RESET NODE'
                                  : isLocked
                                  ? 'LOCKED'
                                  : getNodeProgress(node.node_id) > 0
-                                 ? 'CONTINUE\nTRAINING'
-                                 : 'PULL PAPER &\nSTART TRAINING'}
+                                 ? 'CONTINUE TRAINING'
+                                 : 'PULL PAPER & START TRAINING'}
                             </button>
                           </div>
                         </div>
