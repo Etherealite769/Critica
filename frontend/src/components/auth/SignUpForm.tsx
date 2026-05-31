@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/api';
 
 interface SignUpFormData {
   firstName: string; lastName: string; email: string; password: string; passwordConfirm: string;
@@ -30,7 +31,7 @@ export default function SignUpForm() {
     if (password.length < 8) { setError('PASSWORD MUST BE AT LEAST 8 CHARACTERS.'); return; }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/auth/register/', {
+      const res = await fetch(`${API_BASE}/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password, password_confirm: passwordConfirm }),

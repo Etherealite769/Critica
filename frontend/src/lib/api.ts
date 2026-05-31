@@ -1,5 +1,4 @@
-// frontend/src/lib/api.ts
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'
 
 export async function apiFetch(
   path: string,
@@ -10,7 +9,7 @@ export async function apiFetch(
       ? localStorage.getItem('accessToken')
       : null
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

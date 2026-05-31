@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE } from '@/lib/api';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function SignInForm() {
     if (!email || !password) { setError('EMAIL AND PASSWORD ARE REQUIRED.'); return; }
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login/', {
+      const res = await fetch(`${API_BASE}/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
