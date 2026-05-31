@@ -570,7 +570,7 @@ export default function StudentDashboard() {
         h-[calc(100vh-52px-32px)] bg-transparent">
 
         {/* ── CENTER CONTAINER ── */}
-        <div className="w-full max-w-6xl flex
+        <div className="w-full max-w-7xl flex
           items-start gap-3">
 
           {/* ── LEFT COLUMN (tabs + folder) ── */}
@@ -767,7 +767,7 @@ export default function StudentDashboard() {
                             PROGRESS —{' '}
                             {getNodeProgress(node.node_id)}%
                             <br />
-                            {Math.round(getNodeProgress(node.node_id) / 100 * 4)}/4 EXERCISES
+                            {Math.round(getNodeProgress(node.node_id) / 100 * 5)}/5 EXERCISES
                           </div>
 
                           <div className="flex gap-3 items-end">
