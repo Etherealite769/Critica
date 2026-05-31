@@ -47,6 +47,8 @@ class DashboardView(APIView):
         return Response({
             'student_id':      student_id,
             'username':        profile.username,
+            'first_name':      request.user.first_name,
+            'last_name':       request.user.last_name,
             'streak':          profile.streak_count,
             'completed_count': len(
                 profile.completed_nodes),

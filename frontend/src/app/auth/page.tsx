@@ -38,8 +38,8 @@ export default function AuthPage() {
             <div className="hole" />
           </div>
 
-          {/* Paper Insert */}
-          <div className="paper">
+          {/* Form content directly on folder */}
+          <div className="form-content">
             {activeTab === 'signup' ? <SignUpForm /> : <SignInForm />}
           </div>
 
@@ -47,9 +47,16 @@ export default function AuthPage() {
       </div>
 
       <style>{`
+        html, body {
+          background: #1a0000 !important;
+          margin: 0;
+          padding: 0;
+          min-height: 100%;
+        }
+
         .auth-page {
           min-height: 100vh;
-          background: #6b6b6b;
+          background: radial-gradient(ellipse at center, #7a1a1a 0%, #4a0a0a 40%, #1a0000 75%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -62,7 +69,6 @@ export default function AuthPage() {
           display: flex;
           flex-direction: column;
           gap: 0;
-          radius: 10px;
         }
 
         /* ── Tabs ── */
@@ -73,6 +79,7 @@ export default function AuthPage() {
           justify-content: flex-end;
           gap: 4px;
           padding-bottom: 0;
+          padding-right: 40px;
         }
 
         .tab-btn {
@@ -82,46 +89,46 @@ export default function AuthPage() {
           font-weight: 700;
           border: none;
           cursor: pointer;
-          letter-spacing: 0.03em;
+          letter-spacing: 0.05em;
           border-radius: 8px 8px 0 0;
           transition: background 0.12s, color 0.12s;
           line-height: 1;
         }
 
         .tab-active {
-          background: #8c8a84;
-          color: #f0ede6;
-          padding: 10px 28px 10px;
+          background: #F2DEC1 !important;
+          color: #432818;
+          padding: 10px 28px 12px;
         }
 
         .tab-inactive {
-          background: #6e6c68;
-          color: #a8a6a0;
+          background: #C49A5A;
+          color: #432818;
           padding: 8px 28px 10px;
         }
 
         .tab-inactive:hover {
-          background: #7a7874;
-          color: #c8c6c0;
+          background: #B8905A;
+          color: #1a0000;
         }
 
         /* ── Folder Body ── */
         .folder-body {
-          background: #8c8a84;
-          border-radius: 0 0 10px 10px;
-          min-height: 500px; /* <--- Forces the folder to be at least this tall */
-          padding: 16px 16px 20px 12px;
+          background: #F2DEC1;
+          border-radius: 12px 12px 12px 12px;
+          padding: 16px 16px 24px 12px;
           position: relative;
           width: 100%;
           box-sizing: border-box;
+          box-shadow: 0 8px 32px rgba(26,0,0,0.55);
         }
 
         /* ── Punch Holes ── */
         .binder-holes {
           position: absolute;
           left: 16px;
-          top: 16px;
-          bottom: 16px;
+          top: 20px;
+          bottom: 20px;
           display: flex;
           flex-direction: column;
           justify-content: space-around;
@@ -131,17 +138,14 @@ export default function AuthPage() {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: #5a5a58;
-          border: 2px solid #4a4a48;
+          background: rgba(196, 168, 130, 0.15);
+          border: 2px solid rgba(196, 168, 130, 0.35);
           box-sizing: border-box;
         }
 
-        /* ── Paper Insert ── */
-        .paper {
-          background: #c8c5bc;
-          border-radius: 4px;
-          padding: 22px 22px 22px 52px;
-          border: 1px solid #b0ada4;
+        /* ── Form Content ── */
+        .form-content {
+          padding: 8px 16px 16px 52px;
           box-sizing: border-box;
         }
       `}</style>
