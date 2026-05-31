@@ -39,25 +39,20 @@ export default function SignInForm() {
 
   return (
     <div style={s.inner}>
-      {/* Document header - scaled down to sit in upper-left area */}
+      {/* Header — outlined box, centered */}
       <div style={s.hdrWrap}>
-        <div style={s.hdr}>
-          <div style={s.logo}>
-            <div style={s.oval1} />
-            <div style={s.oval2} />
-          </div>
-          <div style={s.hdrTitle}>OFFICIAL STUDENT AUTHENTICATION DOCUMENT</div>
-        </div>
+        <div style={s.hdr}>OFFICIAL STUDENT AUTHENTICATION DOCUMENT</div>
       </div>
 
-      {/* Rotated, ink-effect stamp */}
-      <div style={s.stampWrap}>
+      {/* Stamp flanked by lines */}
+      <div style={s.stampRow}>
+        <div style={s.stampLine} />
         <span style={s.stamp}>AUTHENTICATION FORM</span>
+        <div style={s.stampLine} />
       </div>
 
-      {/* Main title section with separator line */}
+      {/* Section label — text then line */}
       <div style={s.sec}>
-        <div style={s.secDot} />
         <span>IDENTIFICATION</span>
         <div style={s.hrLine} />
       </div>
@@ -66,7 +61,7 @@ export default function SignInForm() {
       {error && <div style={{ ...s.msg, ...s.msgErr }}>{error}</div>}
       {success && <div style={{ ...s.msg, ...s.msgOk }}>{success}</div>}
 
-      <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1, marginTop: '24px' }}>
+      <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1, marginTop: '16px' }}>
         <div style={s.fieldGroup}>
           <label style={s.lbl}>EMAIL ADDRESS</label>
           <input
@@ -76,13 +71,13 @@ export default function SignInForm() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email address here..."
             required
-            onFocus={(e) => (e.target.style.borderBottomColor = '#6A4CFF')}
-            onBlur={(e) => (e.target.style.borderBottomColor = '#c4b48a')}
+            onFocus={(e) => { e.target.style.borderColor = '#800020'; e.target.style.boxShadow = '0 0 0 2px rgba(128,0,32,0.1)'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#C49A5A'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
 
         <div style={s.fieldGroup}>
-          <label style={{ ...s.lbl, marginTop: '12px' }}>PASSWORD</label>
+          <label style={s.lbl}>PASSWORD</label>
           <input
             style={s.inp}
             type="password"
@@ -90,31 +85,28 @@ export default function SignInForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password here..."
             required
-            onFocus={(e) => (e.target.style.borderBottomColor = '#6A4CFF')}
-            onBlur={(e) => (e.target.style.borderBottomColor = '#c4b48a')}
+            onFocus={(e) => { e.target.style.borderColor = '#800020'; e.target.style.boxShadow = '0 0 0 2px rgba(128,0,32,0.1)'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#C49A5A'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
 
-        {/* Separator line before buttons */}
-        <div style={s.hrLine} />
-
-        {/* Consolidated action buttons at the bottom */}
-        <div style={s.actionRow}>
+        {/* Forgot password — right aligned */}
+        <div style={s.fgtRow}>
           <button type="button" style={s.fgt} onClick={() => alert('Password recovery coming soon!')}>
-            FORGOT PASSWORD?
+            Forgot Password?
           </button>
+        </div>
 
-          <div style={s.subWrap}>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{ ...s.btn, opacity: loading ? 0.55 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-              onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #1a1209'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #1a1209'; e.currentTarget.style.transform = 'none'; }}
-            >
-              {loading ? 'PROCEEDING...' : 'PROCEED TO ACCESS'}
-            </button>
-          </div>
+        <div style={s.subWrap}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ ...s.btn, opacity: loading ? 0.55 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #432818'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #432818'; e.currentTarget.style.transform = 'none'; }}
+          >
+            {loading ? 'Proceeding...' : 'Proceed to Access'}
+          </button>
         </div>
       </form>
     </div>
@@ -122,81 +114,93 @@ export default function SignInForm() {
 }
 
 const s: Record<string, React.CSSProperties> = {
-  inner: { fontFamily: "'Courier Prime', monospace", position: 'relative', zIndex: 1, padding: '24px' },
+  inner: { fontFamily: "'Courier Prime', monospace", position: 'relative', zIndex: 1, padding: '8px 4px' },
 
-  /* Header styling - aligned left */
-  hdrWrap: { textAlign: 'left', marginBottom: '16px', display: 'flex', justifyContent: 'flex-start' },
+  /* Header — outlined box, no fill */
+  hdrWrap: { display: 'flex', justifyContent: 'center', marginBottom: '10px' },
   hdr: {
-    background: '#1a1209',
-    color: '#f0e6cc',
-    padding: '9px 14px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    borderRadius: '1px',
-    maxWidth: '400px', // Prevents it from taking full width
-  },
-  logo: { position: 'relative', width: '36px', height: '22px', flexShrink: 0 },
-  oval1: { width: '24px', height: '15px', borderRadius: '50%', background: '#6A4CFF', position: 'absolute', left: 0, top: '3px' },
-  oval2: { width: '24px', height: '15px', borderRadius: '50%', background: '#20C4B4', position: 'absolute', left: '12px', top: '3px', opacity: 0.85 },
-  hdrTitle: { fontFamily: "'Courier Prime', monospace", fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', color: '#f0e6cc' },
-
-  /* Title and separators */
-  sec: {
-    display: 'flex', alignItems: 'center', gap: '10px',
-    margin: '14px 0 8px',
-    fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#5c4a28',
+    border: '2px solid #6A381F',
+    color: '#432818',
+    padding: '7px 18px',
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '0.22em',
     fontFamily: "'Courier Prime', monospace",
+    textAlign: 'center',
+    background: 'transparent',
   },
-  secDot: { width: '10px', height: '10px', borderRadius: '50%', background: '#c4b48a', flexShrink: 0 },
-  hrLine: { flex: 1, height: '1.5px', background: '#c4b48a', opacity: 0.7 },
 
-  /* Rotated ink-effect stamp */
-  stampWrap: { textAlign: 'center', margin: '30px 0', display: 'flex', justifyContent: 'center' },
+  /* Stamp row — line / stamp / line */
+  stampRow: { display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 16px' },
+  stampLine: { flex: 1, height: '1.5px', background: '#C49A5A', opacity: 0.8 },
   stamp: {
     display: 'inline-block',
-    border: '3px solid #6A4CFF',
-    padding: '7px 20px',
+    border: '2.5px solid #6A381F',
+    padding: '5px 14px',
     fontFamily: "'Courier Prime', monospace",
     fontSize: '11px',
     fontWeight: 700,
-    letterSpacing: '0.2em',
-    color: '#6A4CFF',
-    background: 'rgba(106,76,255,0.08)',
-    transform: 'rotate(-5deg)', // Apply rotation like ink
-    opacity: 0.8, // Make it look slightly faded/less digitally sharp
+    letterSpacing: '0.18em',
+    color: '#6A381F',
+    background: 'transparent',
+    transform: 'rotate(-2deg)',
+    whiteSpace: 'nowrap' as const,
   },
 
-  /* Input group structure */
-  fieldGroup: { marginBottom: '20px' },
-  msg: { borderRadius: '2px', padding: '7px 10px', fontSize: '10px', margin: '10px 0 4px', fontFamily: "'Courier Prime', monospace", letterSpacing: '0.05em' },
-  msgErr: { background: '#f5d4cc', border: '1.5px solid #c05040', color: '#7a2010' },
-  msgOk:  { background: '#ccf0d8', border: '1.5px solid #3a8050', color: '#1a5030' },
+  /* Section dividers — label then line */
+  sec: { display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 10px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#432818', fontFamily: "'Courier Prime', monospace" },
+  hrLine: { flex: 1, height: '1.5px', background: '#C49A5A', opacity: 0.8 },
+
+  /* Input groups */
+  fieldGroup: { marginBottom: '16px' },
+  msg: { borderRadius: '3px', padding: '7px 10px', fontSize: '10px', margin: '10px 0 4px', fontFamily: "'Courier Prime', monospace", letterSpacing: '0.05em' },
+  msgErr: { background: '#f5d4cc', border: '1.5px solid #800020', color: '#800020' },
+  msgOk:  { background: '#d4eed8', border: '1.5px solid #3a8050', color: '#1a5030' },
   lbl: {
     display: 'block', fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em',
-    color: '#5c4a28', marginBottom: '6px',
+    color: '#8C5A3C', marginBottom: '6px',
     fontFamily: "'Courier Prime', monospace",
   },
   inp: {
-    width: '100%', background: 'transparent', border: 'none',
-    borderBottom: '2px solid #c4b48a',
-    fontFamily: "'Courier Prime', monospace", fontSize: '13px', color: '#1a1209',
-    padding: '7px 4px', outline: 'none', transition: 'border-color 0.15s',
+    width: '100%',
+    background: '#FFFDF7',
+    border: '1px solid #C49A5A',
+    borderRadius: '8px',
+    fontFamily: "'Courier Prime', monospace",
+    fontSize: '13px',
+    color: '#432818',
+    padding: '8px 10px',
+    outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
     boxSizing: 'border-box',
   },
 
-  /* Action area consolidation */
-  actionRow: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '24px', gap: '16px' },
+  /* Forgot password — right aligned */
+  fgtRow: { display: 'flex', justifyContent: 'flex-end', marginTop: '4px', marginBottom: '20px' },
   fgt: {
-    textAlign: 'center', fontSize: '9px', fontWeight: 700,
-    letterSpacing: '0.1em', color: '#6A4CFF', background: 'none', border: 'none',
-    cursor: 'pointer', fontFamily: "'Courier Prime', monospace",
+    fontSize: '11px',
+    fontStyle: 'italic',
+    color: '#432818',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontFamily: "'Courier Prime', monospace",
+    padding: 0,
   },
+
   subWrap: { textAlign: 'center' },
   btn: {
-    fontFamily: "'Courier Prime', monospace", fontSize: '10px', fontWeight: 700,
-    letterSpacing: '0.18em', color: '#1a1209', background: '#d4c9a8',
-    border: '2px solid #1a1209', padding: '10px 30px', cursor: 'pointer',
-    boxShadow: '3px 3px 0 #1a1209', transition: 'box-shadow 0.1s, transform 0.1s',
+    fontFamily: "'Courier Prime', monospace",
+    fontSize: '11px',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    color: '#432818',
+    background: '#FFDFA7',
+    border: '2px solid #8C5A3C',
+    padding: '9px 26px',
+    cursor: 'pointer',
+    boxShadow: '3px 3px 0 #432818',
+    transition: 'box-shadow 0.1s, transform 0.1s',
+    borderRadius: '2px',
   },
 };
