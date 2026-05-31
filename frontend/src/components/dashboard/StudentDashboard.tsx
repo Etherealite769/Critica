@@ -774,7 +774,7 @@ export default function StudentDashboard() {
                             {!isDone && getNodeProgress(node.node_id) > 0 && (
                               <button
                                 onClick={() => handleResetNode(node.node_id)}
-                                className="font-mono text-[10px] font-bold uppercase tracking-wider text-red-800 hover:text-red-900 transition-all cursor-pointer bg-transparent border-none outline-none p-0"
+                                className="font-mono text-xs font-bold uppercase tracking-wide text-center leading-snug flex-shrink-0 whitespace-nowrap px-4 py-2.5 rounded-lg border border-red-800/40 bg-transparent text-red-800 hover:bg-red-800 hover:text-[#FFF8EC] hover:border-red-800 transition-all cursor-pointer"
                               >
                                 RESET
                               </button>
