@@ -83,13 +83,35 @@ const TUTORIAL_STEPS = [
   },
 ] as const
 
+// ── Color palette ─────────────────────────────────
+const C = {
+  pageBg:     '#2D0909',
+  board:      '#D4A86A',
+  canvas:     '#E8D5B0',
+  cardPaper:  '#FFFBF0',
+  cardBdr:    '#C9A06A',
+  btnGold:    '#FFDFA7',
+  btnDark:    '#432818',
+  btnGoldBdr: '#8C5A3C',
+  textDark:   '#1C0800',
+  textMid:    '#8C5A3C',
+  textLight:  '#C49A5A',
+  textMuted:  '#A07850',
+  accentRed:  '#800020',
+  progressFg: '#432818',
+  progressBg: '#C9A06A',
+  dockBg:     '#C9A06A',
+  tileGreen:  '#22aa55',
+  tileRed:    '#cc3333',
+}
+
 // ── Shared styles ──────────────────────────────────
 const F = "'Courier New', Courier, monospace"
 
 const S = {
   page: {
     minHeight: '100vh',
-    background: '#686664',
+    background: C.pageBg,
     display: 'flex' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -98,54 +120,54 @@ const S = {
   card: {
     maxWidth: 640,
     width: '100%',
-    background: '#2b2b2b',
-    border: '1px solid #444',
-    borderRadius: 4,
+    background: C.cardPaper,
+    border: `1px solid ${C.cardBdr}`,
+    borderRadius: 8,
     padding: 48,
     fontFamily: F,
   },
   stamp: {
     display: 'inline-block' as const,
-    border: '2px solid #888',
+    border: `2px solid ${C.btnGoldBdr}`,
     padding: '3px 14px',
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: '0.15em',
-    color: '#aaa',
+    color: C.textMid,
     marginBottom: 12,
     fontFamily: F,
   } as React.CSSProperties,
   h2: {
     fontSize: 20,
     fontWeight: 700,
-    color: '#f0ece4',
+    color: C.textDark,
     margin: '0 0 6px',
     fontFamily: F,
   } as React.CSSProperties,
   sub: {
     fontSize: 12,
-    color: '#aaa',
+    color: C.textMuted,
     margin: '0 0 16px',
     fontFamily: F,
   } as React.CSSProperties,
   body: {
     fontSize: 13,
     lineHeight: 1.85,
-    color: '#ccc',
+    color: C.textDark,
     margin: '0 0 32px',
     fontFamily: F,
   } as React.CSSProperties,
   hr: {
     border: 'none',
-    borderTop: '1px solid #444',
+    borderTop: `1px solid ${C.cardBdr}`,
     margin: '16px 0',
   } as React.CSSProperties,
   btnPrimary: {
     padding: '10px 24px',
-    background: '#f0ece4',
-    border: '2px solid #888',
-    borderRadius: 2,
-    color: '#111',
+    background: C.btnGold,
+    border: `2px solid ${C.btnGoldBdr}`,
+    borderRadius: 8,
+    color: C.textDark,
     fontFamily: F,
     fontSize: 11,
     fontWeight: 700,
@@ -155,9 +177,9 @@ const S = {
   btnSm: {
     padding: '7px 16px',
     background: 'transparent',
-    border: '1px solid #555',
-    borderRadius: 2,
-    color: '#aaa',
+    border: `1px solid ${C.btnGoldBdr}`,
+    borderRadius: 6,
+    color: C.textMid,
     fontFamily: F,
     fontSize: 10,
     fontWeight: 700,
@@ -165,10 +187,10 @@ const S = {
   } as React.CSSProperties,
   tutorialBtn: {
     padding: '7px 14px',
-    background: '#2b2b2b',
-    border: '1px solid #555',
-    borderRadius: 2,
-    color: '#f0ece4',
+    background: C.btnGold,
+    border: `1px solid ${C.btnGoldBdr}`,
+    borderRadius: 8,
+    color: C.textDark,
     fontFamily: F,
     fontSize: 10,
     fontWeight: 700,
@@ -180,9 +202,9 @@ const S = {
 // ── Sub-screens ───────────────────────────────────
 function LoadScreen() {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center',
-      fontFamily: F, color: '#ddd', fontSize: 13, letterSpacing: '0.1em' }}>
+      fontFamily: F, color: C.textLight, fontSize: 13, letterSpacing: '0.1em' }}>
       LOADING NODE...
     </div>
   )
@@ -190,10 +212,10 @@ function LoadScreen() {
 
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: F, gap: 16 }}>
-      <p style={{ color: '#ff6b6b', fontSize: 13 }}>{msg}</p>
+      <p style={{ color: C.tileRed, fontSize: 13 }}>{msg}</p>
       <button onClick={onBack} style={S.btnSm}>← DASHBOARD</button>
     </div>
   )
@@ -201,17 +223,17 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
 
 function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
-      <div style={{ maxWidth: 640, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+      <div style={{ maxWidth: 640, width: '100%', background: '#F2DEC1',
+        border: `1px solid ${C.cardBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={S.stamp}>MICRO-LESSON</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.textDark, margin: '0 0 6px' }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 13, color: '#aaa', margin: '0 0 16px' }}>{node.focus}</p>
-        <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 16px' }}>{node.focus}</p>
+        <hr style={S.hr} />
+        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#1C0800', margin: '0 0 32px' }}>
           {node.micro_lesson_text}
         </p>
         <button onClick={onContinue} style={S.btnPrimary}>Continue →</button>
@@ -222,16 +244,16 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
 
 function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
-      <div style={{ maxWidth: 700, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+      <div style={{ maxWidth: 700, width: '100%', background: C.cardPaper,
+        border: `1px solid ${C.cardBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={S.stamp}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 20px', lineHeight: 1.7 }}>
           Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
         </p>
-        <p style={{ fontSize: 14, lineHeight: 1.95, color: '#ddd', background: '#222',
-          border: '1px solid #444', borderRadius: 4, padding: 28, margin: '0 0 32px' }}>
+        <p style={{ fontSize: 14, lineHeight: 1.95, color: C.textDark, background: C.canvas,
+          border: `1px solid ${C.cardBdr}`, borderRadius: 6, padding: 28, margin: '0 0 32px' }}>
           {node.reading_passage}
         </p>
         <button onClick={onContinue} style={S.btnPrimary}>I have finished reading →</button>
@@ -243,18 +265,18 @@ function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: 
 function MasteryScreen({ node, data, onDashboard, onNext }:
   { node: SnapNodeData; data: any; onDashboard: () => void; onNext: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
-      <div style={{ maxWidth: 480, width: '100%', background: '#0e1e0e',
-        border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center' }}>
-        <div style={{ ...S.stamp, color: '#4ddd94', borderColor: '#4ddd94',
+      <div style={{ maxWidth: 480, width: '100%', background: C.cardPaper,
+        border: `2px solid ${C.tileGreen}`, borderRadius: 8, padding: 52, textAlign: 'center' }}>
+        <div style={{ ...S.stamp, color: C.tileGreen, borderColor: C.tileGreen,
           fontSize: 16, padding: '8px 24px' }}>
           ✓ NODE MASTERED
         </div>
-        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: F }}>
+        <h2 style={{ fontSize: 20, color: C.tileGreen, margin: '8px 0 16px', fontFamily: F }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 13, color: '#aaa', margin: '0 0 28px' }}>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 28px' }}>
           Streak: {data?.streak ?? 0} days
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -296,10 +318,10 @@ function SnapGapTutorialPopup({
     return (
       <div key={label} style={{
         width: 156, height: 76,
-        border: '1px solid #777',
-        background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
-        color: '#111',
-        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+        border: `1px solid ${C.cardBdr}`,
+        background: complete ? '#c8e8d0' : active ? C.cardPaper : C.canvas,
+        color: C.textDark,
+        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.25)' : 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', textAlign: 'center',
         fontFamily: F, fontSize: 12, fontWeight: 700,
@@ -307,8 +329,8 @@ function SnapGapTutorialPopup({
         <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
           <div style={{
             width: 24, height: 24, borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
-            color: complete ? '#fff' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: complete ? C.tileGreen : active ? C.btnGold : C.board,
+            color: complete ? '#fff' : C.textDark, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 11, fontWeight: 700,
           }}>{complete ? '✓' : index + 1}</div>
         </div>
@@ -321,10 +343,10 @@ function SnapGapTutorialPopup({
     if (current.board === 'passage') {
       return (
         <div style={{ padding: '18px 16px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 10 }}>EXAMPLE GAP</div>
-          <div style={{ fontFamily: F, fontSize: 12, color: '#222', lineHeight: 1.4 }}>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 10 }}>EXAMPLE GAP</div>
+          <div style={{ fontFamily: F, fontSize: 12, color: C.textDark, lineHeight: 1.4 }}>
             Reading is essential.
-            <span style={{ display: 'inline-block', width: 96, height: 20, border: '1px dashed #9a9a9a', background: '#e9e9e9', verticalAlign: 'middle', margin: '0 6px' }} />
+            <span style={{ display: 'inline-block', width: 96, height: 20, border: `1px dashed ${C.cardBdr}`, background: C.canvas, verticalAlign: 'middle', margin: '0 6px' }} />
             it builds critical thinking.
           </div>
         </div>
@@ -334,14 +356,14 @@ function SnapGapTutorialPopup({
     if (current.board === 'tiles') {
       return (
         <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>WORD TILE BANK</div>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>WORD TILE BANK</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {['FURTHERMORE', 'HOWEVER', 'ALTHOUGH', 'HENCE'].map((tile, i) => (
               <div key={tile} style={{
                 padding: '8px 12px', minWidth: 92, textAlign: 'center',
-                border: `2px solid ${i === 0 ? '#f0c400' : '#888'}`,
-                background: i === 3 ? '#efefef' : '#fff',
-                color: i === 3 ? '#bdbdbd' : '#111',
+                border: `2px solid ${i === 0 ? C.btnGoldBdr : C.cardBdr}`,
+                background: i === 3 ? C.canvas : C.cardPaper,
+                color: i === 3 ? C.textMuted : C.textDark,
                 fontFamily: F, fontWeight: 700, fontSize: 11,
               }}>{tile}</div>
             ))}
@@ -353,12 +375,12 @@ function SnapGapTutorialPopup({
     if (current.board === 'beforeAfter') {
       return (
         <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>BEFORE & AFTER</div>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>BEFORE & AFTER</div>
           <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', rowGap: 12, alignItems: 'center' }}>
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: '#111' }}>BEFORE :</div>
-            <div style={{ width: 88, height: 20, border: '1px dashed #9a9a9a', background: '#e9e9e9' }} />
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: '#111' }}>AFTER :</div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 8px', border: '1px solid #59baf7', background: '#d8efff', color: '#0f5f9a', fontFamily: F, fontSize: 11, fontWeight: 700, width: 'fit-content' }}>FURTHERMORE</div>
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>BEFORE :</div>
+            <div style={{ width: 88, height: 20, border: `1px dashed ${C.cardBdr}`, background: C.canvas }} />
+            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>AFTER :</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 8px', border: `1px solid ${C.btnGoldBdr}`, background: C.btnGold, color: C.textDark, fontFamily: F, fontSize: 11, fontWeight: 700, width: 'fit-content' }}>FURTHERMORE</div>
           </div>
         </div>
       )
@@ -366,14 +388,14 @@ function SnapGapTutorialPopup({
 
     return (
       <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>PROGRESS BAR</div>
+        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>PROGRESS BAR</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 10, background: '#efefef', border: '1px solid #555', overflow: 'hidden' }}>
-            <div style={{ width: '75%', height: '100%', background: '#111' }} />
+          <div style={{ flex: 1, height: 10, background: C.canvas, border: `1px solid ${C.cardBdr}`, overflow: 'hidden' }}>
+            <div style={{ width: '75%', height: '100%', background: C.progressFg }} />
           </div>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#111', minWidth: 28, textAlign: 'right' }}>3 / 4</div>
+          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textDark, minWidth: 28, textAlign: 'right' }}>3 / 4</div>
         </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '8px 12px', background: '#ddd', border: '1px solid #888', fontFamily: F, fontSize: 12, fontWeight: 700 }}>SUBMIT →</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '8px 12px', background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`, fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>SUBMIT →</div>
       </div>
     )
   }
@@ -383,52 +405,52 @@ function SnapGapTutorialPopup({
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
       zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, fontFamily: F,
     }}>
-      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+      <div style={{ width: '100%', maxWidth: 840, background: C.canvas, border: `1px solid ${C.cardBdr}`, boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px', borderRadius: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{current.code}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: C.textDark }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: C.textDark }}>{current.code}</div>
         </div>
 
-        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
+        <div style={{ background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: C.cardPaper, borderLeft: `1px solid ${C.cardBdr}`, borderTop: `1px solid ${C.cardBdr}` }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
             <div style={{ width: 120, textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+              <div style={{ width: 56, height: 56, border: `2px solid ${C.btnGoldBdr}`, background: C.canvas, margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6 }}>
+                <div style={{ width: 34, height: 34, background: C.btnDark, borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: C.btnGold }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: C.btnGold }} />
                 </div>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: C.textDark }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
             </div>
 
-            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            <div style={{ position: 'relative', flex: 1, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, boxShadow: '0 3px 12px rgba(0,0,0,0.12)', padding: '12px 16px', minHeight: 96, borderRadius: 6 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: C.cardPaper, borderLeft: `1px solid ${C.cardBdr}`, borderBottom: `1px solid ${C.cardBdr}`, transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.35, color: C.textDark, whiteSpace: 'pre-line' }}>{current.text}</div>
             </div>
           </div>
 
-          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+          <div style={{ border: `1px solid ${C.cardBdr}`, background: C.canvas, padding: 10, marginBottom: 28, borderRadius: 4 }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
               {TUTORIAL_STEPS.map((stepItem, index) => stepBox(stepItem.label, index))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
-            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.canvas, border: `1px solid ${C.cardBdr}`, padding: 14, borderRadius: 4 }}>
+            <div style={{ flex: 1, minHeight: 202, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, padding: 18, position: 'relative', borderRadius: 4 }}>
               {renderBoard()}
             </div>
 
-            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#222', marginBottom: 10 }}>QUICK NOTES</div>
+            <div style={{ width: 112, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, padding: '10px 10px 12px', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 10 }}>QUICK NOTES</div>
               {current.notes.map((note, index) => (
-                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>
+                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>
                   {note}
                   {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
                 </div>
@@ -437,10 +459,10 @@ function SnapGapTutorialPopup({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11, letterSpacing: '0.06em' }}>
               {secondaryLabel}
             </button>
-            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnPrimary, minWidth: 170, fontSize: 11, letterSpacing: '0.06em' }}>
               {primaryLabel}
             </button>
           </div>
@@ -761,166 +783,239 @@ export default function SnapInGapPage() {
   const prevTutorialStep = () => setTutorialStep(prev => Math.max(prev - 1, 0))
 
   return (
-    <div style={{ minHeight: '100vh', background: '#686664',
+    <div style={{ minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
+
+      {/* ── FIXED LEFT FOLDER TABS ── */}
+      <div style={{
+        position: 'fixed', left: 0, top: '20%',
+        transform: 'translateY(-20%)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-start', gap: 6, zIndex: 100,
+      }}>
+        <button
+          onClick={() => fetchHint()}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+            fontFamily: F,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = C.board)}
+          onMouseLeave={e => (e.currentTarget.style.background = C.btnGold)}
+        >HINT</button>
+        <button
+          onClick={() => {
+            if (sessionStartId && sessionQueue.length > 0) {
+              saveSession('snap_gap', sessionStartId, {
+                sessionQueue,
+                questionIndex,
+                next_node: savedNextNode || undefined,
+                streak: savedStreak !== null ? savedStreak : undefined,
+              })
+            }
+            router.push('/dashboard')
+          }}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+            fontFamily: F,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = C.board)}
+          onMouseLeave={e => (e.currentTarget.style.background = C.btnGold)}
+        >END SESSION</button>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'stretch',
         boxShadow: '0 12px 48px rgba(0,0,0,0.55)', borderRadius: 6 }}>
 
-        {/* ── SIDEBAR ── */}
-        <div style={{
-          width: 40, background: '#2b2b2b',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 0', borderRadius: '6px 0 0 6px',
-          borderRight: '1px solid #1a1a1a',
-        }}>
-          <button
-            onClick={() => fetchHint()}
-            style={{
-              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#999', background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px', fontFamily: F,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#eee')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#999')}
-          >
-            HINT
-          </button>
-          <button
-            onClick={() => {
-              if (sessionStartId && sessionQueue.length > 0) {
-                saveSession('snap_gap', sessionStartId, {
-                  sessionQueue,
-                  questionIndex,
-                  next_node: savedNextNode || undefined,
-                  streak: savedStreak !== null ? savedStreak : undefined,
-                })
-              }
-              router.push('/dashboard')
-            }}
-            style={{
-              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#666', background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px', fontFamily: F,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#666')}
-          >
-            END SESSION
-          </button>
-        </div>
-
         {/* ── BOARD ── */}
         <div style={{
-          background: '#b8b3ab', borderRadius: '0 6px 6px 0',
+          background: C.board, borderRadius: 6,
           overflow: 'hidden', display: 'flex', flexDirection: 'column', width: 900,
         }}>
 
           {/* banner */}
-          <div style={{ padding: '12px 20px 10px', textAlign: 'center', background: '#b8b3ab' }}>
+          <div style={{ padding: '12px 20px 10px', textAlign: 'center', background: C.board }}>
             <div style={{
-              display: 'inline-block', border: '1.5px solid #888',
+              display: 'inline-block', border: `1.5px solid ${C.btnGoldBdr}`,
               padding: '7px 24px', fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.1em', color: '#333',
-              background: 'rgba(255,255,255,0.25)', fontFamily: F,
+              letterSpacing: '0.1em', color: C.textDark,
+              background: 'rgba(255,255,255,0.18)', fontFamily: F,
             }}>
-              <span style={{ color: '#444' }}>OBJECTIVE: </span>
-              <span style={{ color: '#b03030' }}>
+              <span style={{ color: C.textMid }}>OBJECTIVE: </span>
+              <span style={{ color: C.accentRed }}>
                 SELECT THE CORRECT TRANSITION TILE TO BRIDGE THE GAP
               </span>
             </div>
           </div>
 
           {/* difficulty badge + Q counter */}
-          <div style={{ padding: '6px 24px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: DIFFICULTY_COLORS[snapNode!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: DIFFICULTY_COLORS[snapNode!.difficulty ?? nodeDifficulty(nodeId)], fontFamily: F }}>
-                  LVL {snapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[snapNode!.difficulty ?? nodeDifficulty(nodeId)]}
-                </span>
-              </div>
-              {sessionQueue.length > 0 && (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: '#555', fontFamily: F }}>
+          <div style={{ padding: '6px 16px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* difficulty pill */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(0,0,0,0.15)', borderRadius: 20, padding: '4px 12px',
+            }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: DIFFICULTY_COLORS[snapNode!.difficulty ?? nodeDifficulty(nodeId)],
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: F }}>
+                LVL {snapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[snapNode!.difficulty ?? nodeDifficulty(nodeId)]}
+              </span>
+            </div>
+            {/* Q counter pill */}
+            {sessionQueue.length > 0 && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: 'rgba(0,0,0,0.15)', borderRadius: 20, padding: '4px 12px',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, fontFamily: F }}>
                   Q {questionIndex + 1} / {sessionQueue.length}
                 </span>
-              )}
-            </div>
-            {sessionQueue.length > 0 && (
-              <div style={{ height: 6, background: '#e0ddd8', borderRadius: 3, overflow: 'hidden', position: 'relative', border: '1px solid #aaa' }}>
+              </div>
+            )}
+          </div>
+          {/* progress bar */}
+          {sessionQueue.length > 0 && (
+            <div style={{ padding: '2px 16px 6px' }}>
+              <div style={{ height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
                   width: `${(questionIndex / sessionQueue.length) * 100}%`,
-                  background: '#2b2b2b',
-                  transition: 'width 0.3s ease-in-out'
+                  background: 'rgba(0,0,0,0.35)',
+                  borderRadius: 4,
+                  transition: 'width 0.3s ease-in-out',
                 }} />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* progress dots */}
-          <div style={{ padding: '4px 24px 4px', display: 'flex', gap: 8, justifyContent: 'center' }}>
-            {snapNode!.sentence_pairs.map((p, i) => (
-              <div key={p.pair_id} style={{
-                width: 34, height: 8, borderRadius: 4,
-                background: locked.includes(p.pair_id) ? '#4ddd94' : i === pairIdx ? '#55aaff' : '#888',
-                transition: 'background 0.3s',
-              }} />
-            ))}
+          {snapNode!.sentence_pairs.length > 0 && (
+            <div style={{ padding: '4px 24px 6px', display: 'flex', gap: 6, justifyContent: 'center' }}>
+              {snapNode!.sentence_pairs.map((p, i) => (
+                <div key={p.pair_id} style={{
+                  width: 24, height: 5, borderRadius: 3,
+                  background: locked.includes(p.pair_id)
+                    ? C.tileGreen
+                    : i === pairIdx
+                      ? C.btnDark
+                      : 'rgba(0,0,0,0.15)',
+                  transition: 'background 0.3s',
+                }} />
+              ))}
+            </div>
+          )}
+
+          {/* ── 3-COLUMN LAYOUT: sentence A | tile dock | sentence B ── */}
+          <div style={{ display: 'flex', gap: 20, padding: '22px 28px 0', background: C.canvas, alignItems: 'stretch', flex: 1 }}>
+
+            {/* LEFT — Sentence A */}
+            <div style={{
+              flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
+              borderRadius: 8, padding: '20px 22px',
+              fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+            }}>
+              {currentPair ? currentPair.sentence_a : ''}
+            </div>
+
+            {/* MIDDLE — Scrollable tile dock */}
+            <div style={{ width: 168, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              {/* dock label */}
+              <div style={{
+                fontSize: 9, fontWeight: 700, letterSpacing: '0.13em',
+                color: C.textMid, fontFamily: F, textAlign: 'center',
+              }}>
+                TRANSITION TILE DOCK
+              </div>
+
+              {/* gap state indicator */}
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', fontFamily: F,
+                textAlign: 'center', minHeight: 18, transition: 'all 0.25s',
+                color: tileState === 'correct'   ? C.tileGreen
+                     : tileState === 'incorrect' ? C.tileRed
+                     : 'transparent',
+              }}>
+                {tileState === 'correct'
+                  ? `✓ ${currentPair ? (board[currentPair.pair_id] ?? '') : ''}`
+                  : tileState === 'incorrect' ? '✕ WRONG' : '·'}
+              </div>
+
+              {/* scrollable tile list */}
+              <div style={{
+                flex: 1, overflowY: 'auto', width: '100%',
+                background: '#F4E6CC',
+                border: `1.5px solid ${C.cardBdr}`,
+                borderRadius: 8,
+                display: 'flex', flexDirection: 'column',
+                boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.06), 3px 0 0 ${C.cardBdr}`,
+                maxHeight: 280,
+              }}>
+                {snapNode!.transition_tile_dock.map((tile, idx) => (
+                  <button
+                    key={tile}
+                    disabled={tileState !== 'idle' || allDone}
+                    onClick={() => handleTile(tile)}
+                    style={{
+                      padding: '13px 14px',
+                      background: 'transparent',
+                      border: 'none',
+                      borderBottom: idx < snapNode!.transition_tile_dock.length - 1
+                        ? `1px solid ${C.cardBdr}` : 'none',
+                      fontSize: 12, fontWeight: 700, fontFamily: F,
+                      color: C.textDark,
+                      cursor: tileState !== 'idle' || allDone ? 'not-allowed' : 'pointer',
+                      opacity: tileState !== 'idle' || allDone ? 0.45 : 1,
+                      textAlign: 'center',
+                      letterSpacing: '0.05em',
+                      transition: 'background 0.15s, color 0.15s',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={e => {
+                      if (tileState === 'idle' && !allDone) {
+                        e.currentTarget.style.background = C.btnGold
+                        e.currentTarget.style.color = C.textDark
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = C.textDark
+                    }}
+                  >
+                    {tile}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* RIGHT — Sentence B */}
+            <div style={{
+              flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
+              borderRadius: 8, padding: '20px 22px',
+              fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+            }}>
+              {currentPair ? currentPair.sentence_b : ''}
+            </div>
           </div>
 
-          {/* sentence pair area */}
-          <div style={{ padding: '28px 40px 20px', flex: 1 }}>
-            {currentPair && (
-              <div>
-                {/* sentence A */}
-                <div style={{
-                  background: '#fff', border: '1.5px solid #ccc',
-                  borderRadius: 5, padding: '16px 20px',
-                  fontSize: 14, lineHeight: 1.75,
-                  color: '#1a1a1a', fontFamily: F, marginBottom: 14,
-                }}>
-                  {currentPair.sentence_a}
-                </div>
-
-                {/* gap slot */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '10px 0', gap: 12 }}>
-                  <div style={{ flex: 1, height: 1, background: '#888', opacity: 0.5 }} />
-                  <div style={{
-                    border: tileState === 'correct'   ? '2px solid #4ddd94' :
-                            tileState === 'incorrect' ? '2px solid #cc3333' : '2px dashed #888',
-                    borderRadius: 4, padding: '8px 24px',
-                    fontSize: 13, fontWeight: 700, letterSpacing: '0.12em',
-                    color: tileState === 'correct'   ? '#4ddd94' :
-                           tileState === 'incorrect' ? '#cc3333' : '#888',
-                    background: tileState === 'correct'   ? 'rgba(77,221,148,0.1)' :
-                                tileState === 'incorrect' ? 'rgba(204,51,51,0.1)'  : 'rgba(255,255,255,0.3)',
-                    fontFamily: F, minWidth: 180, textAlign: 'center', transition: 'all 0.25s',
-                  }}>
-                    {tileState === 'correct'   ? `✓ ${board[currentPair.pair_id] ?? ''}` :
-                     tileState === 'incorrect' ? '✕ INCORRECT' : '[ SELECT A TILE ]'}
-                  </div>
-                  <div style={{ flex: 1, height: 1, background: '#888', opacity: 0.5 }} />
-                </div>
-
-                {/* sentence B */}
-                <div style={{
-                  background: '#fff', border: '1.5px solid #ccc',
-                  borderRadius: 5, padding: '16px 20px',
-                  fontSize: 14, lineHeight: 1.75,
-                  color: '#1a1a1a', fontFamily: F, marginTop: 14,
-                }}>
-                  {currentPair.sentence_b}
-                </div>
-              </div>
-            )}
-
+          {/* all done message + bottom padding */}
+          <div style={{ background: C.canvas, padding: '10px 28px 18px', minHeight: 36, textAlign: 'center' }}>
             {allDone && (
               <div style={{
-                textAlign: 'center', padding: '24px 0 8px',
-                fontSize: 13, color: '#4ddd94',
+                fontSize: 13, color: C.tileGreen,
                 fontWeight: 700, letterSpacing: '0.1em', fontFamily: F,
               }}>
                 ALL GAPS BRIDGED — SUBMIT WHEN READY
@@ -928,55 +1023,23 @@ export default function SnapInGapPage() {
             )}
           </div>
 
-          {/* tile dock */}
-          <div style={{ background: '#a8a39b', borderTop: '1px solid #888', padding: '16px 28px' }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-              color: '#555', marginBottom: 12, fontFamily: F,
-            }}>
-              TRANSITION TILE DOCK
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {snapNode!.transition_tile_dock.map(tile => (
-                <button
-                  key={tile}
-                  disabled={tileState !== 'idle' || allDone}
-                  onClick={() => handleTile(tile)}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#f0ece4', border: '1.5px solid #888',
-                    borderRadius: 3, fontSize: 13, fontWeight: 700,
-                    fontFamily: F,
-                    cursor: tileState !== 'idle' || allDone ? 'not-allowed' : 'pointer',
-                    opacity: tileState !== 'idle' || allDone ? 0.5 : 1,
-                    color: '#1a1a1a', transition: 'all 0.12s', letterSpacing: '0.04em',
-                  }}
-                  onMouseEnter={e => { if (tileState === 'idle' && !allDone) { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#f0ece4' } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#f0ece4'; e.currentTarget.style.color = '#1a1a1a' }}
-                >
-                  {tile}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* submit bar */}
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 24px 16px', background: '#b8b3ab',
+            padding: '12px 24px 16px', background: C.board,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={openTutorial} style={S.tutorialBtn}>
                 Show tutorial
               </button>
               <span style={{
-                fontSize: 10, color: '#666',
+                fontSize: 10, color: C.textMid,
                 fontWeight: 700, letterSpacing: '0.08em',
                 fontFamily: F,
               }}>
                 {locked.length} / {snapNode!.sentence_pairs.length} PAIRS BRIDGED
                 {wrongs > 0 && (
-                  <span style={{ marginLeft: 14, color: '#b03030' }}>
+                  <span style={{ marginLeft: 14, color: C.accentRed }}>
                     ATTEMPTS: {wrongs}
                   </span>
                 )}
@@ -987,8 +1050,8 @@ export default function SnapInGapPage() {
               onClick={handleSubmit}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                background: submitting ? '#555' : allDone ? '#2b2b2b' : '#888',
-                color: '#f0ece4', border: 'none', borderRadius: 2,
+                background: submitting ? C.textMuted : allDone ? '#FFDFA7' : 'rgba(255,223,167,0.45)',
+                color: C.textDark, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 10,
                 padding: '12px 30px', fontSize: 13, fontWeight: 700,
                 letterSpacing: '0.14em',
                 cursor: allDone && !submitting ? 'pointer' : 'not-allowed',
@@ -1023,9 +1086,9 @@ export default function SnapInGapPage() {
           pointerEvents: 'none',
         }}>
           <div style={{
-            background: '#fff',
-            border: '2px solid #ddd',
-            borderRadius: 5,
+            background: C.cardPaper,
+            border: `2px solid ${C.cardBdr}`,
+            borderRadius: 8,
             padding: '16px 18px 14px',
             maxWidth: 260,
             boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
@@ -1033,12 +1096,12 @@ export default function SnapInGapPage() {
           }}>
             <div style={{
               fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#888', marginBottom: 8, fontFamily: F,
+              color: C.textMid, marginBottom: 8, fontFamily: F,
             }}>
               SCAFFOLD HINT{hintOverlayTier > 0 ? ` — TIER ${hintOverlayTier}` : ''}
             </div>
             <p style={{
-              fontSize: 12, color: '#222', lineHeight: 1.65,
+              fontSize: 12, color: C.textDark, lineHeight: 1.65,
               margin: '0 0 14px', fontFamily: F,
             }}>
               {hintOverlayText}
@@ -1046,10 +1109,10 @@ export default function SnapInGapPage() {
             <button
               onClick={() => setHintOverlay(false)}
               style={{
-                fontSize: 10, fontWeight: 700, color: '#444',
-                background: '#eee', border: '1px solid #ccc',
+                fontSize: 10, fontWeight: 700, color: C.textDark,
+                background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
                 padding: '5px 14px', cursor: 'pointer',
-                fontFamily: F, letterSpacing: '0.06em', borderRadius: 2,
+                fontFamily: F, letterSpacing: '0.06em', borderRadius: 6,
               }}
             >
               Close
@@ -1062,32 +1125,32 @@ export default function SnapInGapPage() {
       {drawer && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#180a0a', border: '2px solid #cc3333', borderBottom: 'none',
+          background: C.pageBg, border: `2px solid ${C.accentRed}`, borderBottom: 'none',
           padding: '20px 36px 28px', zIndex: 200, maxHeight: 300,
           overflowY: 'auto', fontFamily: F,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ ...S.stamp, color: '#ff6b6b', borderColor: '#ff6b6b', marginBottom: 0 }}>
+            <div style={{ ...S.stamp, color: C.accentRed, borderColor: C.accentRed, marginBottom: 0 }}>
               FEEDBACK
             </div>
             <button
               onClick={() => { setDrawer(false); resetTimer() }}
-              style={{ background: 'none', border: 'none', color: '#ff6b6b', fontSize: 20, cursor: 'pointer', fontFamily: F }}
+              style={{ background: 'none', border: 'none', color: C.accentRed, fontSize: 20, cursor: 'pointer', fontFamily: F }}
             >
               ✕
             </button>
           </div>
           {fbText && (
-            <p style={{ fontSize: 14, color: '#ddd', lineHeight: 1.7, marginBottom: 12, fontFamily: F }}>
+            <p style={{ fontSize: 14, color: C.canvas, lineHeight: 1.7, marginBottom: 12, fontFamily: F }}>
               {fbText}
             </p>
           )}
           {hintText && (
-            <div style={{ background: '#2b1010', border: '1px solid #663333', borderRadius: 3, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: '#aa5533', marginBottom: 6, fontFamily: F }}>
+            <div style={{ background: '#3D1A00', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.textLight, marginBottom: 6, fontFamily: F }}>
                 SCAFFOLD HINT — TIER {hintTier}
               </div>
-              <p style={{ fontSize: 13, color: '#ddd', lineHeight: 1.7, margin: 0, fontFamily: F }}>
+              <p style={{ fontSize: 13, color: C.canvas, lineHeight: 1.7, margin: 0, fontFamily: F }}>
                 {hintText}
               </p>
             </div>

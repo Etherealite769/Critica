@@ -70,30 +70,52 @@ function bezierPath(x1: number, y1: number, x2: number, y2: number) {
 
 // ── Shared style atoms ────────────────────────────────────────
 const FONT = "'Courier New', Courier, monospace"
+
+// ── Color palette ─────────────────────────────────────────────
+const C = {
+  pageBg:      '#2D0909',   // very dark maroon — page background
+  sidebarBg:   '#2D0909',   // sidebar
+  sidebarBdr:  '#3D1A00',   // sidebar border
+  board:       '#D4A86A',   // cork-board frame (warm gold-tan)
+  canvas:      '#E8D5B0',   // inner canvas
+  cardPaper:   '#FFFBF0',   // paper card face
+  cardBdrIdle: '#C9A06A',   // card border (unselected)
+  btnGold:     '#FFDFA7',   // primary button fill
+  btnDark:     '#432818',   // dark button / submit active
+  btnGoldBdr:  '#8C5A3C',   // button border
+  textDark:    '#1C0800',   // dark text on light bg
+  textMid:     '#8C5A3C',   // mid-tone brown text
+  textLight:   '#C49A5A',   // light warm text on dark bg
+  textMuted:   '#A07850',   // muted text
+  accentRed:   '#800020',   // deep crimson accent
+  progressFg:  '#432818',   // progress bar fill
+  progressBg:  '#C9A06A',   // progress bar track
+} as const
+
 const stampS: React.CSSProperties = {
-  display: 'inline-block', border: '2px solid #888',
+  display: 'inline-block', border: `2px solid ${C.textMid}`,
   padding: '3px 14px', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.15em', color: '#aaa',
+  letterSpacing: '0.15em', color: C.textMid,
   marginBottom: 12, fontFamily: FONT,
 }
 const btnPrimary: React.CSSProperties = {
-  padding: '10px 24px', background: '#f0ece4',
-  border: '2px solid #888', borderRadius: 2, color: '#111',
+  padding: '10px 24px', background: C.btnGold,
+  border: `2px solid ${C.btnGoldBdr}`, borderRadius: 10, color: C.textDark,
   fontFamily: FONT, fontSize: 11, fontWeight: 700,
   cursor: 'pointer', letterSpacing: '0.08em',
 }
 const btnSm: React.CSSProperties = {
   padding: '7px 16px', background: 'transparent',
-  border: '1px solid #555', borderRadius: 2, color: '#aaa',
+  border: `1px solid ${C.textMid}`, borderRadius: 2, color: C.textLight,
   fontFamily: FONT, fontSize: 10, fontWeight: 700, cursor: 'pointer',
 }
 
 const tutorialButtonStyle: React.CSSProperties = {
   padding: '7px 14px',
-  background: '#2b2b2b',
-  border: '1px solid #555',
-  borderRadius: 2,
-  color: '#f0ece4',
+  background: '#FFDFA7',
+  border: `1px solid ${C.btnGoldBdr}`,
+  borderRadius: 8,
+  color: C.textDark,
   fontFamily: FONT,
   fontSize: 10,
   fontWeight: 700,
@@ -104,9 +126,9 @@ const tutorialButtonStyle: React.CSSProperties = {
 // ── Sub-screens ───────────────────────────────────────────────
 function LoadScreen() {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, color: '#ddd', fontSize: 13, letterSpacing: '0.1em' }}>
+      fontFamily: FONT, color: C.textLight, fontSize: 13, letterSpacing: '0.1em' }}>
       LOADING NODE...
     </div>
   )
@@ -114,7 +136,7 @@ function LoadScreen() {
 
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: FONT, gap: 16 }}>
       <p style={{ color: '#ff6b6b', fontSize: 13 }}>{msg}</p>
@@ -125,17 +147,17 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
 
 function LessonScreen({ node, onContinue }: { node: NodeData; onContinue: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 640, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+      <div style={{ maxWidth: 640, width: '100%', background: '#F2DEC1',
+        border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
         <div style={stampS}>MICRO-LESSON</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px' }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px' }}>{node.focus}</p>
-        <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px' }}>
+        <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px' }}>{node.focus}</p>
+        <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
+        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#1C0800', margin: '0 0 32px' }}>
           {node.micro_lesson_text}
         </p>
         <button onClick={onContinue} style={btnPrimary}>Continue →</button>
@@ -146,16 +168,16 @@ function LessonScreen({ node, onContinue }: { node: NodeData; onContinue: () => 
 
 function DeepDiveScreen({ node, onContinue }: { node: NodeData; onContinue: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#6b6b6b', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 700, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48 }}>
+      <div style={{ maxWidth: 700, width: '100%', background: '#2A1200',
+        border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
         <div style={stampS}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7 }}>
+        <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7 }}>
           Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
         </p>
-        <p style={{ fontSize: 14, lineHeight: 1.95, color: '#ddd', background: '#222',
-          border: '1px solid #444', borderRadius: 4, padding: 28, margin: '0 0 32px' }}>
+        <p style={{ fontSize: 14, lineHeight: 1.95, color: C.canvas, background: C.pageBg,
+          border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 28, margin: '0 0 32px' }}>
           {node.reading_passage}
         </p>
         <button onClick={onContinue} style={btnPrimary}>I have finished reading →</button>
@@ -167,9 +189,9 @@ function DeepDiveScreen({ node, onContinue }: { node: NodeData; onContinue: () =
 function MasteryScreen({ node, data, onDashboard, onNext }:
   { node: NodeData; data: any; onDashboard: () => void; onNext: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#1e1e1e', display: 'flex',
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div style={{ maxWidth: 480, width: '100%', background: '#0e1e0e',
+      <div style={{ maxWidth: 480, width: '100%', background: '#0A1E0A',
         border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center' }}>
         <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94',
           fontSize: 16, padding: '8px 24px' }}>
@@ -178,7 +200,7 @@ function MasteryScreen({ node, data, onDashboard, onNext }:
         <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: FONT }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 28px' }}>
+        <p style={{ fontSize: 12, color: C.textLight, margin: '0 0 28px' }}>
           Streak: {data?.streak ?? 0} days
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -223,10 +245,10 @@ function TutorialPopup({
         style={{
           width: 156,
           height: 76,
-          border: '1px solid #777',
-          background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
-          color: '#111',
-          boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+          border: `1px solid ${C.btnGoldBdr}`,
+          background: complete ? '#b9dfbf' : active ? C.cardPaper : C.canvas,
+          color: C.textDark,
+          boxShadow: active ? '0 3px 0 rgba(0,0,0,0.35)' : 'none',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -240,8 +262,8 @@ function TutorialPopup({
         <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
           <div style={{
             width: 24, height: 24, borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
-            color: complete ? '#fff' : '#111', display: 'flex', alignItems: 'center',
+            background: complete ? '#36b24a' : active ? C.btnGold : C.cardBdrIdle,
+            color: complete ? '#fff' : C.textDark, display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: 11, fontWeight: 700,
           }}>
             {complete ? '✓' : index + 1}
@@ -343,97 +365,97 @@ function TutorialPopup({
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
       zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, fontFamily: FONT,
     }}>
-      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+      <div style={{ width: '100%', maxWidth: 840, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, boxShadow: '0 18px 44px rgba(0,0,0,0.55)', padding: '10px 14px 14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{tutorialCode}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: C.textDark }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: C.textDark }}>{tutorialCode}</div>
         </div>
 
-        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
+        <div style={{ background: C.board, border: `1px solid ${C.btnGoldBdr}`, borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: C.board, borderLeft: `1px solid ${C.btnGoldBdr}`, borderTop: `1px solid ${C.btnGoldBdr}` }} />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
             <div style={{ width: 120, textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+              <div style={{ width: 56, height: 56, border: `2px solid ${C.btnGoldBdr}`, background: C.cardPaper, margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 34, height: 34, background: C.btnDark, borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: C.canvas }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: C.canvas }} />
                 </div>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: C.textDark }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: C.textDark, letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
             </div>
 
-            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{stepCfg.bubble}</div>
+            <div style={{ position: 'relative', flex: 1, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: C.cardPaper, borderLeft: `1px solid ${C.btnGoldBdr}`, borderBottom: `1px solid ${C.btnGoldBdr}`, transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.35, color: C.textDark, whiteSpace: 'pre-line' }}>{stepCfg.bubble}</div>
             </div>
           </div>
 
-          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+          <div style={{ border: `1px solid ${C.btnGoldBdr}`, background: C.canvas, padding: 10, marginBottom: 28 }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
               {TUTORIAL_STEPS.map((cfg, index) => navItem(cfg.stepLabel, index))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
-            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 12, left: 18, fontSize: 12, fontWeight: 700, color: '#333', letterSpacing: '0.08em' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, padding: 14 }}>
+            <div style={{ flex: 1, minHeight: 202, background: C.cardPaper, border: `1px solid ${C.cardBdrIdle}`, padding: 18, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 12, left: 18, fontSize: 12, fontWeight: 700, color: C.textMid, letterSpacing: '0.08em' }}>
                 {step === 3 ? 'AFTER SUBMITTING' : step === 2 ? 'THREAD DRAWN' : step === 1 ? 'SELECTED STATE' : 'THE BOARD'}
               </div>
               {renderBoard()}
             </div>
 
-            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#222', marginBottom: 10 }}>QUICK NOTES</div>
+            <div style={{ width: 112, background: C.cardPaper, border: `1px solid ${C.cardBdrIdle}`, padding: '10px 10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 10 }}>QUICK NOTES</div>
               {step === 0 && (
                 <>
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Red thread = your connection</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Red thread = your connection</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Nodes turn teal when linked</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Nodes turn teal when linked</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>6 cards total to sequence</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>6 cards total to sequence</div>
                 </>
               )}
               {step === 1 && (
                 <>
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Gold outlines = current selected</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Gold outlines = current selected</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Read content before linking</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Read content before linking</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Click again to deselect</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Click again to deselect</div>
                 </>
               )}
               {step === 2 && (
                 <>
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Numbered circle = order of connection</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Numbered circle = order of connection</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Node turns teal once linked</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Node turns teal once linked</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Use Clear All to restart</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Use Clear All to restart</div>
                 </>
               )}
               {step === 3 && (
                 <>
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Bar fills as gaps are placed</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Bar fills as gaps are placed</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Submit unlocks at 4/4 filled</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Submit unlocks at 4/4 filled</div>
                   <div style={{ height: 10 }} />
-                  <div style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>Partial retry on wrong answers</div>
+                  <div style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>Partial retry on wrong answers</div>
                 </>
               )}
             </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ ...btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...btnSm, minWidth: 160, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11, letterSpacing: '0.06em' }}>
               {secondaryLabel}
             </button>
-            <button onClick={primaryAction} style={{ ...btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+            <button onClick={primaryAction} style={{ ...btnSm, minWidth: 170, background: C.btnGold, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11, letterSpacing: '0.06em' }}>
               {primaryLabel}
             </button>
           </div>
@@ -697,182 +719,136 @@ export default function LogicThreadPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#686664',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: FONT,
     }}>
-      <div style={{ display: 'flex', alignItems: 'stretch',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.55)', borderRadius: 6 }}>
+      {/* ── FIXED LEFT FOLDER TABS ── */}
+      <div style={{
+        position: 'fixed', left: 0, top: '20%',
+        transform: 'translateY(-20%)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-start', gap: 6, zIndex: 100,
+      }}>
+        <button
+          title="Get a hint"
+          onClick={() => fetchHint(Math.min(wrongCount + 1, 3))}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            fontFamily: FONT, whiteSpace: 'nowrap',
+            transition: 'background 0.15s',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
+        >
+          Hint
+        </button>
+        <button
+          title="End session"
+          onClick={() => {
+            if (sessionStartId && sessionQueue.length > 0) {
+              saveSession('logic_thread', sessionStartId, {
+                sessionQueue,
+                questionIndex,
+                next_node: savedNextNode || undefined,
+                streak: savedStreak !== null ? savedStreak : undefined,
+              })
+            }
+            router.push('/dashboard')
+          }}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            fontFamily: FONT, whiteSpace: 'nowrap',
+            transition: 'background 0.15s',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
+        >
+          End Session
+        </button>
+      </div>
 
-        {/* ── LEFT SIDEBAR ── */}
-        <div style={{
-          width: 34, background: '#2b2b2b',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 0', borderRadius: '6px 0 0 6px',
-          borderRight: '1px solid #1a1a1a',
-        }}>
-          {/* HINT button — always available */}
-          <button
-            title="Get a hint"
-            onClick={() => fetchHint(Math.min(wrongCount + 1, 3))}
-            style={{
-              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#999', background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px', fontFamily: FONT,
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#eee')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#999')}
-          >
-            HINT
-          </button>
-          <button
-            title="End session"
-            onClick={() => {
-              if (sessionStartId && sessionQueue.length > 0) {
-                saveSession('logic_thread', sessionStartId, {
-                  sessionQueue,
-                  questionIndex,
-                  next_node: savedNextNode || undefined,
-                  streak: savedStreak !== null ? savedStreak : undefined,
-                })
-              }
-              router.push('/dashboard')
-            }}
-            style={{
-              writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-              fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#666', background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px', fontFamily: FONT,
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#666')}
-          >
-            END SESSION
-          </button>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'stretch',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.7)', borderRadius: 6 }}>
 
         {/* ── CANVAS WRAPPER ── */}
         <div style={{
-          background: '#b8b3ab',
+          background: C.board,
           border: canvasOutline,
-          borderRadius: '0 6px 6px 0',
+          borderRadius: 6,
           overflow: 'hidden',
           transition: 'border-color 0.4s',
           display: 'flex', flexDirection: 'column',
         }}>
 
           {/* Objective banner */}
-          <div style={{ padding: '10px 20px 8px', textAlign: 'center', background: '#b8b3ab' }}>
+          <div style={{ padding: '10px 20px 8px', textAlign: 'center', background: C.board }}>
             <div style={{
-              display: 'inline-block', border: '1.5px solid #888',
+              display: 'inline-block', border: `1.5px solid ${C.btnGoldBdr}`,
               padding: '5px 20px', fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.1em', color: '#333',
-              background: 'rgba(255,255,255,0.25)',
+              letterSpacing: '0.1em', color: C.textDark,
+              background: 'rgba(255,255,255,0.30)',
             }}>
-              <span style={{ color: '#444' }}>OBJECTIVE: </span>
-              <span style={{ color: '#b03030' }}>
+              <span style={{ color: C.textMid }}>OBJECTIVE: </span>
+              <span style={{ color: C.accentRed }}>
                 CONNECT THE PARAGRAPHS TO FORM ITS OVERALL MEANING
               </span>
             </div>
           </div>
 
           {/* difficulty badge + Q counter */}
-          <div style={{ padding: '6px 20px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)], fontFamily: FONT }}>
-                  LVL {node!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[node!.difficulty ?? nodeDifficulty(nodeId)]}
-                </span>
-              </div>
-              {sessionQueue.length > 0 && (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: '#555', fontFamily: FONT }}>
+          <div style={{ padding: '6px 16px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* difficulty pill */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(0,0,0,0.15)', borderRadius: 20, padding: '4px 12px',
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: FONT }}>
+                LVL {node!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[node!.difficulty ?? nodeDifficulty(nodeId)]}
+              </span>
+            </div>
+            {/* Q counter pill */}
+            {sessionQueue.length > 0 && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: 'rgba(0,0,0,0.15)', borderRadius: 20, padding: '4px 12px',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, fontFamily: FONT }}>
                   Q {questionIndex + 1} / {sessionQueue.length}
                 </span>
-              )}
-            </div>
-            {sessionQueue.length > 0 && (
-              <div style={{ height: 6, background: '#e0ddd8', borderRadius: 3, overflow: 'hidden', position: 'relative', border: '1px solid #aaa' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${((questionIndex + (submitState === 'correct' ? 1 : 0)) / sessionQueue.length) * 100}%`,
-                  background: '#2b2b2b',
-                  transition: 'width 0.3s ease-in-out'
-                }} />
               </div>
             )}
           </div>
+          {/* progress bar */}
+          {sessionQueue.length > 0 && (
+            <div style={{ padding: '2px 16px 6px' }}>
+              <div style={{ height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${((questionIndex + (submitState === 'correct' ? 1 : 0)) / sessionQueue.length) * 100}%`,
+                  background: 'rgba(0,0,0,0.35)',
+                  borderRadius: 4,
+                  transition: 'width 0.3s ease-in-out',
+                }} />
+              </div>
+            </div>
+          )}
 
           {/* Canvas */}
-          <div style={{ position: 'relative', width: CW, height: CH, flexShrink: 0 }}>
-
-            {/* SVG connection lines */}
-            <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}
-              width={CW} height={CH}>
-
-              {chain.slice(0, -1).map((_, i) => {
-                const fi = blocks.findIndex(b => b.block_id === chain[i])
-                const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
-                if (fi < 0 || ti < 0) return null
-                const fc = cardCentre(fi), tc = cardCentre(ti)
-                return (
-                  <path
-                    key={`${chain[i]}->${chain[i + 1]}`}
-                    d={bezierPath(fc.x, fc.y, tc.x, tc.y)}
-                    stroke={lineColor}
-                    strokeWidth={2.2}
-                    fill="none"
-                    opacity={submitState === 'correct' ? 1 : 0.82}
-                    strokeLinecap="round"
-                  />
-                )
-              })}
-
-              {/* Numbered circles on each segment */}
-              {chain.slice(0, -1).map((_, i) => {
-                const fi = blocks.findIndex(b => b.block_id === chain[i])
-                const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
-                if (fi < 0 || ti < 0) return null
-                const fc = cardCentre(fi), tc = cardCentre(ti)
-                const mx = (fc.x + tc.x) / 2, my = (fc.y + tc.y) / 2
-                const dx = tc.x - fc.x, dy = tc.y - fc.y
-                const L  = Math.sqrt(dx * dx + dy * dy) || 1
-                const cx = mx + (-dy / L) * 28
-                const cy = my + (dx / L) * 28
-                return (
-                  <g key={`num-${i}`}>
-                    <circle cx={cx} cy={cy} r={11}
-                      fill="white" stroke={lineColor} strokeWidth={1.8} />
-                    <text x={cx} y={cy + 4} textAnchor="middle"
-                      fontSize={9} fontWeight={700} fill={lineColor} fontFamily={FONT}>
-                      {i + 1}
-                    </text>
-                  </g>
-                )
-              })}
-
-              {/* Final node number badge */}
-              {chain.length > 0 && (() => {
-                const li = blocks.findIndex(b => b.block_id === chain[chain.length - 1])
-                if (li < 0) return null
-                const lc = cardCentre(li)
-                const sc = submitState === 'correct' ? '#22aa55' : '#888'
-                return (
-                  <g>
-                    <circle cx={lc.x} cy={lc.y - CARD_H / 2 - 2} r={11}
-                      fill="white" stroke={sc} strokeWidth={1.8} />
-                    <text x={lc.x} y={lc.y - CARD_H / 2 + 2} textAnchor="middle"
-                      fontSize={9} fontWeight={700} fill={sc} fontFamily={FONT}>
-                      {chain.length}
-                    </text>
-                  </g>
-                )
-              })()}
-            </svg>
+          <div style={{ position: 'relative', width: CW, height: CH, flexShrink: 0, background: C.canvas }}>
 
             {/* Cards */}
             {blocks.map((block, i) => {
@@ -883,13 +859,13 @@ export default function LogicThreadPage() {
               const border =
                 submitState === 'correct' && inChain   ? '2px solid #22aa55' :
                 submitState === 'incorrect' && inChain ? '2px solid #cc3333' :
-                isLatest                               ? '2px solid #5599ee' :
-                                                         '2px solid #e0ddd8'
+                isLatest                               ? `2px solid ${C.btnGold}` :
+                                                         `1px solid ${C.cardBdrIdle}`
 
               const bg =
                 submitState === 'correct' && inChain   ? '#f2fff5' :
                 submitState === 'incorrect' && inChain ? '#fff2f0' :
-                isLatest                               ? '#f0f5ff' : '#ffffff'
+                isLatest                               ? '#FFFDE8' : C.cardPaper
 
               return (
                 <div
@@ -900,12 +876,12 @@ export default function LogicThreadPage() {
                     left: pos.x, top: pos.y,
                     width: CARD_W, height: CARD_H,
                     background: bg, border,
-                    borderRadius: 5,
+                    borderRadius: 10,
                     boxShadow: isLatest
-                      ? '0 3px 16px rgba(85,153,238,0.35)'
-                      : '0 2px 10px rgba(0,0,0,0.18)',
+                      ? `0 4px 18px rgba(196,154,90,0.45)`
+                      : '0 3px 12px rgba(0,0,0,0.22)',
                     cursor: submitState === 'idle' ? 'pointer' : 'default',
-                    padding: '10px 13px',
+                    padding: '22px 13px 10px',
                     userSelect: 'none',
                     zIndex: 2,
                     transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
@@ -914,8 +890,8 @@ export default function LogicThreadPage() {
                   }}
                 >
                   <p style={{
-                    margin: 0, fontSize: 14, lineHeight: 1.7,
-                    color: '#1a1a1a', fontFamily: FONT,
+                    margin: 0, fontSize: 13, lineHeight: 1.7,
+                    color: C.textDark, fontFamily: FONT,
                     fontWeight: inChain ? 600 : 400,
                   }}>
                     {block.text}
@@ -923,6 +899,50 @@ export default function LogicThreadPage() {
                 </div>
               )
             })}
+
+            {/* SVG — lines and pins, above cards */}
+            <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }}
+              width={CW} height={CH}>
+              {/* Lines */}
+              {chain.slice(0, -1).map((_, i) => {
+                const fi = blocks.findIndex(b => b.block_id === chain[i])
+                const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
+                if (fi < 0 || ti < 0) return null
+                const fp = { x: SCATTER[fi].x + CARD_W / 2, y: SCATTER[fi].y }
+                const tp = { x: SCATTER[ti].x + CARD_W / 2, y: SCATTER[ti].y }
+                return (
+                  <path
+                    key={`${chain[i]}->${chain[i + 1]}`}
+                    d={bezierPath(fp.x, fp.y, tp.x, tp.y)}
+                    stroke={lineColor}
+                    strokeWidth={2.5}
+                    fill="none"
+                    opacity={submitState === 'correct' ? 1 : 0.9}
+                    strokeLinecap="round"
+                  />
+                )
+              })}
+              {/* Pins */}
+              {chain.map((blockId, i) => {
+                const bi = blocks.findIndex(b => b.block_id === blockId)
+                if (bi < 0) return null
+                const px = SCATTER[bi].x + CARD_W / 2
+                const py = SCATTER[bi].y
+                const pinStroke = submitState === 'correct' ? '#22aa55'
+                  : submitState === 'incorrect' ? '#cc3333'
+                  : C.textMid
+                return (
+                  <g key={`pin-${blockId}`}>
+                    <circle cx={px} cy={py} r={13}
+                      fill="white" stroke={pinStroke} strokeWidth={2} />
+                    <text x={px} y={py + 4.5} textAnchor="middle"
+                      fontSize={11} fontWeight={700} fill={pinStroke} fontFamily={FONT}>
+                      {i + 1}
+                    </text>
+                  </g>
+                )
+              })}
+            </svg>
 
             {/* ── HINT OVERLAY ── */}
             {showHint && (
@@ -936,21 +956,21 @@ export default function LogicThreadPage() {
                 padding: 18,
               }}>
                 <div style={{
-                  background: '#fff',
-                  border: '2px solid #ddd',
-                  borderRadius: 5,
+                  background: C.cardPaper,
+                  border: `2px solid ${C.cardBdrIdle}`,
+                  borderRadius: 3,
                   padding: '16px 18px 14px',
                   maxWidth: 250,
                   boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
                 }}>
                   <div style={{
                     fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-                    color: '#888', marginBottom: 8, fontFamily: FONT,
+                    color: C.textMid, marginBottom: 8, fontFamily: FONT,
                   }}>
                     SCAFFOLD HINT
                   </div>
                   <p style={{
-                    fontSize: 12, color: '#222', lineHeight: 1.65,
+                    fontSize: 12, color: C.textDark, lineHeight: 1.65,
                     margin: '0 0 14px', fontFamily: FONT,
                   }}>
                     {hintText}
@@ -958,8 +978,8 @@ export default function LogicThreadPage() {
                   <button
                     onClick={() => setShowHint(false)}
                     style={{
-                      fontSize: 10, fontWeight: 700, color: '#444',
-                      background: '#eee', border: '1px solid #ccc',
+                      fontSize: 10, fontWeight: 700, color: C.textDark,
+                      background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
                       padding: '5px 14px', cursor: 'pointer',
                       fontFamily: FONT, letterSpacing: '0.06em',
                     }}
@@ -975,16 +995,16 @@ export default function LogicThreadPage() {
           <div style={{
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'center', padding: '10px 20px 14px',
-            background: '#b8b3ab',
+            background: C.board,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={openTutorial} style={tutorialButtonStyle}>
                 Show tutorial
               </button>
-              <span style={{ fontSize: 10, color: '#666', fontWeight: 700, letterSpacing: '0.08em', fontFamily: FONT }}>
+              <span style={{ fontSize: 10, color: C.textMid, fontWeight: 700, letterSpacing: '0.08em', fontFamily: FONT }}>
                 {chain.length} / {blocks.length} CONNECTED
                 {wrongCount > 0 && (
-                  <span style={{ marginLeft: 14, color: '#b03030' }}>
+                  <span style={{ marginLeft: 14, color: C.accentRed }}>
                     ATTEMPTS: {wrongCount}
                     {wrongCount >= 3 && '  — HINT AVAILABLE'}
                   </span>
@@ -999,9 +1019,13 @@ export default function LogicThreadPage() {
                 background:
                   submitState === 'correct'   ? '#22aa55' :
                   submitState === 'incorrect' ? '#cc3333' :
-                  allChained                  ? '#2b2b2b' : '#888',
-                color: '#f0ece4',
-                border: 'none', borderRadius: 2,
+                  allChained                  ? C.btnGold : C.cardBdrIdle,
+                color:
+                  submitState === 'correct'   ? '#fff' :
+                  submitState === 'incorrect' ? '#fff' :
+                  C.textDark,
+                border: `2px solid ${C.btnGoldBdr}`,
+                borderRadius: 8,
                 padding: '10px 26px',
                 fontSize: 13, fontWeight: 700,
                 letterSpacing: '0.14em',
@@ -1016,6 +1040,7 @@ export default function LogicThreadPage() {
             </button>
           </div>
         </div>
+
       </div>
 
       <TutorialPopup
