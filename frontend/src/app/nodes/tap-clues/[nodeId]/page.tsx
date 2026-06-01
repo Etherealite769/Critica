@@ -11,6 +11,30 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
 } from '@/lib/nodeSession'
 
+// ── Color Palette ─────────────────────────────────
+const C = {
+  pageBg:      '#2D0909',
+  sidebarBg:   '#6F1D1B',
+  mainBg:      '#F4E6CC',
+  passageBg:   '#FFFFFF',
+  rightBg:     '#E6DCC6',
+  cardBg:      '#FAF5EC',
+  accent:      '#800020',
+  gold:        '#C49A5A',
+  goldDark:    '#8C5A3C',
+  darkBrown:   '#2d1000',
+  medBrown:    '#774E24',
+  textMuted:   '#7a5c3a',
+  cream:       '#F4E6CC',
+  green:       '#5B6B4A',
+  btnBg:       '#FFE6A7',
+  btnBorder:   '#C49A5A',
+  border:      '#C49A5A',
+  borderLight: '#DDD0B8',
+  stampRed:    '#800020',
+  stampGreen:  '#5B6B4A',
+}
+
 // ── Types ──────────────────────────────────────
 interface LockedWordMeta {
   word_id:        string
@@ -90,27 +114,29 @@ const TUTORIAL_STEPS = [
   },
 ] as const
 
-// ── Shared style atoms ──────────────────────────
+// ── Font ─────────────────────────────────────────
 const FONT = "'Courier New', Courier, monospace"
 
+// ── Shared style atoms ────────────────────────────
 const S = {
   stamp: {
     display:       'inline-block',
-    border:        '2px solid #888',
+    border:        `2px solid ${C.stampRed}`,
     padding:       '3px 14px',
     fontSize:      10,
     fontWeight:    700,
     letterSpacing: '0.15em',
-    color:         '#aaa',
+    color:         C.stampRed,
     marginBottom:  12,
     fontFamily:    FONT,
+    borderRadius:  2,
   } as React.CSSProperties,
   btnPrimary: {
     padding:       '10px 24px',
-    background:    '#f0ece4',
-    border:        '2px solid #888',
+    background:    C.btnBg,
+    border:        `2px solid ${C.btnBorder}`,
     borderRadius:  2,
-    color:         '#111',
+    color:         C.darkBrown,
     fontFamily:    FONT,
     fontSize:      11,
     fontWeight:    700,
@@ -120,9 +146,9 @@ const S = {
   btnSm: {
     padding:      '7px 16px',
     background:   'transparent',
-    border:       '1px solid #555',
+    border:       `1px solid ${C.goldDark}`,
     borderRadius: 2,
-    color:        '#aaa',
+    color:        C.goldDark,
     fontFamily:   FONT,
     fontSize:     10,
     fontWeight:   700,
@@ -130,10 +156,10 @@ const S = {
   } as React.CSSProperties,
   tutorialBtn: {
     padding:       '7px 14px',
-    background:    '#2b2b2b',
-    border:        '1px solid #555',
+    background:    C.btnBg,
+    border:        `1px solid ${C.btnBorder}`,
     borderRadius:  2,
-    color:         '#f0ece4',
+    color:         C.darkBrown,
     fontFamily:    FONT,
     fontSize:      10,
     fontWeight:    700,
@@ -147,9 +173,9 @@ const S = {
 function LoadScreen() {
   return (
     <div style={{
-      minHeight: '100vh', background: '#6b6b6b',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, color: '#ddd', fontSize: 13, letterSpacing: '0.1em',
+      fontFamily: FONT, color: C.cream, fontSize: 13, letterSpacing: '0.1em',
     }}>
       LOADING NODE...
     </div>
@@ -159,7 +185,7 @@ function LoadScreen() {
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#1e1e1e',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       fontFamily: FONT, gap: 16,
@@ -173,23 +199,24 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
 function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () => void }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#6b6b6b',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: 40, fontFamily: FONT,
     }}>
       <div style={{
-        maxWidth: 640, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48,
+        maxWidth: 640, width: '100%', background: C.cardBg,
+        border: `2px solid ${C.border}`, borderRadius: 4, padding: 48,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
       }}>
-        <div style={S.stamp}>MICRO-LESSON</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#f0ece4', margin: '0 0 6px', fontFamily: FONT }}>
+        <div style={{ ...S.stamp, marginBottom: 16 }}>MICRO-LESSON</div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.darkBrown, margin: '0 0 6px', fontFamily: FONT }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 16px', fontFamily: FONT }}>
+        <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px', fontFamily: FONT }}>
           {node.focus}
         </p>
-        <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#ccc', margin: '0 0 32px', fontFamily: FONT }}>
+        <hr style={{ border: 'none', borderTop: `1px solid ${C.borderLight}`, margin: '16px 0' }} />
+        <p style={{ fontSize: 14, lineHeight: 1.85, color: C.darkBrown, margin: '0 0 32px', fontFamily: FONT }}>
           {node.micro_lesson_text}
         </p>
         <button onClick={onContinue} style={S.btnPrimary}>Continue →</button>
@@ -201,21 +228,22 @@ function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () 
 function DeepDiveScreen({ node, onContinue }: { node: TapNodeData; onContinue: () => void }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#6b6b6b',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: 40, fontFamily: FONT,
     }}>
       <div style={{
-        maxWidth: 700, width: '100%', background: '#2b2b2b',
-        border: '1px solid #444', borderRadius: 4, padding: 48,
+        maxWidth: 700, width: '100%', background: C.cardBg,
+        border: `2px solid ${C.border}`, borderRadius: 4, padding: 48,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
       }}>
-        <div style={S.stamp}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>
+        <div style={{ ...S.stamp, marginBottom: 16 }}>DEEP DIVE READING</div>
+        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>
           Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
         </p>
         <p style={{
-          fontSize: 14, lineHeight: 1.95, color: '#ddd', background: '#222',
-          border: '1px solid #444', borderRadius: 4, padding: 28,
+          fontSize: 14, lineHeight: 1.95, color: C.darkBrown, background: C.rightBg,
+          border: `1px solid ${C.borderLight}`, borderRadius: 4, padding: 28,
           margin: '0 0 32px', fontFamily: FONT,
         }}>
           {node.reading_passage}
@@ -231,20 +259,21 @@ function MasteryScreen({
 }: { node: TapNodeData; data: any; onDashboard: () => void; onNext: () => void }) {
   return (
     <div style={{
-      minHeight: '100vh', background: '#1e1e1e',
+      minHeight: '100vh', background: C.pageBg,
       display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT,
     }}>
       <div style={{
-        maxWidth: 480, width: '100%', background: '#0e1e0e',
-        border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center',
+        maxWidth: 480, width: '100%', background: C.cardBg,
+        border: `2px solid ${C.green}`, borderRadius: 4, padding: 52, textAlign: 'center',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
       }}>
-        <div style={{ ...S.stamp, color: '#4ddd94', borderColor: '#4ddd94', fontSize: 16, padding: '8px 24px' }}>
+        <div style={{ ...S.stamp, color: C.green, borderColor: C.green, fontSize: 16, padding: '8px 24px' }}>
           ✓ NODE MASTERED
         </div>
-        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: FONT }}>
+        <h2 style={{ fontSize: 20, color: C.green, margin: '8px 0 16px', fontFamily: FONT }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 12, color: '#aaa', margin: '0 0 28px', fontFamily: FONT }}>
+        <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 28px', fontFamily: FONT }}>
           Streak: {data?.streak ?? 0} days
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -286,10 +315,10 @@ function TapCluesTutorialPopup({
     return (
       <div key={label} style={{
         width: 156, height: 76,
-        border: '1px solid #777',
-        background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
-        color: '#111',
-        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
+        border: `1px solid ${C.border}`,
+        background: complete ? '#d0e8d4' : active ? C.cardBg : C.rightBg,
+        color: C.darkBrown,
+        boxShadow: active ? '0 3px 0 rgba(67,40,24,0.25)' : 'none',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', textAlign: 'center',
         fontFamily: FONT, fontSize: 12, fontWeight: 700,
@@ -297,8 +326,8 @@ function TapCluesTutorialPopup({
         <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
           <div style={{
             width: 24, height: 24, borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
-            color: complete ? '#fff' : '#111',
+            background: complete ? C.green : active ? C.gold : C.borderLight,
+            color: complete ? '#fff' : C.darkBrown,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 11, fontWeight: 700,
           }}>{complete ? '✓' : index + 1}</div>
@@ -312,17 +341,22 @@ function TapCluesTutorialPopup({
     if (current.board === 'target') {
       return (
         <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>THE TARGET WORD</div>
-          <div style={{ fontFamily: FONT, fontSize: 22, lineHeight: 1.45, color: '#111', wordSpacing: '0.12em' }}>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 12, letterSpacing: '0.1em' }}>THE TARGET WORD</div>
+          <div style={{ fontFamily: FONT, fontSize: 18, lineHeight: 1.55, color: C.darkBrown, wordSpacing: '0.12em' }}>
             A tone of{' '}
-            <span style={{ color: '#caa400', fontWeight: 700, textDecoration: 'underline' }}>peremptory</span>
+            <span style={{ color: C.gold, fontWeight: 700, textDecoration: 'underline' }}>peremptory</span>
             {' '}authority is often associated with those who{' '}
-            <span style={{ color: '#2f8fcb', fontWeight: 700 }}>command</span>
+            <span style={{ color: C.green, fontWeight: 700 }}>command</span>
             {' '}without question.
           </div>
           <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ display: 'inline-block', transform: 'rotate(-8deg)', color: '#c45a50', border: '1px solid #d6a8a0', borderRadius: '50%', padding: '8px 10px', fontSize: 12, fontWeight: 700 }}>LOCKED</span>
-            <span style={{ fontSize: 13, color: '#222', fontFamily: FONT }}>→ tap clues to unlock</span>
+            <span style={{
+              display: 'inline-block', transform: 'rotate(-8deg)',
+              color: C.stampRed, border: `1px solid ${C.stampRed}`,
+              borderRadius: '50%', padding: '8px 10px',
+              fontSize: 12, fontWeight: 700, fontFamily: FONT,
+            }}>LOCKED</span>
+            <span style={{ fontSize: 13, color: C.darkBrown, fontFamily: FONT }}>→ tap clues to unlock</span>
           </div>
         </div>
       )
@@ -331,12 +365,12 @@ function TapCluesTutorialPopup({
     if (current.board === 'strongWeak') {
       return (
         <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>STRONG VS WEAK CLUES</div>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 12, letterSpacing: '0.1em' }}>STRONG VS WEAK CLUES</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ padding: '8px 10px', border: '1px solid #58baf7', background: '#d8efff', color: '#0f5f9a', fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+            <div style={{ padding: '8px 10px', border: `1px solid ${C.green}`, background: '#e8f0e8', color: C.green, fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
               Strong: "command", "imperious", "dismissing" signal authority/abruptness
             </div>
-            <div style={{ padding: '8px 10px', border: '1px solid #cda25a', background: '#efe3d0', color: '#8a5c12', fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+            <div style={{ padding: '8px 10px', border: `1px solid ${C.border}`, background: C.rightBg, color: C.textMuted, fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
               Weak: "tone", "often", "those" too generic, no semantic link
             </div>
           </div>
@@ -347,11 +381,11 @@ function TapCluesTutorialPopup({
     if (current.board === 'tracker') {
       return (
         <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>FOUND CLUES TRACKER</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: FONT, fontSize: 12, color: '#111' }}>
-            <div><span style={{ color: '#2f8fcb', fontWeight: 700 }}>[1]</span> command — signals ordering without discussion</div>
-            <div><span style={{ color: '#2f8fcb', fontWeight: 700 }}>[2]</span> imperious — near-synonym</div>
-            <div><span style={{ fontWeight: 700 }}>[3]</span> - TAP A WORD -</div>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 12, letterSpacing: '0.1em' }}>FOUND CLUES TRACKER</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: FONT, fontSize: 12, color: C.darkBrown }}>
+            <div><span style={{ color: C.green, fontWeight: 700 }}>[1]</span> command — signals ordering without discussion</div>
+            <div><span style={{ color: C.green, fontWeight: 700 }}>[2]</span> imperious — near-synonym</div>
+            <div><span style={{ fontWeight: 700, color: C.textMuted }}>[3]</span> - TAP A WORD -</div>
           </div>
         </div>
       )
@@ -359,13 +393,13 @@ function TapCluesTutorialPopup({
 
     return (
       <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: '#111', marginBottom: 12 }}>LOCK STATE CHANGE</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontFamily: FONT, fontSize: 13, color: '#111' }}>
-          <span style={{ color: '#c45a50', border: '1px solid #e3b3ab', borderRadius: '50%', padding: '8px 10px', transform: 'rotate(-6deg)' }}>LOCKED</span>
+        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 12, letterSpacing: '0.1em' }}>LOCK STATE CHANGE</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontFamily: FONT, fontSize: 13, color: C.darkBrown }}>
+          <span style={{ color: C.stampRed, border: `1px solid ${C.stampRed}`, borderRadius: '50%', padding: '8px 10px', transform: 'rotate(-6deg)', fontWeight: 700 }}>LOCKED</span>
           <span>→</span>
-          <span style={{ color: '#2ca04f', border: '1px solid #a8d6b3', borderRadius: '50%', padding: '8px 8px', transform: 'rotate(6deg)' }}>UNLOCKED</span>
+          <span style={{ color: C.stampGreen, border: `1px solid ${C.green}`, borderRadius: '50%', padding: '8px 8px', transform: 'rotate(6deg)', fontWeight: 700 }}>UNLOCKED</span>
         </div>
-        <div style={{ display: 'flex', gap: 34, marginTop: 14, fontFamily: FONT, fontSize: 11, color: '#333' }}>
+        <div style={{ display: 'flex', gap: 34, marginTop: 14, fontFamily: FONT, fontSize: 11, color: C.textMuted }}>
           <div>before submit</div>
           <div>after unlock</div>
         </div>
@@ -378,52 +412,60 @@ function TapCluesTutorialPopup({
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)',
+      position: 'fixed', inset: 0, background: 'rgba(67,40,24,0.75)',
       zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 20, fontFamily: FONT,
     }}>
-      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
+      <div style={{
+        width: '100%', maxWidth: 840,
+        background: C.mainBg,
+        border: `2px solid ${C.border}`,
+        boxShadow: '0 18px 56px rgba(0,0,0,0.5)',
+        padding: '10px 14px 14px',
+        borderRadius: 4,
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{current.code}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.22em', color: C.accent }}>CRITICA — FIELD BRIEFING</div>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.18em', color: C.textMuted }}>{current.code}</div>
         </div>
 
-        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
-            <div style={{ width: 120, textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+        <div style={{ background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 4, padding: '28px 22px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 40, marginBottom: 28 }}>
+            <div style={{ width: 120, textAlign: 'center', flexShrink: 0 }}>
+              <div style={{
+                width: 56, height: 56, border: `2px solid ${C.border}`,
+                background: C.rightBg, margin: '0 auto 8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 2,
+              }}>
+                <div style={{ width: 34, height: 34, background: C.goldDark, borderRadius: 4, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: C.cream }} />
+                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: C.cream }} />
                 </div>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+              <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', color: C.darkBrown }}>AGENT CRIT</div>
+              <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
             </div>
 
-            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            <div style={{ position: 'relative', flex: 1, background: C.passageBg, border: `1px solid ${C.border}`, boxShadow: '0 3px 10px rgba(67,40,24,0.15)', padding: '12px 16px', minHeight: 96 }}>
+              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: C.passageBg, borderLeft: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, transform: 'rotate(45deg)' }} />
+              <div style={{ fontSize: 13, lineHeight: 1.45, color: C.darkBrown, whiteSpace: 'pre-line' }}>{current.text}</div>
             </div>
           </div>
 
-          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
+          <div style={{ border: `1px solid ${C.borderLight}`, background: C.rightBg, padding: 10, marginBottom: 24 }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
               {TUTORIAL_STEPS.map((stepItem, index) => stepCard(stepItem.label, index))}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
-            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.rightBg, border: `1px solid ${C.borderLight}`, padding: 14 }}>
+            <div style={{ flex: 1, minHeight: 200, background: C.passageBg, border: `1px solid ${C.borderLight}`, padding: 18 }}>
               {renderBoard()}
             </div>
-
-            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#111', marginBottom: 10 }}>QUICK NOTES</div>
+            <div style={{ width: 112, background: C.passageBg, border: `1px solid ${C.borderLight}`, padding: '10px 10px 12px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.accent, marginBottom: 10 }}>QUICK NOTES</div>
               {current.notes.map((note, index) => (
-                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#111' }}>
+                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: C.darkBrown }}>
                   {note}
                   {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
                 </div>
@@ -431,11 +473,11 @@ function TapCluesTutorialPopup({
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 22 }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160 }}>
               {secondaryLabel}
             </button>
-            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
+            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnPrimary, minWidth: 170 }}>
               {primaryLabel}
             </button>
           </div>
@@ -844,29 +886,40 @@ export default function TapCluesPage() {
     setTutorialOpen(true)
   }
 
+  const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
+  const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
+  const MAX_CLUES      = 4
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#686664',
+      background: C.pageBg,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontFamily: FONT,
+      padding: '24px 0',
     }}>
+      {/* ── CARD ── */}
       <div style={{
-        display: 'flex', alignItems: 'stretch',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.55)',
+        display: 'flex',
+        alignItems: 'stretch',
+        boxShadow: '0 16px 64px rgba(0,0,0,0.6)',
         borderRadius: 6,
+        border: `2px solid ${C.goldDark}`,
+        overflow: 'hidden',
+        maxWidth: 1080,
+        width: '96vw',
+        minHeight: 620,
       }}>
 
         {/* ── LEFT SIDEBAR ── */}
         <div style={{
-          width: 34, background: '#2b2b2b',
+          width: 44, background: C.sidebarBg,
           display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 0',
-          borderRadius: '6px 0 0 6px',
-          borderRight: '1px solid #1a1a1a',
+          alignItems: 'flex-start', justifyContent: 'flex-start',
+          gap: 8, padding: '20px 0',
+          borderRight: `1px solid ${C.goldDark}`,
         }}>
           <button
             title="Get a hint"
@@ -874,14 +927,18 @@ export default function TapCluesPage() {
             style={{
               writingMode: 'vertical-rl',
               transform: 'rotate(180deg)',
-              fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#999',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: FONT, transition: 'color 0.15s',
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.14em', color: C.darkBrown,
+              background: C.btnBg,
+              border: `1px solid ${C.btnBorder}`,
+              borderLeft: 'none',
+              borderRadius: '0 4px 4px 0',
+              cursor: 'pointer', padding: '12px 7px',
+              fontFamily: FONT, transition: 'background 0.15s',
+              boxShadow: '2px 1px 5px rgba(0,0,0,0.22)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#eee')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#999')}
+            onMouseEnter={e => (e.currentTarget.style.background = C.cream)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.btnBg)}
           >
             HINT
           </button>
@@ -901,226 +958,325 @@ export default function TapCluesPage() {
             style={{
               writingMode: 'vertical-rl',
               transform: 'rotate(180deg)',
-              fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#666',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: FONT, transition: 'color 0.15s',
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.14em', color: C.darkBrown,
+              background: C.btnBg,
+              border: `1px solid ${C.btnBorder}`,
+              borderLeft: 'none',
+              borderRadius: '0 4px 4px 0',
+              cursor: 'pointer', padding: '12px 7px',
+              fontFamily: FONT, transition: 'background 0.15s',
+              boxShadow: '2px 1px 5px rgba(0,0,0,0.22)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#aaa')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#666')}
+            onMouseEnter={e => (e.currentTarget.style.background = C.cream)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.btnBg)}
           >
             END SESSION
           </button>
         </div>
 
-        {/* ── MAIN PANEL ── */}
+        {/* ── MAIN CONTENT ── */}
         <div style={{
-          background: '#b8b3ab',
-          borderRadius: '0 6px 6px 0',
-          display: 'flex', flexDirection: 'column',
-          width: 820,
+          flex: 1,
+          background: C.mainBg,
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
         }}>
 
-          {/* ── OBJECTIVE BANNER ── */}
-          <div style={{ padding: '10px 20px 8px', textAlign: 'center', background: '#b8b3ab' }}>
+          {/* ── HEADER STRIP ── */}
+          <div style={{
+            background: C.sidebarBg,
+            padding: '10px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `2px solid ${C.goldDark}`,
+          }}>
             <div style={{
-              display: 'inline-block', border: '1.5px solid #888',
-              padding: '5px 20px', fontSize: 14, fontWeight: 700,
-              letterSpacing: '0.1em', color: '#333',
-              background: 'rgba(255,255,255,0.25)', fontFamily: FONT,
+              fontSize: 13, fontWeight: 700,
+              letterSpacing: '0.18em',
+              color: C.cream, fontFamily: FONT,
             }}>
-              <span style={{ color: '#444' }}>OBJECTIVE: </span>
-              <span style={{ color: '#b03030' }}>
-                TAP THE LOCKED WORDS, THEN TAP SURROUNDING CLUE WORDS TO UNLOCK THEIR MEANING
-              </span>
+              TASK: <span style={{ color: C.gold }}>HIGHLIGHT THE CLUES</span>
             </div>
-          </div>
-
-          {/* difficulty badge + Q counter */}
-          <div style={{ padding: '6px 24px 6px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)], fontFamily: FONT }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)] }} />
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.cream, fontFamily: FONT }}>
                   LVL {tapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[tapNode!.difficulty ?? nodeDifficulty(nodeId)]}
                 </span>
               </div>
               {sessionQueue.length > 0 && (
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: '#555', fontFamily: FONT }}>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.cream, fontFamily: FONT }}>
                   Q {questionIndex + 1} / {sessionQueue.length}
                 </span>
               )}
             </div>
-            {sessionQueue.length > 0 && (
-              <div style={{ height: 6, background: '#e0ddd8', borderRadius: 3, overflow: 'hidden', position: 'relative', border: '1px solid #aaa' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(questionIndex / sessionQueue.length) * 100}%`,
-                  background: '#2b2b2b',
-                  transition: 'width 0.3s ease-in-out'
-                }} />
-              </div>
-            )}
           </div>
 
+          {/* ── PROGRESS BAR ── */}
+          {sessionQueue.length > 0 && (
+            <div style={{ height: 5, background: C.rightBg }}>
+              <div style={{
+                height: '100%',
+                width: `${(questionIndex / sessionQueue.length) * 100}%`,
+                background: C.gold,
+                transition: 'width 0.3s ease-in-out',
+              }} />
+            </div>
+          )}
+
           {/* ── WORD PROGRESS DOTS ── */}
-          <div style={{
-            padding: '6px 24px 4px',
-            display: 'flex', gap: 8, justifyContent: 'center',
-          }}>
+          <div style={{ padding: '8px 20px 6px', display: 'flex', gap: 8, alignItems: 'center' }}>
             {tapNode!.locked_words.map(lw => (
               <div key={lw.word_id} style={{
-                width: 28, height: 6, borderRadius: 3,
+                height: 6, borderRadius: 3, flex: 1,
                 background:
-                  unlockedWords.includes(lw.word_id) ? '#4ddd94'
-                  : activeWordId === lw.word_id       ? '#f0a500'
-                  : '#888',
+                  unlockedWords.includes(lw.word_id) ? C.green
+                  : activeWordId === lw.word_id       ? C.gold
+                  : C.borderLight,
                 transition: 'background 0.3s',
               }} />
             ))}
+            <span style={{ fontSize: 9, color: C.textMuted, fontFamily: FONT, letterSpacing: '0.08em', whiteSpace: 'nowrap', marginLeft: 8 }}>
+              {unlockedWords.length} / {tapNode!.locked_words.length} UNLOCKED
+            </span>
           </div>
 
-          {/* ── INSTRUCTION LINE ── */}
-          <div style={{
-            padding: '4px 24px 8px', textAlign: 'center',
-            fontSize: 10, color: '#555', fontFamily: FONT, letterSpacing: '0.1em',
-            fontWeight: 700,
-          }}>
-            {activeWordId
-              ? `FINDING CLUES FOR: "${
-                  tapNode!.locked_words.find(lw => lw.word_id === activeWordId)?.word.toUpperCase()
-                }" — ${(foundClues[activeWordId] ?? []).length} CLUE(S) FOUND SO FAR`
-              : allUnlocked
-              ? 'ALL WORDS UNLOCKED — SUBMIT TO COMPLETE'
-              : 'TAP A HIGHLIGHTED WORD TO BEGIN'}
-          </div>
+          {/* ── TWO-COLUMN CONTENT ── */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* ── PASSAGE CARD ── */}
-          <div style={{ padding: '12px 24px 16px', flex: 1, overflowY: 'auto' }}>
+            {/* ── LEFT: PASSAGE ── */}
             <div style={{
-              background: '#ffffff',
-              border: '2px solid #e0ddd8',
-              borderRadius: 5,
-              padding: '28px 32px',
-              fontSize: 17,
-              lineHeight: 2.2,
-              color: '#1a1a1a',
-              fontFamily: FONT,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+              flex: 1,
+              padding: '14px 20px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRight: `1px solid ${C.borderLight}`,
+              overflowY: 'auto',
             }}>
-              {tokens.map((token, i) => {
-                if (/^\s+$/.test(token.text)) {
-                  return <span key={i}>{token.text}</span>
-                }
+              <div style={{
+                fontSize: 10, color: C.accent, fontFamily: FONT,
+                letterSpacing: '0.1em', fontWeight: 700,
+                marginBottom: 10, textAlign: 'center',
+              }}>
+                {activeWordId
+                  ? `FINDING CLUES FOR: "${activeWordMeta?.word.toUpperCase()}" — TAP SURROUNDING WORDS`
+                  : allUnlocked
+                  ? 'ALL WORDS UNLOCKED — SUBMIT TO COMPLETE'
+                  : 'TAP A HIGHLIGHTED WORD TO BEGIN'}
+              </div>
 
-                const isLocked   = token.isLocked
-                const wordId     = token.word_id
-                const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
-                const isActive   = wordId ? activeWordId === wordId : false
-                const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase()
-                const isPulse    = pulseClue === cleanWord
-
-                let color      = '#1a1a1a'
-                let bg         = 'transparent'
-                let border     = 'none'
-                let fontWeight = 400
-                let cursor     = 'pointer'
-                let textDecor  = 'none'
-
-                if (isLocked && isUnlocked) {
-                  color      = '#2e7d32'
-                  fontWeight = 700
-                  textDecor  = 'underline'
-                  cursor     = 'pointer'
-                } else if (isLocked && isActive) {
-                  color      = '#b06000'
-                  bg         = 'rgba(240,165,0,0.18)'
-                  border     = '1.5px solid #f0a500'
-                  fontWeight = 700
-                  cursor     = 'pointer'
-                } else if (isLocked) {
-                  color      = '#b06000'
-                  fontWeight = 700
-                  textDecor  = 'underline'
-                  cursor     = 'pointer'
-                } else if (activeWordId && !isLocked) {
-                  cursor = 'pointer'
-                  if (isPulse) {
-                    bg     = 'rgba(77,221,148,0.35)'
-                    border = '1.5px solid #4ddd94'
-                    color  = '#2e7d32'
+              <div style={{
+                background: C.passageBg,
+                border: `1px solid ${C.borderLight}`,
+                borderRadius: 3,
+                padding: '24px 28px',
+                fontSize: 16,
+                lineHeight: 2.1,
+                color: C.darkBrown,
+                fontFamily: FONT,
+                flex: 1,
+                boxShadow: '0 2px 12px rgba(67,40,24,0.10)',
+              }}>
+                {tokens.map((token, i) => {
+                  if (/^\s+$/.test(token.text)) {
+                    return <span key={i}>{token.text}</span>
                   }
-                }
 
-                return (
-                  <span
-                    key={i}
-                    onClick={() => handleWordTap(token.text, token)}
-                    style={{
-                      color,
-                      background:     bg,
-                      border,
-                      borderRadius:   border !== 'none' ? 2 : 0,
-                      fontWeight,
-                      cursor,
-                      textDecoration: textDecor,
-                      padding:        border !== 'none' ? '0 3px' : '0',
-                      transition:     'all 0.2s',
-                      display:        'inline',
-                    }}
-                  >
-                    {token.text}
-                  </span>
-                )
-              })}
+                  const isLocked   = token.isLocked
+                  const wordId     = token.word_id
+                  const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
+                  const isActive   = wordId ? activeWordId === wordId : false
+                  const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase()
+                  const isPulse    = pulseClue === cleanWord
+
+                  let color      = C.darkBrown
+                  let bg         = 'transparent'
+                  let border     = 'none'
+                  let fontWeight = 400
+                  let cursor     = 'pointer'
+                  let textDecor  = 'none'
+
+                  if (isLocked && isUnlocked) {
+                    color = C.green; fontWeight = 700; textDecor = 'underline'; cursor = 'pointer'
+                  } else if (isLocked && isActive) {
+                    color = C.goldDark; bg = 'rgba(196,154,90,0.18)'; border = `1.5px solid ${C.gold}`; fontWeight = 700; cursor = 'pointer'
+                  } else if (isLocked) {
+                    color = C.gold; fontWeight = 700; textDecor = 'underline'; cursor = 'pointer'
+                  } else if (activeWordId && !isLocked) {
+                    cursor = 'pointer'
+                    if (isPulse) { bg = 'rgba(91,107,74,0.25)'; border = `1.5px solid ${C.green}`; color = C.green }
+                  }
+
+                  return (
+                    <span
+                      key={i}
+                      onClick={() => handleWordTap(token.text, token)}
+                      style={{
+                        color, background: bg, border,
+                        borderRadius: border !== 'none' ? 2 : 0,
+                        fontWeight, cursor, textDecoration: textDecor,
+                        padding: border !== 'none' ? '0 3px' : '0',
+                        transition: 'all 0.2s', display: 'inline',
+                      }}
+                    >
+                      {token.text}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ── RIGHT: CLUE CARD ── */}
+            <div style={{
+              width: 260,
+              background: C.rightBg,
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '16px 16px 12px',
+              gap: 14,
+              overflowY: 'auto',
+              flexShrink: 0,
+            }}>
+              {/* Target Word Card */}
+              <div style={{
+                background: C.passageBg,
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                padding: '14px 16px',
+                boxShadow: '0 2px 8px rgba(67,40,24,0.10)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, fontFamily: FONT, marginBottom: 2 }}>TARGET WORD</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.textMuted, fontFamily: FONT }}>STATUS</div>
+                  </div>
+                  {activeWordMeta ? (
+                    unlockedWords.includes(activeWordMeta.word_id) ? (
+                      <div style={{ border: `2px solid ${C.green}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.green, fontFamily: FONT, letterSpacing: '0.08em', transform: 'rotate(6deg)', lineHeight: 1.2, textAlign: 'center' }}>UN<br/>LOCKED</div>
+                    ) : (
+                      <div style={{ border: `2px solid ${C.stampRed}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.stampRed, fontFamily: FONT, letterSpacing: '0.08em', transform: 'rotate(-8deg)', lineHeight: 1.2, textAlign: 'center' }}>LOCK<br/>ED</div>
+                    )
+                  ) : (
+                    <div style={{ border: `2px solid ${C.borderLight}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.borderLight, fontFamily: FONT, letterSpacing: '0.08em', transform: 'rotate(-8deg)', lineHeight: 1.2, textAlign: 'center' }}>LOCK<br/>ED</div>
+                  )}
+                </div>
+
+                <div style={{ fontSize: activeWordMeta ? 20 : 15, fontWeight: 700, color: activeWordMeta ? (unlockedWords.includes(activeWordMeta.word_id) ? C.green : C.gold) : C.borderLight, fontFamily: FONT, marginBottom: 2 }}>
+                  {activeWordMeta?.word ?? '— select a word —'}
+                </div>
+                <div style={{ fontSize: 10, color: C.textMuted, fontFamily: FONT, fontStyle: 'italic', marginBottom: 10 }}>
+                  {activeWordMeta ? 'noun / verb / adjective' : ''}
+                </div>
+
+                <div style={{ borderTop: `1px solid ${C.borderLight}`, margin: '8px 0' }} />
+
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.accent, fontFamily: FONT, marginBottom: 6 }}>INSTRUCTIONS</div>
+                <div style={{ fontSize: 10, color: C.darkBrown, fontFamily: FONT, lineHeight: 1.55 }}>
+                  Locate surrounding words that prove the target word&apos;s actual implicit semantic definition.
+                </div>
+              </div>
+
+              {/* Found Clues Tracker */}
+              <div style={{
+                background: C.passageBg,
+                border: `1px solid ${C.border}`,
+                borderRadius: 3,
+                padding: '14px 16px',
+                boxShadow: '0 2px 8px rgba(67,40,24,0.10)',
+              }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.accent, fontFamily: FONT, marginBottom: 12 }}>FOUND CLUES TRACKER</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Array.from({ length: MAX_CLUES }).map((_, i) => {
+                    const clue = activeClues[i]
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: clue ? C.green : C.borderLight, fontFamily: FONT, flexShrink: 0, minWidth: 24 }}>
+                          [{i + 1}]
+                        </span>
+                        <div style={{ flex: 1, borderBottom: `1px solid ${clue ? C.green : C.borderLight}`, paddingBottom: 2, fontSize: 11, color: clue ? C.darkBrown : C.borderLight, fontFamily: FONT, minHeight: 18, fontStyle: clue ? 'normal' : 'italic' }}>
+                          {clue ?? ''}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).length > 0 && (
+                  <div style={{ marginTop: 14, borderTop: `1px solid ${C.borderLight}`, paddingTop: 10 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.green, fontFamily: FONT, marginBottom: 6 }}>COMPLETED WORDS</div>
+                    {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).map(lw => (
+                      <div key={lw.word_id} style={{ fontSize: 10, color: C.green, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 8 }}>✓</span>
+                        <span style={{ fontWeight: 700 }}>{lw.word}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* ── SUBMIT BAR ── */}
+          {/* ── BOTTOM BAR ── */}
           <div style={{
             display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', padding: '10px 24px 14px',
-            background: '#b8b3ab',
+            alignItems: 'center',
+            padding: '10px 20px 12px',
+            background: C.rightBg,
+            borderTop: `1px solid ${C.borderLight}`,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <button onClick={openTutorial} style={S.tutorialBtn}>
-                Show tutorial
-              </button>
-              <span style={{
-                fontSize: 10, color: '#111',
-                fontWeight: 700, letterSpacing: '0.08em',
-                fontFamily: FONT,
-              }}>
-                {unlockedWords.length} / {tapNode!.locked_words.length} WORDS UNLOCKED
-              </span>
-            </div>
+            <button onClick={openTutorial} style={S.tutorialBtn}>Show tutorial</button>
             <button
               disabled={!allUnlocked || submitting}
               onClick={handleSubmitMastery}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                background:
-                  submitting    ? '#555'
-                  : allUnlocked ? '#2b2b2b'
-                  : '#888',
-                color: '#f0ece4',
-                border: 'none', borderRadius: 2,
-                padding: '10px 26px',
-                fontSize: 13, fontWeight: 700,
+                background: submitting ? C.medBrown : allUnlocked ? C.sidebarBg : C.borderLight,
+                color: allUnlocked || submitting ? C.cream : C.textMuted,
+                border: `2px solid ${allUnlocked ? C.goldDark : C.borderLight}`,
+                borderRadius: 2, padding: '9px 24px',
+                fontSize: 12, fontWeight: 700,
                 letterSpacing: '0.14em',
                 cursor: allUnlocked && !submitting ? 'pointer' : 'not-allowed',
                 fontFamily: FONT, transition: 'background 0.2s',
               }}
             >
-              {submitting
-                ? 'CHECKING...'
-                : <><span>SUBMIT</span><span style={{ fontSize: 18, lineHeight: 1 }}>→</span></>}
+              {submitting ? 'CHECKING...' : <><span>SUBMIT</span><span style={{ fontSize: 18, lineHeight: 1 }}>→</span></>}
             </button>
           </div>
         </div>
-      </div>
+
+        {/* ── RIGHT SIDEBAR ── */}
+        <div style={{
+          width: 44, background: 'transparent',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'flex-start', justifyContent: 'flex-start',
+          padding: '20px 0',
+          borderLeft: `1px solid ${C.goldDark}`,
+        }}>
+          <button
+            title="Toggle clue drawer"
+            onClick={() => setDrawer(prev => !prev)}
+            style={{
+              writingMode: 'vertical-rl',
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.14em', color: C.darkBrown,
+              background: C.btnBg,
+              border: `1px solid ${C.btnBorder}`,
+              borderRadius: 6,
+              cursor: 'pointer', padding: '10px 6px',
+              fontFamily: FONT, transition: 'background 0.15s',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.18)',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = C.cream)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.btnBg)}
+          >
+            CLUE DRAWER
+          </button>
+        </div>
+      </div>{/* ── end CARD ── */}
 
       {/* ── TUTORIAL POPUP ── */}
       <TapCluesTutorialPopup
@@ -1136,65 +1292,36 @@ export default function TapCluesPage() {
       {defPanel && (
         <div style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.55)',
+          background: 'rgba(67,40,24,0.7)',
           zIndex: 150,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
-            background: '#fff',
-            border: '2px solid #4ddd94',
-            borderRadius: 6,
+            background: C.cardBg,
+            border: `2px solid ${C.green}`,
+            borderRadius: 4,
             padding: '28px 32px',
-            maxWidth: 400, width: '90%',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            maxWidth: 420, width: '90%',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.45)',
             fontFamily: FONT,
           }}>
-            <div style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#4ddd94', marginBottom: 6, fontFamily: FONT,
-            }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.green, marginBottom: 6, fontFamily: FONT }}>
               ✓ WORD UNLOCKED
             </div>
-            <h3 style={{
-              fontSize: 22, fontWeight: 700, color: '#1a1a1a',
-              margin: '0 0 14px', fontFamily: FONT, textTransform: 'uppercase',
-            }}>
+            <h3 style={{ fontSize: 22, fontWeight: 700, color: C.darkBrown, margin: '0 0 4px', fontFamily: FONT, textTransform: 'uppercase' }}>
               {defPanel.word}
             </h3>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-              color: '#888', marginBottom: 4, fontFamily: FONT,
-            }}>
-              DEFINITION
-            </div>
-            <p style={{ fontSize: 14, color: '#222', lineHeight: 1.65, margin: '0 0 14px', fontFamily: FONT }}>
-              {defPanel.definition}
+            <div style={{ fontSize: 10, color: C.textMuted, fontStyle: 'italic', marginBottom: 14 }}>noun / verb / adjective</div>
+            <div style={{ borderTop: `1px solid ${C.borderLight}`, margin: '0 0 14px' }} />
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>DEFINITION</div>
+            <p style={{ fontSize: 14, color: C.darkBrown, lineHeight: 1.65, margin: '0 0 14px' }}>{defPanel.definition}</p>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>IN CONTEXT</div>
+            <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.65, margin: '0 0 14px', fontStyle: 'italic' }}>
+              &ldquo;{defPanel.contextual_usage}&rdquo;
             </p>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-              color: '#888', marginBottom: 4, fontFamily: FONT,
-            }}>
-              IN CONTEXT
-            </div>
-            <p style={{
-              fontSize: 13, color: '#444', lineHeight: 1.65,
-              margin: '0 0 14px', fontStyle: 'italic', fontFamily: FONT,
-            }}>
-              "{defPanel.contextual_usage}"
-            </p>
-            <div style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-              color: '#888', marginBottom: 4, fontFamily: FONT,
-            }}>
-              TRANSLATION (FILIPINO)
-            </div>
-            <p style={{ fontSize: 14, color: '#555', margin: '0 0 22px', fontFamily: FONT }}>
-              {defPanel.translation}
-            </p>
-            <button
-              onClick={() => setDefPanel(null)}
-              style={{ ...S.btnPrimary, width: '100%', textAlign: 'center' }}
-            >
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>TRANSLATION (FILIPINO)</div>
+            <p style={{ fontSize: 13, color: C.medBrown, margin: '0 0 22px' }}>{defPanel.translation}</p>
+            <button onClick={() => setDefPanel(null)} style={{ ...S.btnPrimary, width: '100%', textAlign: 'center' }}>
               Got it — Continue
             </button>
           </div>
@@ -1205,46 +1332,26 @@ export default function TapCluesPage() {
       {hintOverlay && (
         <div style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.45)',
+          background: 'rgba(67,40,24,0.4)',
           zIndex: 100,
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'flex-start',
-          padding: 24,
-          pointerEvents: 'none',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start',
+          padding: 24, pointerEvents: 'none',
         }}>
           <div style={{
-            background: '#fff',
-            border: '2px solid #ddd',
-            borderRadius: 5,
-            padding: '16px 18px 14px',
-            maxWidth: 260,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+            background: C.cardBg,
+            border: `2px solid ${C.gold}`,
+            borderRadius: 4, padding: '16px 18px 14px',
+            maxWidth: 280,
+            boxShadow: '0 6px 24px rgba(67,40,24,0.3)',
             pointerEvents: 'all',
           }}>
-            <div style={{
-              fontSize: 9, fontWeight: 700, letterSpacing: '0.14em',
-              color: '#888', marginBottom: 8, fontFamily: FONT,
-            }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', color: C.gold, marginBottom: 8, fontFamily: FONT }}>
               SCAFFOLD HINT{hintOverlayTier > 0 ? ` — TIER ${hintOverlayTier}` : ''}
             </div>
-            <p style={{
-              fontSize: 12, color: '#222', lineHeight: 1.65,
-              margin: '0 0 14px', fontFamily: FONT,
-            }}>
+            <p style={{ fontSize: 12, color: C.darkBrown, lineHeight: 1.65, margin: '0 0 14px', fontFamily: FONT }}>
               {hintOverlayText}
             </p>
-            <button
-              onClick={() => setHintOverlay(false)}
-              style={{
-                fontSize: 10, fontWeight: 700, color: '#444',
-                background: '#eee', border: '1px solid #ccc',
-                padding: '5px 14px', cursor: 'pointer',
-                fontFamily: FONT, letterSpacing: '0.06em', borderRadius: 2,
-              }}
-            >
-              Close
-            </button>
+            <button onClick={() => setHintOverlay(false)} style={{ ...S.btnSm, fontSize: 10 }}>Close</button>
           </div>
         </div>
       )}
@@ -1253,35 +1360,25 @@ export default function TapCluesPage() {
       {drawer && (
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#180a0a',
-          border: '2px solid #cc3333',
-          borderBottom: 'none',
-          padding: '20px 32px 28px',
-          zIndex: 200, maxHeight: 300,
+          background: C.sidebarBg,
+          borderTop: `2px solid ${C.goldDark}`,
+          padding: '18px 32px 24px',
+          zIndex: 200, maxHeight: 280,
           overflowY: 'auto', fontFamily: FONT,
         }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            alignItems: 'center', marginBottom: 12,
-          }}>
-            <div style={{ ...S.stamp, color: '#ff6b6b', borderColor: '#ff6b6b', marginBottom: 0 }}>
-              FEEDBACK
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ ...S.stamp, color: C.cream, borderColor: C.gold, marginBottom: 0 }}>FEEDBACK</div>
             <button
               onClick={() => { setDrawer(false); resetTimer() }}
-              style={{
-                background: 'none', border: 'none',
-                color: '#ff6b6b', fontSize: 18,
-                cursor: 'pointer', fontFamily: FONT,
-              }}
+              style={{ background: 'none', border: 'none', color: C.cream, fontSize: 18, cursor: 'pointer', fontFamily: FONT }}
             >
               ✕
             </button>
           </div>
-          <p style={{ fontSize: 14, color: '#ddd', lineHeight: 1.7, marginBottom: 12, fontFamily: FONT }}>
+          <p style={{ fontSize: 13, color: C.cream, lineHeight: 1.7, marginBottom: 12, fontFamily: FONT, opacity: 0.9 }}>
             {fbText}
           </p>
-          <button style={S.btnSm} onClick={() => { setDrawer(false); resetTimer() }}>
+          <button style={{ ...S.btnSm, color: C.cream, borderColor: C.gold }} onClick={() => { setDrawer(false); resetTimer() }}>
             Close and reattempt
           </button>
         </div>
