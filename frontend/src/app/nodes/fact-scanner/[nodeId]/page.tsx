@@ -11,362 +11,148 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
 } from '@/lib/nodeSession'
 
-// ── Types ───────────────────────────────────────
 interface ArticleSentence {
   sentence_id: string
   text:        string
 }
-
 interface FactNodeData {
-  node_id:             string
-  title:               string
-  focus:               string
-  craap_criterion:     string
-  micro_lesson_text:   string
-  reading_passage:     string
-  deep_dive_required:  boolean
-  difficulty:          number
-  article_sentences:   ArticleSentence[]
+  node_id:            string
+  title:              string
+  focus:              string
+  craap_criterion:    string
+  micro_lesson_text:  string
+  reading_passage:    string
+  deep_dive_required: boolean
+  difficulty:         number
+  article_sentences:  ArticleSentence[]
 }
+type Phase = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 
-type Phase = 'loading' | 'micro_lesson' | 'deep_dive'
-           | 'task'    | 'mastery'      | 'error'
+const FACT_SCANNER_TUTORIAL_KEY = 'critica_tutorial_seen_fact_scanner_first_node'
+const FONT = "'Courier New', Courier, monospace"
 
-const FACT_SCANNER_TUTORIAL_KEY =
-  'critica_tutorial_seen_fact_scanner_first_node'
+// ── Shared palette (matches Logic Thread) ────────────────────
+const C = {
+  pageBg:      '#2D0909',
+  board:       '#D4A86A',
+  canvas:      '#E8D5B0',
+  cardPaper:   '#FFFBF0',
+  cardBdrIdle: '#C9A06A',
+  btnGold:     '#FFDFA7',
+  btnDark:     '#432818',
+  btnGoldBdr:  '#8C5A3C',
+  textDark:    '#1C0800',
+  textMid:     '#8C5A3C',
+  textLight:   '#C49A5A',
+  textMuted:   '#A07850',
+  accentRed:   '#800020',
+  panel:       '#CBA070',
+} as const
+
+const CRAAP_TABS = ['CURRENCY', 'RELEVANCE', 'AUTHORITY', 'ACCURACY', 'PURPOSE']
+
+const CRITERION_QUESTIONS: Record<string, string> = {
+  CURRENCY:  'Is the information timely and up-to-date?',
+  RELEVANCE: 'Does the information relate to your topic?',
+  AUTHORITY: 'Who is the source? Are they qualified?',
+  ACCURACY:  'Is the information supported by evidence?',
+  PURPOSE:   'Why does this information exist?',
+}
 
 const TUTORIAL_STEPS = [
-  {
-    label: 'Overview',
-    code: 'TUT-FS-001',
-    text: 'Fact Scanner gives you a passage containing structural or factual flaws, unsupported claims, logical errors, or false statements. Your job is to identify and mark the flawed sentences before they corrupt the argument.',
-    board: 'overview',
-    notes: [
-      'Teal = clean sentence',
-      'Strikethrough = detected flaw',
-      'Scan carefully - flaws are subtle',
-    ],
-  },
-  {
-    label: 'Read Carefully',
-    code: 'TUT-FS-002',
-    text: 'Read the passage sentence by sentence. Ask: Is this claim supported? Does it contradict something earlier? Is it an overgeneralization? Flaws are often hidden in absolute language "always," "never," "all," "none."',
-    board: 'patterns',
-    notes: [
-      'Watch for "all"/"never"/"always"',
-      'Unsupported = a flaw',
-      'Context matters - read fully',
-    ],
-  },
-  {
-    label: 'Mark Flaws',
-    code: 'TUT-FS-003',
-    text: "Click any sentence in the passage you believe contains a flaw it will be quarantined with a red underline. Click it again to unmark. A flaw counter on the right panel tracks how many you've flagged. You must find all flaws",
-    board: 'marked',
-    notes: [
-      'Red underline = flagged flaw',
-      'Click again to unflag',
-      'Counter updates in real time',
-    ],
-  },
-  {
-    label: 'Submit Scan',
-    code: 'TUT-FS-004',
-    text: "When you've flagged all suspected flaws, hit Submit Scan. Correctly identified flaws turn teal. Missed flaws are highlighted in amber. False positives (correct sentences you flagged) are shown in gray.",
-    board: 'results',
-    notes: [
-      'Teal = correct flag',
-      'Amber = missed flag',
-      'Gray = false positive',
-    ],
-  },
+  { label: 'Overview',       code: 'TUT-FS-001', text: 'Fact Scanner gives you a passage containing flaws, unsupported claims, or false statements. Identify and quarantine the flawed sentences.',    notes: ['Beige = unscanned', 'Red border = quarantined', 'Scan carefully'] },
+  { label: 'Read Carefully', code: 'TUT-FS-002', text: 'Read each sentence. Ask: Is this claim supported? Does it contradict evidence? Watch for absolute language: "always," "never," "all," "none."', notes: ['Watch for absolutes', 'Unsupported = flaw', 'Context matters'] },
+  { label: 'Mark Flaws',     code: 'TUT-FS-003', text: 'Click a sentence you believe is flawed. The right panel shows the SCAN AND QUARANTINE button. Click it to evaluate your selection.',              notes: ['Select sentence first', 'Then click button', 'Counter updates live'] },
+  { label: 'Submit Report',  code: 'TUT-FS-004', text: "When you've quarantined all flaws, hit Submit Report. Stats show your attempts, flaws found, and hints used.",                                   notes: ['Attempts = total taps', 'Flaws found = correct', 'Hints used = scaffold'] },
 ] as const
 
-// ── Styles ──────────────────────────────────────
-const F = "'Courier New', Courier, monospace"
-
-const S = {
-  stamp: {
-    display:       'inline-block' as const,
-    border:        '2px solid #888',
-    padding:       '3px 14px',
-    fontSize:      10,
-    fontWeight:    700,
-    letterSpacing: '0.15em',
-    color:         '#aaa',
-    marginBottom:  12,
-    fontFamily:    F,
-  } as React.CSSProperties,
-  btnPrimary: {
-    padding:       '10px 24px',
-    background:    '#f0ece4',
-    border:        '2px solid #888',
-    borderRadius:  2,
-    color:         '#111',
-    fontFamily:    F,
-    fontSize:      11,
-    fontWeight:    700,
-    cursor:        'pointer',
-    letterSpacing: '0.08em',
-  } as React.CSSProperties,
-  btnSm: {
-    padding:      '7px 16px',
-    background:   'transparent',
-    border:       '1px solid #555',
-    borderRadius: 2,
-    color:        '#aaa',
-    fontFamily:   F,
-    fontSize:     10,
-    fontWeight:   700,
-    cursor:       'pointer',
-  } as React.CSSProperties,
-  tutorialBtn: {
-    padding:       '7px 14px',
-    background:    '#2b2b2b',
-    border:        '1px solid #555',
-    borderRadius:  2,
-    color:         '#f0ece4',
-    fontFamily:    F,
-    fontSize:      10,
-    fontWeight:    700,
-    letterSpacing: '0.08em',
-    cursor:        'pointer',
-  } as React.CSSProperties,
+// ── Shared button styles (same as Logic Thread) ──────────────
+const btnPrimary: React.CSSProperties = {
+  padding: '10px 24px', background: C.btnGold,
+  border: `2px solid ${C.btnGoldBdr}`, borderRadius: 10,
+  color: C.textDark, fontFamily: FONT, fontSize: 11,
+  fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em',
+}
+const btnSm: React.CSSProperties = {
+  padding: '7px 16px', background: 'transparent',
+  border: `1px solid ${C.textMid}`, borderRadius: 2,
+  color: C.textLight, fontFamily: FONT, fontSize: 10,
+  fontWeight: 700, cursor: 'pointer',
+}
+const stampS: React.CSSProperties = {
+  display: 'inline-block', border: `2px solid ${C.textMid}`,
+  padding: '3px 14px', fontSize: 10, fontWeight: 700,
+  letterSpacing: '0.15em', color: C.textMid,
+  marginBottom: 12, fontFamily: FONT,
 }
 
-// ── CRAAP criterion color map ────────────────────
-const CRITERION_COLOR: Record<string, string> = {
-  CURRENCY:   '#3a7bd5',
-  RELEVANCE:  '#8e44ad',
-  AUTHORITY:  '#c0392b',
-  ACCURACY:   '#16a085',
-  PURPOSE:    '#d35400',
-}
-
-function FactScannerTutorialPopup({
-  open,
-  step,
-  onBack,
-  onNext,
-  onClose,
-  onStart,
-}: {
-  open: boolean
-  step: number
-  onBack: () => void
-  onNext: () => void
-  onClose: () => void
-  onStart: () => void
+// ── Tutorial ─────────────────────────────────────────────────
+function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
+  open: boolean; step: number
+  onBack: () => void; onNext: () => void
+  onClose: () => void; onStart: () => void
 }) {
   if (!open) return null
-
   const current = TUTORIAL_STEPS[step]
-  const tutorialCode = `TUT-FS-${String(step + 1).padStart(3, '0')}`
   const isFirst = step === 0
-  const isLast = step === TUTORIAL_STEPS.length - 1
+  const isLast  = step === TUTORIAL_STEPS.length - 1
 
-  const navItem = (label: string, index: number) => {
-    const complete = index < step
-    const active = index === step
-
-    return (
-      <div
-        key={label}
-        style={{
-          width: 156,
-          height: 76,
-          border: '1px solid #777',
-          background: complete ? '#b9dfbf' : active ? '#f8f7f3' : '#c9c7c2',
-          color: '#111',
-          boxShadow: active ? '0 3px 0 rgba(0,0,0,0.45)' : 'none',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
-          textAlign: 'center',
-          fontFamily: F,
-          fontSize: 12,
-          fontWeight: 700,
-        }}
-      >
-        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
-          <div style={{
-            width: 24,
-            height: 24,
-            borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? '#ece7dc' : '#dbd8d2',
-            color: complete ? '#fff' : '#111',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 11,
-            fontWeight: 700,
-          }}>
-            {complete ? '✓' : index + 1}
-          </div>
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
+      <div style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, boxShadow: '0 18px 44px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        {/* header */}
+        <div style={{ background: C.pageBg, padding: '12px 24px', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: C.canvas }}>CRITICA — FIELD BRIEFING</span>
+          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: C.canvas }}>{current.code}</span>
         </div>
-        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
-      </div>
-    )
-  }
 
-  const renderBoard = () => {
-    if (current.board === 'overview') {
-      return (
-        <div style={{ padding: '18px 16px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 10 }}>
-            PASSAGE WITH FLAWS
-          </div>
-          <div style={{ fontFamily: F, fontSize: 16, lineHeight: 1.35, color: '#222' }}>
-            Critical reading builds skills.
-            <span style={{ color: '#1f8fcb', fontWeight: 700 }}> Evidence must be verified.</span>
-            <span style={{ color: '#c23b3b', textDecoration: 'line-through', textDecorationThickness: 2 }}> All sources online are reliable.</span>
-            Analysis strengthens arguments.
-          </div>
-        </div>
-      )
-    }
-
-    if (current.board === 'patterns') {
-      return (
-        <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
-            FLAW PATTERNS TO WATCH
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              ['Overgeneralization:', ' "All studies agree that..."'],
-              ['Unsupported Claim:', ' "This is obviously true"'],
-              ['False Fact:', ' "A statement that contradicts known evidence."'],
-            ].map(([label, example]) => (
-              <div key={label} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '4px 6px',
-                background: '#c9c7c2',
-                border: '1px solid #8c8c8c',
-                fontFamily: F,
-                fontSize: 10,
-                color: '#222',
+        <div style={{ padding: '28px 28px 24px' }}>
+          {/* step nav */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
+            {TUTORIAL_STEPS.map((s, i) => (
+              <div key={s.label} style={{
+                flex: 1, padding: '8px 4px', textAlign: 'center',
+                background: i < step ? '#b9dfbf' : i === step ? C.cardPaper : C.board,
+                border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3,
+                fontFamily: FONT, fontSize: 11, fontWeight: 700,
+                color: i < step ? '#fff' : C.textDark,
               }}>
-                <span style={{ fontWeight: 700 }}>{label}</span>
-                <span style={{ fontWeight: 400 }}>{example}</span>
+                {i < step ? '✓' : i + 1}. {s.label}
               </div>
             ))}
           </div>
-        </div>
-      )
-    }
 
-    if (current.board === 'marked') {
-      return (
-        <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
-            MARKED FLAW
-          </div>
-          <div style={{ fontFamily: F, fontSize: 16, lineHeight: 1.4, color: '#b23b3b', fontWeight: 700, textDecoration: 'underline', textDecorationThickness: 3, textUnderlineOffset: 4, marginBottom: 18 }}>
-            All online sources are completely reliable.
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: F, fontSize: 12, color: '#222', fontWeight: 700 }}>
-            <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#b03a3a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>2</div>
-            FLAWS FLAGGED SO FAR
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: '#333', marginBottom: 12 }}>
-          SCAN RESULTS
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingLeft: 8 }}>
-          {[
-            ['#1da7df', 'Correctly flagged flaw'],
-            ['#caa300', 'Missed flaw (not flagged)'],
-            ['#c7d1c9', 'False positive (clean sentence flagged)'],
-          ].map(([color, label]) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: F, fontSize: 10, color: '#2d2d2d', fontWeight: 700 }}>
-              <div style={{ width: 12, height: 12, background: color, border: '1px solid #dcdcdc' }} />
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const primaryLabel = isLast ? 'START TRAINING →' : 'NEXT →'
-  const secondaryLabel = isFirst ? 'EXIT TUTORIAL' : 'BACK'
-
-  return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(0,0,0,0.48)',
-      zIndex: 150,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 20,
-      fontFamily: F,
-    }}>
-      <div style={{ width: '100%', maxWidth: 840, background: '#d4d1cb', border: '1px solid #5f5d58', boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: '#111' }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: '#111' }}>{tutorialCode}</div>
-        </div>
-
-        <div style={{ background: '#d7d7d5', border: '1px solid #65635d', borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: '#d7d7d5', borderLeft: '1px solid #65635d', borderTop: '1px solid #65635d' }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
-            <div style={{ width: 120, textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, border: '2px solid #6c6a64', background: '#fff', margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 34, height: 34, background: '#333', borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: '#d8d8d8' }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: '#d8d8d8' }} />
+          {/* speech bubble */}
+          <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
+            <div style={{ flexShrink: 0, textAlign: 'center', width: 80 }}>
+              <div style={{ width: 48, height: 48, border: `2px solid ${C.btnGoldBdr}`, background: C.cardPaper, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
+                <div style={{ width: 30, height: 30, background: C.btnDark, borderRadius: 3, position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderRadius: '50%', background: C.canvas }} />
+                  <div style={{ position: 'absolute', bottom: 5, left: 4, right: 4, height: 8, borderRadius: '8px 8px 3px 3px', background: C.canvas }} />
                 </div>
               </div>
-              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: '#111' }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: '#222', letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
+              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: C.textDark }}>AGENT CRIT</div>
             </div>
-
-            <div style={{ position: 'relative', flex: 1, background: '#fff', border: '1px solid #7b776f', boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '12px 16px', minHeight: 96 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: '#fff', borderLeft: '1px solid #7b776f', borderBottom: '1px solid #7b776f', transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.35, color: '#222', whiteSpace: 'pre-line' }}>{current.text}</div>
+            <div style={{ flex: 1, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 5, padding: '14px 18px', position: 'relative' }}>
+              <div style={{ position: 'absolute', left: -9, top: 18, width: 16, height: 16, background: C.cardPaper, borderLeft: `1px solid ${C.btnGoldBdr}`, borderBottom: `1px solid ${C.btnGoldBdr}`, transform: 'rotate(45deg)' }} />
+              <p style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.65, color: C.textDark, margin: 0 }}>{current.text}</p>
             </div>
           </div>
 
-          <div style={{ border: '1px solid #7b776f', background: '#e7e4de', padding: 10, marginBottom: 28 }}>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-              {TUTORIAL_STEPS.map((stepItem, index) => navItem(stepItem.label, index))}
-            </div>
+          {/* notes */}
+          <div style={{ background: C.board, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '12px 16px', marginBottom: 22 }}>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 8, letterSpacing: '0.1em' }}>QUICK NOTES</div>
+            {current.notes.map((n, i) => (
+              <div key={i} style={{ fontFamily: FONT, fontSize: 12, color: C.textDark, lineHeight: 1.6 }}>• {n}</div>
+            ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: '#e7e4de', border: '1px solid #7b776f', padding: 14 }}>
-            <div style={{ flex: 1, minHeight: 202, background: '#fff', border: '1px solid #9a968f', padding: 18, position: 'relative' }}>
-              {renderBoard()}
-            </div>
-
-            <div style={{ width: 112, background: '#fff', border: '1px solid #9a968f', padding: '10px 10px 12px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: '#222', marginBottom: 10 }}>QUICK NOTES</div>
-              {current.notes.map((note, index) => (
-                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: '#333' }}>
-                  {note}
-                  {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ ...S.btnSm, minWidth: 160, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
-              {secondaryLabel}
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <button onClick={isFirst ? onClose : onBack} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
+              {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
             </button>
-            <button onClick={isLast ? onStart : onNext} style={{ ...S.btnSm, minWidth: 170, background: '#d8d4cc', color: '#111', border: '1px solid #7b776f', fontSize: 11, letterSpacing: '0.06em' }}>
-              {primaryLabel}
+            <button onClick={isLast ? onStart : onNext} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
+              {isLast ? 'START TRAINING →' : 'NEXT →'}
             </button>
           </div>
         </div>
@@ -375,65 +161,54 @@ function FactScannerTutorialPopup({
   )
 }
 
-
-// ── Main component ───────────────────────────────
+// ── Main component ────────────────────────────────────────────
 export default function FactScannerPage() {
   const router = useRouter()
   const params = useParams()
   const nodeId = params.nodeId as string
 
-  // core state
-  const [phase, setPhase]       = useState<Phase>('loading')
-  const [factNode, setFactNode] = useState<FactNodeData | null>(null)
-  const [errorMsg, setErrorMsg] = useState('')
+  const [phase,      setPhase]      = useState<Phase>('loading')
+  const [factNode,   setFactNode]   = useState<FactNodeData | null>(null)
+  const [errorMsg,   setErrorMsg]   = useState('')
 
-  // session state
-  const [sessionQueue,    setSessionQueue]    = useState<string[]>([])
-  const [questionIndex,   setQuestionIndex]   = useState(0)
-  const [sessionStartId,  setSessionStartId]  = useState<string | null>(null)
-  const [savedNextNode,   setSavedNextNode]   = useState<string | null>(null)
-  const [savedStreak,     setSavedStreak]     = useState<number | null>(null)
+  const [sessionQueue,   setSessionQueue]   = useState<string[]>([])
+  const [questionIndex,  setQuestionIndex]  = useState(0)
+  const [sessionStartId, setSessionStartId] = useState<string | null>(null)
+  const [savedNextNode,  setSavedNextNode]  = useState<string | null>(null)
+  const [savedStreak,    setSavedStreak]    = useState<number | null>(null)
 
-  // task state
-  const [quarantined, setQuarantined]   = useState<string[]>([])
-  const [flawReasons, setFlawReasons]   = useState<Record<string, string>>({})
-  const [evaluating, setEvaluating]     = useState<string | null>(null)
-  const [wrongs, setWrongs]             = useState(0)
-  const [masteryData, setMasteryData]   = useState<Record<string, unknown> | null>(null)
-  const [submitting, setSubmitting]     = useState(false)
+  const [selected,    setSelected]    = useState<string | null>(null)
+  const [quarantined, setQuarantined] = useState<string[]>([])
+  const [flawReasons, setFlawReasons] = useState<Record<string, string>>({})
+  const [evaluating,  setEvaluating]  = useState(false)
+  const [attempts,    setAttempts]    = useState(0)
+  const [flawsFound,  setFlawsFound]  = useState(0)
+  const [hintsUsed,   setHintsUsed]   = useState(0)
+  const [masteryData, setMasteryData] = useState<Record<string, unknown> | null>(null)
+  const [submitting,  setSubmitting]  = useState(false)
 
-  // feedback state
-  const [fbText, setFbText]   = useState('')
-  const [drawer, setDrawer]   = useState(false)
+  const [fbText,  setFbText]  = useState('')
+  const [drawer,  setDrawer]  = useState(false)
 
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
 
-
-  // hint overlay
-  const [hintOverlay, setHintOverlay]         = useState(false)
+  const [hintOverlay,     setHintOverlay]     = useState(false)
   const [hintOverlayText, setHintOverlayText] = useState('')
   const [hintOverlayTier, setHintOverlayTier] = useState(0)
 
-  // timer
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
 
-  // ── Load a question inline ──────────────────
+  // ── Load question ──────────────────────────────────────────
   const loadQuestion = useCallback(async (targetNodeId: string) => {
     setPhase('loading')
     try {
       const d = await apiFetch(`/nodes/fact-scanner/${targetNodeId}/`)
       setFactNode(d)
-      setQuarantined([])
-      setFlawReasons({})
-      setEvaluating(null)
-      setWrongs(0)
-      setFbText('')
-      setDrawer(false)
-      setHintOverlay(false)
-      setHintOverlayText('')
-      setHintOverlayTier(0)
+      setSelected(null); setQuarantined([]); setFlawReasons({})
+      setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
+      setFbText(''); setDrawer(false); setHintOverlay(false)
       setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
@@ -441,57 +216,40 @@ export default function FactScannerPage() {
     }
   }, [])
 
-  // ── Load + session init ────────────────────
+  // ── Init ──────────────────────────────────────────────────
   useEffect(() => {
     const start = nodeId
     setSessionStartId(start)
     const saved = loadSession('fact_scanner', start)
-
     if (saved && saved.sessionQueue.length === 5) {
-      setSessionQueue(saved.sessionQueue)
-      setQuestionIndex(saved.questionIndex)
+      setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
       if (saved.next_node) setSavedNextNode(saved.next_node)
       if (saved.streak !== undefined) setSavedStreak(saved.streak)
-      
       const activeId = saved.sessionQueue[saved.questionIndex] ?? start
       apiFetch(`/nodes/fact-scanner/${activeId}/`)
-        .then((d: FactNodeData) => {
-          setFactNode(d)
-          setPhase('task')
-        })
+        .then((d: FactNodeData) => { setFactNode(d); setPhase('task') })
         .catch((e: any) => {
-          if (e?.status === 401)               { router.push('/auth');      return }
-          if (e?.error === 'Node is locked.')  { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.')
-          setPhase('error')
+          if (e?.status === 401) { router.push('/auth'); return }
+          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+          setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
         })
     } else {
       apiFetch(`/nodes/fact-scanner/${start}/`)
         .then((d: FactNodeData) => {
-          setFactNode(d)
-          setPhase('micro_lesson')
-          
+          setFactNode(d); setPhase('micro_lesson')
           apiFetch('/progression/dashboard/')
             .then((prog: any) => {
               const unlocked: string[] = prog.unlocked_nodes ?? []
               const queue = buildSessionQueue('fact_scanner', start, unlocked)
-              setSessionQueue(queue)
-              setQuestionIndex(0)
-              saveSession('fact_scanner', start, {
-                sessionQueue: queue,
-                questionIndex: 0,
-              })
+              setSessionQueue(queue); setQuestionIndex(0)
+              saveSession('fact_scanner', start, { sessionQueue: queue, questionIndex: 0 })
             })
-            .catch(() => {
-              setSessionQueue([start])
-              setQuestionIndex(0)
-            })
+            .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
         })
         .catch((e: any) => {
-          if (e?.status === 401)               { router.push('/auth');      return }
-          if (e?.error === 'Node is locked.')  { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.')
-          setPhase('error')
+          if (e?.status === 401) { router.push('/auth'); return }
+          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+          setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
         })
     }
   }, [nodeId, router])
@@ -501,49 +259,33 @@ export default function FactScannerPage() {
     const seen = localStorage.getItem(FACT_SCANNER_TUTORIAL_KEY)
     if (seen) return
     localStorage.setItem(FACT_SCANNER_TUTORIAL_KEY, '1')
-    setTutorialStep(0)
-    setTutorialOpen(true)
+    setTutorialStep(0); setTutorialOpen(true)
   }, [phase])
 
-  // ── Hint ───────────────────────────────────
-  const fetchHint = useCallback(async (
-    isInactivity = false,
-  ) => {
+  // ── Hint ─────────────────────────────────────────────────
+  const fetchHint = useCallback(async (isInactivity = false) => {
     const activeNodeId = factNode?.node_id ?? nodeId
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${activeNodeId}/feedback/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            sentence_id:        '',
-            inactivity_seconds: isInactivity ? 61 : inactiveRef.current,
-          }),
-        },
+        { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: isInactivity ? 61 : inactiveRef.current }) },
       )
-      const text = res.hint
-        || res.explanation
-        || 'Re-read the micro-lesson and apply the criterion to each sentence carefully.'
-      setHintOverlayText(text)
+      setHintOverlayText(res.hint || res.explanation || 'Re-read the micro-lesson carefully.')
       setHintOverlayTier(res.hint_tier ?? 0)
-      setHintOverlay(true)
+      setHintOverlay(true); setHintsUsed(h => h + 1)
     } catch {
-      setHintOverlayText(
-        'Re-read the micro-lesson and apply the criterion to each sentence carefully.')
+      setHintOverlayText('Re-read the micro-lesson and apply the criterion to each sentence.')
       setHintOverlay(true)
     }
   }, [nodeId, factNode])
 
-  // ── Timer ──────────────────────────────────
+  // ── Timer ────────────────────────────────────────────────
   const resetTimer = useCallback(() => {
     inactiveRef.current = 0
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       inactiveRef.current += 1
-      if (inactiveRef.current >= 60) {
-        clearInterval(timerRef.current!)
-        fetchHint(true)
-      }
+      if (inactiveRef.current >= 60) { clearInterval(timerRef.current!); fetchHint(true) }
     }, 1000)
   }, [fetchHint])
 
@@ -552,712 +294,399 @@ export default function FactScannerPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [phase, resetTimer])
 
-  // ── Feedback ───────────────────────────────
-  const callFeedback = useCallback(async (
-    sentence_id: string,
-    inactivity:  boolean,
-  ) => {
-    const activeNodeId = factNode?.node_id ?? nodeId
-    try {
-      const res = await apiFetch(
-        `/nodes/fact-scanner/${activeNodeId}/feedback/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            sentence_id,
-            inactivity_seconds: inactivity ? 61 : inactiveRef.current,
-          }),
-        },
-      )
-      setFbText(res.explanation ?? 'That sentence does not violate the criterion being tested.')
-      setDrawer(true)
-    } catch {
-      setFbText('That sentence does not violate the CRAAP criterion. Re-read the micro-lesson.')
-      setDrawer(true)
-    }
-  }, [nodeId, factNode])
-
-  // ── Sentence tap ───────────────────────────
-  const handleSentenceTap = async (
-    sentence_id: string,
-  ) => {
-    if (!factNode) return
-    if (evaluating) return
-    if (quarantined.includes(sentence_id)) return
-    if (drawer) return
-
+  // ── Select sentence ───────────────────────────────────────
+  const handleSelectSentence = (sentence_id: string) => {
+    if (!factNode || evaluating || quarantined.includes(sentence_id) || drawer) return
     resetTimer()
-    setEvaluating(sentence_id)
+    setSelected(prev => prev === sentence_id ? null : sentence_id)
+  }
 
+  // ── Scan and quarantine ───────────────────────────────────
+  const handleScanAndQuarantine = async () => {
+    if (!factNode || !selected || evaluating) return
+    resetTimer(); setEvaluating(true); setAttempts(a => a + 1)
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${factNode.node_id}/evaluate-sentence/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ sentence_id }),
-        },
+        { method: 'POST', body: JSON.stringify({ sentence_id: selected }) },
       )
-
       if (res.result === 'correct') {
-        setQuarantined(prev => [...prev, sentence_id])
-        setFlawReasons(prev => ({
-          ...prev,
-          [sentence_id]: res.flaw_reason,
-        }))
+        setQuarantined(prev => [...prev, selected])
+        setFlawReasons(prev => ({ ...prev, [selected]: res.flaw_reason }))
+        setFlawsFound(f => f + 1); setSelected(null)
       } else {
-        const nextWrongs = wrongs + 1
-        setWrongs(nextWrongs)
-        await callFeedback(sentence_id, false)
-        if (nextWrongs >= 3) fetchHint()
+        try {
+          const fb = await apiFetch(
+            `/nodes/fact-scanner/${factNode.node_id}/feedback/`,
+            { method: 'POST', body: JSON.stringify({ sentence_id: selected, inactivity_seconds: inactiveRef.current }) },
+          )
+          setFbText(fb.explanation ?? 'That sentence does not violate the criterion.')
+        } catch { setFbText('That sentence does not violate the CRAAP criterion.') }
+        setDrawer(true); setSelected(null)
       }
-    } catch {
-      setErrorMsg('Evaluation failed.')
-    } finally {
-      setEvaluating(null)
-    }
+    } catch { setErrorMsg('Evaluation failed.') }
+    finally { setEvaluating(false) }
   }
 
-  // ── Submit mastery ─────────────────────────
+  // ── Submit mastery ────────────────────────────────────────
   const handleSubmitMastery = async () => {
     if (!factNode || submitting) return
     setSubmitting(true)
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${factNode.node_id}/mastery/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            quarantined_ids: quarantined,
-            save_progression: false,
-          }),
-        },
+        { method: 'POST', body: JSON.stringify({ quarantined_ids: quarantined, save_progression: false }) },
       )
       if (res.status === 'mastered') {
         const nextIdx = questionIndex + 1
-
         if (nextIdx < sessionQueue.length) {
-          const newNextNode = savedNextNode
-          const newStreak = savedStreak
-
-          if (sessionStartId) {
-            saveSession('fact_scanner', sessionStartId, {
-              sessionQueue,
-              questionIndex: nextIdx,
-              next_node: newNextNode || undefined,
-              streak: newStreak !== null ? newStreak : undefined,
-            })
-          }
-          setQuestionIndex(nextIdx)
-          loadQuestion(sessionQueue[nextIdx])
+          if (sessionStartId) saveSession('fact_scanner', sessionStartId, {
+            sessionQueue, questionIndex: nextIdx,
+            next_node: savedNextNode || undefined,
+            streak: savedStreak !== null ? savedStreak : undefined,
+          })
+          setQuestionIndex(nextIdx); loadQuestion(sessionQueue[nextIdx])
         } else {
           let finalRes = res
           if (sessionStartId) {
             finalRes = await apiFetch(
               `/nodes/fact-scanner/${sessionStartId}/mastery/`,
-              {
-                method: 'POST',
-                body: JSON.stringify({
-                  commit_only: true,
-                }),
-              },
+              { method: 'POST', body: JSON.stringify({ commit_only: true }) },
             )
           }
-
-          const newNextNode = savedNextNode || finalRes.next_node
-          const newStreak = savedStreak !== null ? savedStreak : (finalRes.streak ?? null)
-
           if (sessionStartId) clearSession('fact_scanner', sessionStartId)
           setMasteryData({
-            next_node: newNextNode,
-            streak: newStreak,
+            next_node: savedNextNode || finalRes.next_node,
+            streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
           })
           setPhase('mastery')
         }
       }
     } catch (e) {
-      setFbText(
-        (e as any)?.status === 'incomplete'
-          ? 'Some flawed sentences were missed. Keep scanning.'
-          : 'Submission failed. Please try again.',
-      )
+      setFbText((e as any)?.status === 'incomplete'
+        ? 'Some flawed sentences were missed. Keep scanning.'
+        : 'Submission failed. Please try again.')
       setDrawer(true)
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
-  const openTutorial = () => {
-    setTutorialStep(0)
-    setTutorialOpen(true)
-  }
+  // ── Loading ───────────────────────────────────────────────
+  if (phase === 'loading') return (
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.textLight, fontSize: 14, letterSpacing: '0.1em' }}>
+      LOADING NODE...
+    </div>
+  )
 
-  const closeTutorial = () => setTutorialOpen(false)
+  if (phase === 'error') return (
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
+      <p style={{ color: '#ff8888', fontSize: 14 }}>{errorMsg}</p>
+      <button style={btnSm} onClick={() => router.push('/dashboard')}>← DASHBOARD</button>
+    </div>
+  )
 
-  const nextTutorialStep = () => {
-    setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
-  }
-
-  const prevTutorialStep = () => {
-    setTutorialStep(prev => Math.max(prev - 1, 0))
-  }
-
-  
-
-  // ── Phase: loading ─────────────────────────
-  if (phase === 'loading') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#6b6b6b',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: F, color: '#ddd',
-        fontSize: 13, letterSpacing: '0.1em',
-      }}>
-        LOADING NODE...
+  // ── Micro lesson ──────────────────────────────────────────
+  if (phase === 'micro_lesson') return (
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
+      <div style={{ maxWidth: 660, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
+        <div style={stampS}>FACT SCANNER — MICRO-LESSON</div>
+        <div style={{ display: 'inline-block', background: C.btnGold, color: C.textDark, fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', padding: '4px 14px', borderRadius: 3, marginBottom: 16 }}>
+          CRAAP — {factNode!.craap_criterion}
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 8px', fontFamily: FONT }}>{factNode!.title}</h2>
+        <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: FONT }}>{factNode!.focus}</p>
+        <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
+        <p style={{ fontSize: 14, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT }}>{factNode!.micro_lesson_text}</p>
+        <button onClick={() => setPhase(factNode!.deep_dive_required ? 'deep_dive' : 'task')} style={btnPrimary}>CONTINUE →</button>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── Phase: error ───────────────────────────
-  if (phase === 'error') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#1e1e1e',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        fontFamily: F, gap: 16,
-      }}>
-        <p style={{ color: '#ff6b6b', fontSize: 13 }}>
-          {errorMsg}
+  // ── Deep dive ─────────────────────────────────────────────
+  if (phase === 'deep_dive') return (
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
+      <div style={{ maxWidth: 720, width: '100%', background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
+        <div style={stampS}>DEEP DIVE READING</div>
+        <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>Read the full article carefully before the task unlocks.</p>
+        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
+          {factNode!.reading_passage}
         </p>
-        <button style={S.btnSm}
-          onClick={() => router.push('/dashboard')}>
-          ← DASHBOARD
-        </button>
+        <button onClick={() => setPhase('task')} style={btnPrimary}>I HAVE FINISHED READING →</button>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── Phase: micro_lesson ────────────────────
-  if (phase === 'micro_lesson') {
-    const color = CRITERION_COLOR[
-      factNode!.craap_criterion] ?? '#888'
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#6b6b6b',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40, fontFamily: F,
-      }}>
-        <div style={{
-          maxWidth: 640, width: '100%',
-          background: '#2b2b2b',
-          border: '1px solid #444',
-          borderRadius: 4, padding: 48,
-        }}>
-          <div style={S.stamp}>MICRO-LESSON</div>
-
-          {/* CRAAP criterion badge */}
-          <div style={{
-            display: 'inline-block',
-            background: color,
-            color: '#fff',
-            fontFamily: F,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.18em',
-            padding: '4px 14px',
-            borderRadius: 2,
-            marginBottom: 14,
-          }}>
-            CRAAP — {factNode!.craap_criterion}
-          </div>
-
-          <h2 style={{
-            fontSize: 20, fontWeight: 700,
-            color: '#f0ece4', margin: '0 0 6px',
-            fontFamily: F,
-          }}>
-            {factNode!.title}
-          </h2>
-          <p style={{
-            fontSize: 12, color: '#aaa',
-            margin: '0 0 16px', fontFamily: F,
-          }}>
-            {factNode!.focus}
-          </p>
-          <hr style={{
-            border: 'none',
-            borderTop: '1px solid #444',
-            margin: '16px 0',
-          }} />
-          <p style={{
-            fontSize: 13, lineHeight: 1.85,
-            color: '#ccc', margin: '0 0 32px',
-            fontFamily: F,
-          }}>
-            {factNode!.micro_lesson_text}
-          </p>
-          <button
-            style={S.btnPrimary}
-            onClick={() => setPhase(
-              factNode!.deep_dive_required
-                ? 'deep_dive' : 'task',
-            )}
-          >
-            Continue →
-          </button>
+  // ── Mastery ───────────────────────────────────────────────
+  if (phase === 'mastery') return (
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
+      <div style={{ maxWidth: 480, width: '100%', background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 4, padding: 52, textAlign: 'center' }}>
+        <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94', fontSize: 16, padding: '8px 24px' }}>
+          ✓ REPORT FILED
+        </div>
+        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: FONT }}>{factNode!.title}</h2>
+        <p style={{ fontSize: 12, color: C.textLight, margin: '0 0 28px', fontFamily: FONT }}>Streak: {String(masteryData?.streak ?? 0)} days</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {!!masteryData?.next_node && (
+            <button style={btnPrimary} onClick={() => router.push(`/nodes/fact-scanner/${masteryData.next_node}`)}>NEXT NODE →</button>
+          )}
+          <button style={btnSm} onClick={() => router.push('/dashboard')}>← DASHBOARD</button>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // ── Phase: deep_dive ───────────────────────
-  if (phase === 'deep_dive') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#6b6b6b',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center',
-        padding: 40, fontFamily: F,
-      }}>
-        <div style={{
-          maxWidth: 700, width: '100%',
-          background: '#2b2b2b',
-          border: '1px solid #444',
-          borderRadius: 4, padding: 48,
-        }}>
-          <div style={S.stamp}>DEEP DIVE READING</div>
-          <p style={{
-            fontSize: 11, color: '#888',
-            margin: '0 0 20px', lineHeight: 1.7,
-            fontFamily: F,
-          }}>
-            Read the full article carefully before
-            the task unlocks.
-          </p>
-          <p style={{
-            fontSize: 14, lineHeight: 1.95,
-            color: '#ddd', background: '#222',
-            border: '1px solid #444',
-            borderRadius: 4, padding: 28,
-            margin: '0 0 32px', fontFamily: F,
-          }}>
-            {factNode!.reading_passage}
-          </p>
-          <button
-            style={S.btnPrimary}
-            onClick={() => setPhase('task')}
-          >
-            I have finished reading →
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Phase: mastery ─────────────────────────
-  if (phase === 'mastery') {
-    return (
-      <div style={{
-        minHeight: '100vh', background: '#1e1e1e',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'center', fontFamily: F,
-      }}>
-        <div style={{
-          maxWidth: 480, width: '100%',
-          background: '#0e1e0e',
-          border: '2px solid #4ddd94',
-          borderRadius: 4, padding: 52,
-          textAlign: 'center',
-        }}>
-          <div style={{
-            ...S.stamp,
-            color: '#4ddd94',
-            borderColor: '#4ddd94',
-            fontSize: 16, padding: '8px 24px',
-          }}>
-            ✓ REPORT FILED
-          </div>
-          <h2 style={{
-            fontSize: 20, color: '#4ddd94',
-            margin: '8px 0 16px', fontFamily: F,
-          }}>
-            {factNode!.title}
-          </h2>
-          <p style={{
-            fontSize: 12, color: '#aaa',
-            margin: '0 0 28px', fontFamily: F,
-          }}>
-            Streak: {String(masteryData?.streak ?? 0)} days
-          </p>
-          <div style={{
-            display: 'flex', gap: 12,
-            justifyContent: 'center',
-            flexWrap: 'wrap',
-          }}>
-            {!!masteryData?.next_node && (
-              <button
-                style={S.btnPrimary}
-                onClick={() =>
-                  router.push(
-                    `/nodes/fact-scanner/${masteryData.next_node}`,
-                  )
-                }
-              >
-                NEXT NODE →
-              </button>
-            )}
-            <button
-              style={S.btnSm}
-              onClick={() => router.push('/dashboard')}
-            >
-              ← DASHBOARD
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ── Phase: task ────────────────────────────
-  // Better: track total quarantined count
-  // Submit activates when at least 1 quarantined
-  // Backend validates the full set
+  // ── Task phase ────────────────────────────────────────────
   const canSubmit = quarantined.length > 0
-
-  const criterionColor = CRITERION_COLOR[
-    factNode!.craap_criterion] ?? '#888'
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#686664',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: F,
+      background: C.pageBg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: FONT, padding: '20px 12px',
     }}>
+
+      {/* ── Fixed folder tabs (same as Logic Thread) ── */}
+      <div style={{
+        position: 'fixed', left: 0, top: '20%',
+        transform: 'translateY(-20%)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'flex-start', gap: 6, zIndex: 100,
+      }}>
+        <button
+          onClick={() => fetchHint()}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            fontFamily: FONT, whiteSpace: 'nowrap',
+            transition: 'background 0.15s',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
+        >
+          Hint
+        </button>
+        <button
+          onClick={() => {
+            if (sessionStartId && sessionQueue.length > 0) {
+              saveSession('fact_scanner', sessionStartId, {
+                sessionQueue, questionIndex,
+                next_node: savedNextNode || undefined,
+                streak: savedStreak !== null ? savedStreak : undefined,
+              })
+            }
+            router.push('/dashboard')
+          }}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            fontFamily: FONT, whiteSpace: 'nowrap',
+            transition: 'background 0.15s',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
+        >
+          End Session
+        </button>
+      </div>
+
+      {/* ── Main shell ── */}
       <div style={{
         display: 'flex', alignItems: 'stretch',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.55)',
-        borderRadius: 6,
+        boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
+        borderRadius: 6, overflow: 'hidden',
+        width: '100%', maxWidth: 980, minHeight: 600,
       }}>
 
-        {/* sidebar */}
+        {/* ── Left column: sentence cards ── */}
         <div style={{
-          width: 34, background: '#2b2b2b',
+          flex: 1, background: C.canvas,
           display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 0',
-          borderRadius: '6px 0 0 6px',
-          borderRight: '1px solid #1a1a1a',
+          borderRight: `2px solid ${C.cardBdrIdle}`,
         }}>
-          <button
-            onClick={() => fetchHint()}
-            style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#999',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: F, transition: 'color 0.15s',
-            }}
-            onMouseEnter={e =>
-              (e.currentTarget.style.color = '#eee')}
-            onMouseLeave={e =>
-              (e.currentTarget.style.color = '#999')}
-          >
-            HINT
-          </button>
-          <button
-            onClick={() => {
-              // Save progress before leaving
-              if (sessionStartId && sessionQueue.length > 0) {
-                saveSession('fact_scanner', sessionStartId, {
-                  sessionQueue,
-                  questionIndex,
-                  next_node: savedNextNode || undefined,
-                  streak: savedStreak !== null ? savedStreak : undefined,
-                })
-              }
-              router.push('/dashboard')
-            }}
-            style={{
-              writingMode: 'vertical-rl',
-              transform: 'rotate(180deg)',
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#666',
-              background: 'none', border: 'none',
-              cursor: 'pointer', padding: '10px 4px',
-              fontFamily: F, transition: 'color 0.15s',
-            }}
-            onMouseEnter={e =>
-              (e.currentTarget.style.color = '#aaa')}
-            onMouseLeave={e =>
-              (e.currentTarget.style.color = '#666')}
-          >
-            END SESSION
-          </button>
-        </div>
+          {/* top strip */}
+<div style={{
+  background: C.board,
+  borderBottom: `2px solid ${C.btnGoldBdr}`,
+  padding: '0',
+  display: 'flex',
+  flexDirection: 'column',
+}}>
+  {/* row 1: objective full width */}
+  <div style={{
+    padding: '12px 20px 10px',
+    borderBottom: `1px solid rgba(0,0,0,0.12)`,
+    textAlign: 'center',
+  }}>
+    <div style={{
+      display: 'inline-block',
+      border: `1.5px solid ${C.accentRed}`,
+      padding: '7px 24px',
+      fontSize: 13, fontWeight: 700,
+      letterSpacing: '0.12em',
+      background: 'rgba(255,255,255,0.35)',
+      fontFamily: FONT,
+    }}>
+      <span style={{ color: C.textMid }}>OBJECTIVE: </span>
+      <span style={{ color: C.accentRed }}>
+        IDENTIFY AND QUARANTINE THE FLAWED SENTENCE
+      </span>
+    </div>
+  </div>
 
-        {/* main panel */}
+  {/* row 2: meta controls */}
+  <div style={{
+    padding: '8px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  }}>
+    {/* difficulty pill */}
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7,
+      background: 'rgba(0,0,0,0.12)',
+      borderRadius: 20, padding: '5px 14px',
+    }}>
+      <div style={{
+        width: 9, height: 9, borderRadius: '50%',
+        background: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
+        flexShrink: 0,
+      }} />
+      <span style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+        color: C.btnDark, fontFamily: FONT,
+      }}>
+        LVL {factNode!.difficulty ?? nodeDifficulty(nodeId)} —{' '}
+        {DIFFICULTY_LABELS[factNode!.difficulty ?? nodeDifficulty(nodeId)]}
+      </span>
+    </div>
+
+    {/* right side: Q counter + tutorial */}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {sessionQueue.length > 0 && (
+        <span style={{
+          fontFamily: FONT, fontSize: 12, fontWeight: 700,
+          letterSpacing: '0.1em', color: C.btnDark,
+          background: 'rgba(0,0,0,0.1)',
+          borderRadius: 20, padding: '5px 14px',
+        }}>
+          Q {questionIndex + 1} / {sessionQueue.length}
+        </span>
+      )}
+      <button
+        onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
+        style={{
+          padding: '7px 18px',
+          background: C.btnGold,
+          border: `1.5px solid ${C.btnGoldBdr}`,
+          borderRadius: 8,
+          color: C.textDark, fontFamily: FONT,
+          fontSize: 11, fontWeight: 700,
+          letterSpacing: '0.08em', cursor: 'pointer',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+        }}
+      >
+        TUTORIAL
+      </button>
+    </div>
+  </div>
+
+  {/* progress bar */}
+  {sessionQueue.length > 0 && (
+    <div style={{ padding: '0 20px 10px' }}>
+      <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
         <div style={{
-          background: '#b8b3ab',
-          borderRadius: '0 6px 6px 0',
-          display: 'flex', flexDirection: 'column',
-          width: 740, overflow: 'hidden',
-        }}>
-
-          {/* banner */}
-          <div style={{
-            padding: '10px 20px 8px',
-            textAlign: 'center',
-            background: '#b8b3ab',
-          }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 10,
-              border: '1.5px solid #888',
-              padding: '5px 20px',
-              fontSize: 10, fontWeight: 700,
-              letterSpacing: '0.1em', color: '#333',
-              background: 'rgba(255,255,255,0.25)',
-              fontFamily: F,
-            }}>
-              <span style={{ color: '#444' }}>
-                OBJECTIVE:
-              </span>
-              <span style={{ color: '#b03030' }}>
-                IDENTIFY AND QUARANTINE THE
-                SENTENCE THAT VIOLATES
-              </span>
-              <span style={{
-                background: criterionColor,
-                color: '#fff',
-                padding: '1px 8px',
-                borderRadius: 2,
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: '0.12em',
-              }}>
-                {factNode!.craap_criterion}
-              </span>
-            </div>
-          </div>
-
-          {/* difficulty badge + question counter */}
-          <div style={{
-            padding: '6px 24px 6px',
-            display: 'flex', flexDirection: 'column', gap: 6,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              {/* difficulty badge */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
-                  flexShrink: 0,
-                }} />
-                <span style={{
-                  fontSize: 9, fontWeight: 700, letterSpacing: '0.12em',
-                  color: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
-                  fontFamily: F,
-                }}>
-                  LVL {factNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[factNode!.difficulty ?? nodeDifficulty(nodeId)]}
-                </span>
-              </div>
-              {/* question counter */}
-              {sessionQueue.length > 0 && (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
-                  color: '#555', fontFamily: F,
-                }}>
-                  Q {questionIndex + 1} / {sessionQueue.length}
-                </span>
-              )}
-            </div>
-            {sessionQueue.length > 0 && (
-              <div style={{ height: 6, background: '#e0ddd8', borderRadius: 3, overflow: 'hidden', position: 'relative', border: '1px solid #aaa' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${(questionIndex / sessionQueue.length) * 100}%`,
-                  background: '#2b2b2b',
-                  transition: 'width 0.3s ease-in-out'
-                }} />
-              </div>
-            )}
-          </div>
-
-          <div style={{ padding: '0 24px 4px', display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={openTutorial} style={S.tutorialBtn}>
-              Show tutorial
-            </button>
-          </div>
-
-          {/* progress */}
-          <div style={{
-            padding: '6px 24px 2px',
-            display: 'flex', gap: 8,
-            justifyContent: 'center',
-          }}>
-            {factNode!.article_sentences.map(s => (
-              <div key={s.sentence_id} style={{
-                width: 20, height: 6, borderRadius: 3,
-                background: quarantined.includes(
-                  s.sentence_id)
-                  ? '#cc3333'
-                  : evaluating === s.sentence_id
-                  ? '#f0a500'
-                  : '#888',
-                transition: 'background 0.3s',
-              }} />
-            ))}
-          </div>
-
-          {/* instruction */}
-          <div style={{
-            padding: '4px 24px 8px',
-            textAlign: 'center',
-            fontSize: 9, color: '#666',
-            fontFamily: F, letterSpacing: '0.1em',
-          }}>
-            {quarantined.length > 0
-              ? `${quarantined.length} SENTENCE${
-                  quarantined.length > 1 ? 'S' : ''
-                } QUARANTINED`
-              : 'TAP A SENTENCE TO EVALUATE IT'}
-          </div>
-
-          {/* article sentences */}
-          <div style={{
-            padding: '8px 24px 16px',
-            flex: 1, overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-          }}>
-            {factNode!.article_sentences.map(
-              (sentence, idx) => {
-              const isQuarantined =
-                quarantined.includes(
-                  sentence.sentence_id)
-              const isEvaluating  =
-                evaluating === sentence.sentence_id
+          height: '100%',
+          width: `${(questionIndex / sessionQueue.length) * 100}%`,
+          background: 'rgba(0,0,0,0.35)',
+          borderRadius: 4, transition: 'width 0.3s',
+        }} />
+      </div>
+    </div>
+  )}
+</div>
+          {/* sentence cards */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {factNode!.article_sentences.map((sentence, idx) => {
+              const isQuarantined = quarantined.includes(sentence.sentence_id)
+              const isSelected    = selected === sentence.sentence_id
 
               return (
                 <div
                   key={sentence.sentence_id}
-                  onClick={() =>
-                    handleSentenceTap(
-                      sentence.sentence_id)}
+                  onClick={() => handleSelectSentence(sentence.sentence_id)}
                   style={{
                     position: 'relative',
-                    background: isQuarantined
-                      ? '#2a0a0a'
-                      : '#fff',
+                    background: isQuarantined ? '#FFF0E8' : C.cardPaper,
                     border: isQuarantined
-                      ? '2px solid #cc3333'
-                      : isEvaluating
-                      ? '2px solid #f0a500'
-                      : '1.5px solid #ccc',
-                    borderRadius: 5,
-                    padding: '14px 18px',
-                    cursor: isQuarantined
-                      ? 'default'
-                      : evaluating
-                      ? 'not-allowed'
-                      : 'pointer',
-                    transition: 'all 0.2s',
-                    opacity: evaluating
-                      && !isEvaluating ? 0.6 : 1,
+                      ? `2.5px solid ${C.accentRed}`
+                      : isSelected
+                      ? `2.5px solid ${C.btnGold}`
+                      : `1.5px solid ${C.cardBdrIdle}`,
+                    borderRadius: 10,
+                    padding: '16px 20px',
+                    cursor: isQuarantined ? 'default' : evaluating ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.18s',
+                    opacity: evaluating && !isQuarantined ? 0.7 : 1,
+                    boxShadow: isSelected
+                      ? `0 0 0 3px rgba(255,223,167,0.45)`
+                      : isQuarantined
+                      ? `0 2px 8px rgba(128,0,32,0.18)`
+                      : '0 3px 10px rgba(0,0,0,0.12)',
                   }}
                 >
-                  {/* sentence number */}
-                  <div style={{
-                    fontSize: 8,
-                    fontWeight: 700,
-                    letterSpacing: '0.12em',
-                    color: isQuarantined
-                      ? '#cc3333' : '#aaa',
-                    marginBottom: 6,
-                    fontFamily: F,
-                  }}>
-                    SENTENCE {idx + 1}
-                    {isEvaluating && (
-                      <span style={{
-                        marginLeft: 8,
-                        color: '#f0a500',
-                      }}>
-                        EVALUATING...
-                      </span>
-                    )}
+                  {/* header */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: isQuarantined ? C.accentRed : isSelected ? C.btnGoldBdr : C.cardBdrIdle,
+                      color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, fontFamily: FONT, flexShrink: 0,
+                    }}>
+                      {idx + 1}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: isQuarantined ? C.accentRed : isSelected ? C.btnGoldBdr : C.textMuted, fontFamily: FONT }}>
+                      SENTENCE {idx + 1}
+                      {isSelected && !isQuarantined && <span style={{ marginLeft: 10, color: C.btnGoldBdr }}>● SELECTED</span>}
+                    </span>
                   </div>
 
-                  {/* sentence text */}
-                  <p style={{
-                    fontSize: 13,
-                    lineHeight: 1.75,
-                    color: isQuarantined
-                      ? '#ffaaaa' : '#1a1a1a',
-                    margin: 0,
-                    fontFamily: F,
-                  }}>
+                  {/* text */}
+                  <p style={{ fontSize: 15, lineHeight: 1.85, margin: 0, color: isQuarantined ? '#5a1010' : C.textDark, fontFamily: FONT, fontWeight: isSelected ? 700 : 400 }}>
                     {sentence.text}
                   </p>
 
-                  {/* flaw reason (shown after quarantine) */}
-                  {isQuarantined &&
-                    flawReasons[sentence.sentence_id] && (
-                    <div style={{
-                      marginTop: 10,
-                      padding: '8px 12px',
-                      background: '#3a0a0a',
-                      border: '1px solid #663333',
-                      borderRadius: 3,
-                      fontSize: 11,
-                      color: '#ffcccc',
-                      lineHeight: 1.6,
-                      fontFamily: F,
-                    }}>
-                      <span style={{
-                        fontSize: 8,
-                        fontWeight: 700,
-                        letterSpacing: '0.14em',
-                        color: '#cc3333',
-                        display: 'block',
-                        marginBottom: 4,
-                      }}>
+                  {/* flaw reason */}
+                  {isQuarantined && flawReasons[sentence.sentence_id] && (
+                    <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF4EE', border: `1px solid ${C.cardBdrIdle}`, borderRadius: 4, fontFamily: FONT }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, display: 'block', marginBottom: 6 }}>
                         VIOLATION IDENTIFIED
                       </span>
-                      {flawReasons[sentence.sentence_id]}
+                      <span style={{ fontSize: 13, color: C.btnDark, lineHeight: 1.6 }}>
+                        {flawReasons[sentence.sentence_id]}
+                      </span>
                     </div>
                   )}
 
-                  {/* quarantined stamp */}
+                  {/* quarantine stamp */}
                   {isQuarantined && (
                     <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      right: 24,
+                      position: 'absolute', top: '50%', right: 18,
                       transform: 'translateY(-50%) rotate(-8deg)',
-                      fontFamily: F,
-                      fontSize: 22,
-                      fontWeight: 700,
-                      color: '#cc3333',
-                      border: '3px solid #cc3333',
-                      padding: '2px 10px',
-                      opacity: 0.85,
-                      letterSpacing: '0.1em',
-                      pointerEvents: 'none',
-                      whiteSpace: 'nowrap',
+                      fontFamily: FONT, fontSize: 18, fontWeight: 700,
+                      color: C.accentRed, border: `3px solid ${C.accentRed}`,
+                      padding: '2px 12px', opacity: 0.65,
+                      letterSpacing: '0.1em', pointerEvents: 'none', whiteSpace: 'nowrap',
                     }}>
                       QUARANTINED
                     </div>
@@ -1266,107 +695,189 @@ export default function FactScannerPage() {
               )
             })}
           </div>
+        </div>
 
-          {/* submit bar */}
+        {/* ── Right panel: criterion + controls ── */}
+        <div style={{
+          width: 280,
+          background: C.panel,
+          display: 'flex', flexDirection: 'column',
+          borderRight: `2px solid ${C.cardBdrIdle}`,
+        }}>
+
+          {/* TASK banner */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '10px 24px 14px',
-            background: '#b8b3ab',
+            margin: '16px 16px 0',
+            border: `2px solid ${C.accentRed}`,
+            borderRadius: 4, padding: '10px 14px',
+            background: 'rgba(255,255,255,0.35)',
           }}>
-            <span style={{
-              fontSize: 10, color: '#666',
-              fontWeight: 700, letterSpacing: '0.08em',
-              fontFamily: F,
-            }}>
-              {quarantined.length} QUARANTINED
-              {wrongs > 0 && (
-                <span style={{
-                  marginLeft: 14, color: '#b03030',
-                }}>
-                  WRONG TAPS: {wrongs}
-                </span>
-              )}
-            </span>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.textDark, marginBottom: 4 }}>
+              TASK:
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: C.accentRed, fontWeight: 700 }}>
+              Identify and quarantine sentences that violate the CRAAP framework criteria
+            </div>
+          </div>
+
+          {/* criterion box */}
+          <div style={{
+            margin: '14px 16px 0',
+            background: C.cardPaper,
+            border: `1px solid ${C.cardBdrIdle}`,
+            borderRadius: 6, padding: '18px 16px',
+          }}>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12, letterSpacing: '0.06em' }}>
+              TARGET CRITERION: {factNode!.craap_criterion}
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.65, color: C.btnDark }}>
+              {CRITERION_QUESTIONS[factNode!.craap_criterion] ?? 'Does this sentence pass the CRAAP test?'}
+            </div>
+          </div>
+
+          {/* selected preview */}
+          <div style={{ margin: '12px 16px 0', flex: 1 }}>
+            {selected ? (
+              <div style={{
+                background: 'rgba(255,255,255,0.5)',
+                border: `1.5px solid ${C.btnGold}`,
+                borderRadius: 5, padding: '12px 14px',
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnGoldBdr, marginBottom: 8 }}>
+                  SELECTED FOR EVALUATION
+                </div>
+                <p style={{ fontFamily: FONT, fontSize: 12, lineHeight: 1.65, color: C.textDark, margin: 0 }}>
+                  {factNode!.article_sentences.find(s => s.sentence_id === selected)?.text}
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                background: 'rgba(255,255,255,0.3)',
+                border: `1.5px dashed ${C.cardBdrIdle}`,
+                borderRadius: 5, padding: '16px 14px', textAlign: 'center',
+              }}>
+                <p style={{ fontFamily: FONT, fontSize: 12, color: C.textMid, margin: 0, lineHeight: 1.6 }}>
+                  {quarantined.length > 0
+                    ? `${quarantined.length} sentence${quarantined.length > 1 ? 's' : ''} quarantined`
+                    : 'Click a sentence on the left to select it'}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* scan button */}
+          <div style={{ margin: '14px 16px' }}>
+            <button
+              disabled={!selected || evaluating}
+              onClick={handleScanAndQuarantine}
+              style={{
+                width: '100%', padding: '14px 0',
+                background: selected && !evaluating ? C.btnGold : C.cardBdrIdle,
+                border: `2px solid ${selected && !evaluating ? C.btnGoldBdr : C.cardBdrIdle}`,
+                borderRadius: 8, fontFamily: FONT, fontSize: 14, fontWeight: 700,
+                letterSpacing: '0.12em', color: C.textDark,
+                cursor: selected && !evaluating ? 'pointer' : 'not-allowed',
+                transition: 'all 0.18s',
+                boxShadow: selected && !evaluating ? '0 3px 8px rgba(0,0,0,0.2)' : 'none',
+              }}
+            >
+              {evaluating ? 'EVALUATING...' : 'SCAN AND QUARANTINE'}
+            </button>
+          </div>
+
+          {/* stats */}
+          <div style={{
+            margin: '0 16px 16px',
+            background: 'rgba(255,255,255,0.4)',
+            border: `1px solid ${C.cardBdrIdle}`,
+            borderRadius: 5, padding: '10px 0', display: 'flex',
+          }}>
+            {[
+              { label: 'ATTEMPTS',    value: attempts   },
+              { label: 'FLAWS FOUND', value: flawsFound },
+              { label: 'HINTS USED',  value: hintsUsed  },
+            ].map((stat, i) => (
+              <div key={stat.label} style={{
+                flex: 1, textAlign: 'center',
+                borderRight: i < 2 ? `1px solid ${C.cardBdrIdle}` : 'none',
+                padding: '4px 0',
+              }}>
+                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.textMid, marginBottom: 4 }}>
+                  {stat.label}
+                </div>
+                <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: C.textDark }}>
+                  {stat.value}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* submit report */}
+          <div style={{ margin: '0 16px 16px' }}>
             <button
               disabled={!canSubmit || submitting}
               onClick={handleSubmitMastery}
               style={{
-                display: 'flex',
-                alignItems: 'center', gap: 12,
-                background: submitting
-                  ? '#555'
-                  : canSubmit
-                  ? '#2b2b2b'
-                  : '#888',
-                color: '#f0ece4',
-                border: 'none', borderRadius: 2,
-                padding: '10px 26px',
-                fontSize: 11, fontWeight: 700,
-                letterSpacing: '0.14em',
-                cursor: canSubmit && !submitting
-                  ? 'pointer' : 'not-allowed',
-                fontFamily: F,
-                transition: 'background 0.2s',
+                width: '100%', padding: '13px 0',
+                background: canSubmit && !submitting ? C.btnDark : C.textMuted,
+                border: 'none', borderRadius: 8, fontFamily: FONT, fontSize: 13,
+                fontWeight: 700, letterSpacing: '0.1em', color: C.btnGold,
+                cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed',
+                transition: 'background 0.18s',
               }}
             >
-              {submitting
-                ? 'FILING REPORT...'
-                : 'SUBMIT REPORT →'}
+              {submitting ? 'FILING...' : 'SUBMIT REPORT →'}
             </button>
           </div>
         </div>
+
+        {/* ── CRAAP tabs ── */}
+        <div style={{
+          width: 32, background: C.btnGoldBdr,
+          display: 'flex', flexDirection: 'column',
+          borderRadius: '0 6px 6px 0',
+        }}>
+          {CRAAP_TABS.map((tab, i) => {
+            const isActive = factNode!.craap_criterion === tab
+            return (
+              <div key={tab} style={{
+                flex: 1,
+                background: isActive ? C.btnGold : C.cardBdrIdle,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderBottom: i < CRAAP_TABS.length - 1 ? `1px solid ${C.btnGoldBdr}` : 'none',
+                borderRadius: i === CRAAP_TABS.length - 1 ? '0 0 5px 0' : i === 0 ? '0 6px 0 0' : 0,
+                position: 'relative',
+              }}>
+                <span style={{
+                  writingMode: 'vertical-rl', transform: 'rotate(180deg)',
+                  fontFamily: FONT, fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: isActive ? C.textDark : C.textMuted,
+                }}>
+                  {tab}
+                </span>
+                {isActive && (
+                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.accentRed }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
-        {/* hint overlay — matches all modules */}
+      {/* ── Hint overlay ── */}
       {hintOverlay && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.45)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'flex-start',
-          padding: 24,
-          pointerEvents: 'none',
-        }}>
-          <div style={{
-            background: '#fff',
-            border: '2px solid #ddd',
-            borderRadius: 5,
-            padding: '16px 18px 14px',
-            maxWidth: 260,
-            boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
-            pointerEvents: 'all',
-          }}>
-            <div style={{
-              fontSize: 9, fontWeight: 700,
-              letterSpacing: '0.14em', color: '#888',
-              marginBottom: 8, fontFamily: F,
-            }}>
-              SCAFFOLD HINT
-              {hintOverlayTier > 0
-                ? ` — TIER ${hintOverlayTier}`
-                : ''}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.52)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 28, pointerEvents: 'none' }}>
+          <div style={{ background: C.cardPaper, border: `2px solid ${C.cardBdrIdle}`, borderRadius: 6, padding: '18px 20px 16px', maxWidth: 280, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', pointerEvents: 'all' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
+              SCAFFOLD HINT{hintOverlayTier > 0 ? ` — TIER ${hintOverlayTier}` : ''}
             </div>
-            <p style={{
-              fontSize: 12, color: '#222',
-              lineHeight: 1.65, margin: '0 0 14px',
-              fontFamily: F,
-            }}>
+            <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7, margin: '0 0 16px', fontFamily: FONT }}>
               {hintOverlayText}
             </p>
             <button
               onClick={() => setHintOverlay(false)}
-              style={{
-                fontSize: 10, fontWeight: 700,
-                color: '#444', background: '#eee',
-                border: '1px solid #ccc',
-                padding: '5px 14px', cursor: 'pointer',
-                fontFamily: F, letterSpacing: '0.06em',
-                borderRadius: 2,
-              }}
+              style={{ fontSize: 12, fontWeight: 700, color: C.textDark, background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`, padding: '7px 18px', cursor: 'pointer', fontFamily: FONT, letterSpacing: '0.06em', borderRadius: 3 }}
             >
               Close
             </button>
@@ -1374,69 +885,30 @@ export default function FactScannerPage() {
         </div>
       )}
 
-      {/* feedback drawer */}
+      {/* ── Feedback drawer ── */}
       {drawer && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#180a0a',
-          border: '2px solid #cc3333',
-          borderBottom: 'none',
-          padding: '20px 32px 28px',
-          zIndex: 200, maxHeight: 300,
-          overflowY: 'auto', fontFamily: F,
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center', marginBottom: 12,
-          }}>
-            <div style={{
-              ...S.stamp,
-              color: '#ff6b6b',
-              borderColor: '#ff6b6b',
-              marginBottom: 0,
-            }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#2A1200', border: `2px solid ${C.btnGoldBdr}`, borderBottom: 'none', padding: '22px 36px 30px', zIndex: 200, maxHeight: 280, overflowY: 'auto', fontFamily: FONT }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', color: C.btnGold, border: `1.5px solid ${C.btnGold}`, padding: '4px 16px', borderRadius: 2 }}>
               FEEDBACK
             </div>
-            <button
-              onClick={() => {
-                setDrawer(false)
-                resetTimer()
-              }}
-              style={{
-                background: 'none', border: 'none',
-                color: '#ff6b6b', fontSize: 18,
-                cursor: 'pointer', fontFamily: F,
-              }}
-            >
-              ✕
-            </button>
+            <button onClick={() => { setDrawer(false); resetTimer() }} style={{ background: 'none', border: 'none', color: C.btnGold, fontSize: 20, cursor: 'pointer', fontFamily: FONT }}>✕</button>
           </div>
-          <p style={{
-            fontSize: 13, color: '#ddd',
-            lineHeight: 1.7, marginBottom: 16,
-            fontFamily: F,
-          }}>
-            {fbText}
-          </p>
+          <p style={{ fontSize: 15, color: C.canvas, lineHeight: 1.75, marginBottom: 18, fontFamily: FONT }}>{fbText}</p>
           <button
-            style={S.btnSm}
-            onClick={() => {
-              setDrawer(false)
-              resetTimer()
-            }}
+            style={{ padding: '10px 22px', background: 'transparent', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3, color: C.textLight, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em' }}
+            onClick={() => { setDrawer(false); resetTimer() }}
           >
             Close and reattempt
           </button>
         </div>
       )}
 
-      <FactScannerTutorialPopup
-        open={tutorialOpen}
-        step={tutorialStep}
-        onClose={closeTutorial}
-        onBack={prevTutorialStep}
-        onNext={nextTutorialStep}
+      <TutorialPopup
+        open={tutorialOpen} step={tutorialStep}
+        onClose={() => setTutorialOpen(false)}
+        onBack={() => setTutorialStep(p => Math.max(p - 1, 0))}
+        onNext={() => setTutorialStep(p => Math.min(p + 1, TUTORIAL_STEPS.length - 1))}
         onStart={() => setTutorialOpen(false)}
       />
     </div>
