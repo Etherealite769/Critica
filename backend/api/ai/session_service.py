@@ -2,13 +2,18 @@
 import uuid
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Set
 
 from api.progression.services import ProgressionManagementService
 from .mongo_models import StudentQuestionHistoryDocument, GeneratedSessionDocument
 from .gemini_client import GeminiClient
-from .prompt_builder import build_system_instruction, build_generation_prompt
-from .validators import validate_module_exercise, calculate_question_hash
+from .prompt_builder import build_system_instruction, build_generation_prompt, build_socratic_hint_prompt
+from .validators import (
+    validate_module_exercise,
+    calculate_question_hash,
+    check_novelty_against_history,
+    check_intra_session_diversity,
+)
 from .fallback_pool import get_fallback_batch
 
 # Module document imports
@@ -91,24 +96,29 @@ class SessionService:
         return data
 
     @staticmethod
-    def get_student_history(student_id: str, module: str, node_id: str) -> Tuple[List[str], set]:
-        """Returns list of past topic titles and set of SHA256 question hashes."""
+    def get_student_history(student_id: str, module: str, node_id: str) -> Tuple[List[str], Set[str], List[str]]:
+        """
+        Returns all past topic summaries, SHA256 hashes, and passage excerpts
+        encountered by this student across all previous takes.
+        """
         history = StudentQuestionHistoryDocument.objects(
             student_id=student_id,
             module=module,
             node_id=node_id
-        ).order_by('-created_at')[:20]
+        ).order_by('-created_at')[:50]
 
         topics = [h.topic_summary for h in history if h.topic_summary]
         hashes = {h.question_hash for h in history if h.question_hash}
-        return topics, hashes
+        passages = [h.passage_excerpt for h in history if getattr(h, 'passage_excerpt', None)]
+        return topics, hashes, passages
 
     @staticmethod
     def record_question_history(student_id: str, module: str, node_id: str, exercises: List[Dict[str, Any]]):
-        """Records generated exercise hashes and topics into student history."""
+        """Records generated exercise hashes, topics, and passage excerpts into student history."""
         for ex in exercises:
             q_hash = calculate_question_hash(module, ex)
             topic = ex.get('topic_title', '')
+            passage = ex.get('reading_passage', '')[:300]
             diff = ex.get('difficulty', _get_node_difficulty(node_id))
             try:
                 StudentQuestionHistoryDocument(
@@ -117,6 +127,7 @@ class SessionService:
                     node_id=node_id,
                     question_hash=q_hash,
                     topic_summary=topic,
+                    passage_excerpt=passage,
                     difficulty=diff,
                 ).save()
             except Exception as e:
@@ -131,7 +142,8 @@ class SessionService:
         force_fresh: bool = False
     ) -> Dict[str, Any]:
         """
-        Retrieves an ongoing valid session or generates a brand new 5-question AI session.
+        Retrieves an ongoing valid session or generates a brand new 5-question AI session
+        with guaranteed novelty across retakes.
         """
         # 1. Check for existing active session unless force_fresh is requested
         if not force_fresh:
@@ -145,18 +157,27 @@ class SessionService:
             if existing and not existing.is_expired() and len(existing.exercises) >= EXERCISES_PER_SESSION:
                 node_meta = cls.load_node_metadata(module, node_id)
                 return cls._serialize_session_response(existing, node_meta)
+        else:
+            # Mark all previous uncompleted sessions as completed/superseded
+            GeneratedSessionDocument.objects(
+                student_id=student_id,
+                module=module,
+                node_id=node_id,
+                is_completed=False,
+            ).update(set__is_completed=True)
 
-        # 2. Load node metadata
+        # 2. Load node metadata & student historical records
         node_meta = cls.load_node_metadata(module, node_id)
-        past_topics, past_hashes = cls.get_student_history(student_id, module, node_id)
+        past_topics, past_hashes, past_passages = cls.get_student_history(student_id, module, node_id)
 
-        # 3. Call Gemini AI for dynamic generation
+        # 3. Call Gemini AI for dynamic generation with anti-repetition constraints
         client = GeminiClient()
         system_inst = build_system_instruction()
         prompt = build_generation_prompt(
             module=module,
             node_info=node_meta,
             previous_topics=past_topics,
+            previous_passages=past_passages,
             count=EXERCISES_PER_SESSION,
         )
 
@@ -166,32 +187,80 @@ class SessionService:
             user_prompt=prompt,
         )
 
-        valid_exercises = []
-        if generated_raw and isinstance(generated_raw.get('exercises'), list):
-            for ex in generated_raw['exercises']:
-                # Run module validator
-                is_valid, reason = validate_module_exercise(module, ex)
-                if not is_valid:
-                    logger.warning(f"Discarding invalid generated exercise ({reason})")
-                    continue
+        valid_exercises: List[Dict[str, Any]] = []
+        model_used = ''
+        latency_ms = 0
 
-                # Check duplicate hash against student's history
-                q_hash = calculate_question_hash(module, ex)
-                if q_hash in past_hashes:
-                    logger.info(f"Discarding duplicate exercise hash {q_hash}")
-                    continue
+        if generated_raw:
+            model_used = generated_raw.get('_model_used', '')
+            latency_ms = generated_raw.get('_latency_ms', 0)
 
-                valid_exercises.append(ex)
-                past_hashes.add(q_hash)
+            if isinstance(generated_raw.get('exercises'), list):
+                for ex in generated_raw['exercises']:
+                    # Module syntactic/structural validation
+                    is_valid, reason = validate_module_exercise(module, ex)
+                    if not is_valid:
+                        logger.warning(f"Discarding invalid generated exercise ({reason})")
+                        continue
 
-        # 4. Fill remaining exercises from curated fallback pool if needed
+                    # Historical novelty validation (hash & Jaccard semantic distance)
+                    is_novel, reason = check_novelty_against_history(module, ex, past_hashes, past_passages)
+                    if not is_novel:
+                        logger.info(f"Discarding repetitive exercise: {reason}")
+                        continue
+
+                    valid_exercises.append(ex)
+                    past_hashes.add(calculate_question_hash(module, ex))
+                    if ex.get('reading_passage'):
+                        past_passages.append(ex.get('reading_passage'))
+
+        # 4. If fewer than required exercises, perform a fast retry pass for the remainder
         diff = node_meta['difficulty']
-        if len(valid_exercises) < EXERCISES_PER_SESSION:
-            missing_count = EXERCISES_PER_SESSION - len(valid_exercises)
-            fallback_items = get_fallback_batch(module, diff, count=missing_count)
-            valid_exercises.extend(fallback_items[:missing_count])
+        if len(valid_exercises) < EXERCISES_PER_SESSION and client.is_available():
+            missing = EXERCISES_PER_SESSION - len(valid_exercises)
+            retry_prompt = build_generation_prompt(
+                module=module,
+                node_info=node_meta,
+                previous_topics=past_topics + [ex.get('topic_title', '') for ex in valid_exercises],
+                previous_passages=past_passages,
+                count=missing,
+            )
+            retry_raw = client.generate_structured_session(
+                module=module,
+                system_instruction=system_inst,
+                user_prompt=retry_prompt,
+            )
+            if retry_raw and isinstance(retry_raw.get('exercises'), list):
+                for ex in retry_raw['exercises']:
+                    if len(valid_exercises) >= EXERCISES_PER_SESSION:
+                        break
+                    is_valid, _ = validate_module_exercise(module, ex)
+                    is_novel, _ = check_novelty_against_history(module, ex, past_hashes, past_passages)
+                    if is_valid and is_novel:
+                        valid_exercises.append(ex)
+                        past_hashes.add(calculate_question_hash(module, ex))
+                        if ex.get('reading_passage'):
+                            past_passages.append(ex.get('reading_passage'))
 
-        # 5. Create new session document
+        # 5. Fill remaining from curated fallback pool, filtering out any previously seen fallbacks
+        is_fallback = False
+        if len(valid_exercises) < EXERCISES_PER_SESSION:
+            is_fallback = True
+            missing_count = EXERCISES_PER_SESSION - len(valid_exercises)
+            fallback_items = get_fallback_batch(module, diff, count=missing_count * 3, exclude_hashes=past_hashes)
+            # Filter unseen fallbacks
+            unseen_fallbacks = [
+                fb for fb in fallback_items
+                if calculate_question_hash(module, fb) not in past_hashes
+            ]
+            if len(unseen_fallbacks) < missing_count:
+                unseen_fallbacks = fallback_items
+            valid_exercises.extend(unseen_fallbacks[:missing_count])
+
+        # 6. Verify intra-session diversity
+        check_intra_session_diversity(valid_exercises)
+
+        # 7. Create new session document
         session_id = f"sess_{uuid.uuid4().hex[:12]}"
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(hours=SESSION_EXPIRY_HOURS)
@@ -205,12 +274,15 @@ class SessionService:
             exercises=valid_exercises,
             current_index=0,
             is_completed=False,
+            is_fallback=is_fallback,
+            model_used=model_used,
+            latency_ms=latency_ms,
             created_at=now,
             expires_at=expires_at,
         )
         session_doc.save()
 
-        # 6. Record question history
+        # 8. Record question history for future novelty enforcement
         cls.record_question_history(student_id, module, node_id, valid_exercises)
 
         return cls._serialize_session_response(session_doc, node_meta)
@@ -291,6 +363,39 @@ class SessionService:
         return {'status': 'error', 'message': f'Unsupported module {module}'}
 
     @classmethod
+    def get_live_socratic_hint(
+        cls,
+        session_id: str,
+        exercise_index: int,
+        submission_payload: Dict[str, Any],
+        error_count: int = 1,
+    ) -> Dict[str, Any]:
+        """
+        Generates dynamic on-demand Socratic pedagogical advice using Gemini.
+        """
+        session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
+        if not session_doc or exercise_index < 0 or exercise_index >= len(session_doc.exercises):
+            return {'socratic_hint': 'Review the passage carefully for key transitions and clues.'}
+
+        ex = session_doc.exercises[exercise_index]
+        client = GeminiClient()
+        if not client.is_available():
+            # Fallback to pre-generated tier 2 hint
+            hints = ex.get('scaffold_hints', [])
+            fallback_hint = hints[1].get('hint_text', '') if len(hints) > 1 else 'Look closely at logical connections.'
+            return {'socratic_hint': fallback_hint}
+
+        prompt = build_socratic_hint_prompt(
+            module=session_doc.module,
+            exercise=ex,
+            submission_state=submission_payload,
+            error_count=error_count,
+        )
+
+        hint = client.generate_live_socratic_hint(prompt)
+        return {'socratic_hint': hint or 'Examine how the ideas connect in sequence.'}
+
+    @classmethod
     def get_exercise_feedback(
         cls,
         session_id: str,
@@ -317,7 +422,7 @@ class SessionService:
         if not hint_text and hints:
             hint_text = hints[0].get('hint_text', '')
 
-        # Specific module explanations
+        # Module-specific error explanations
         module = session_doc.module
         explanation = ''
         if module == 'logic_thread':
@@ -387,4 +492,6 @@ class SessionService:
             'total_exercises': len(session_doc.exercises),
             'exercises': session_doc.exercises,
             'current_index': session_doc.current_index,
+            'is_fallback': getattr(session_doc, 'is_fallback', False),
+            'model_used': getattr(session_doc, 'model_used', ''),
         }

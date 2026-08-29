@@ -6,6 +6,7 @@ import { apiFetch }                          from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
+  fetchNodeSession, fetchLiveSocraticHint,
 } from '@/lib/nodeSession'
 import styles from './page.module.css'
 
@@ -91,20 +92,51 @@ const btnSm: React.CSSProperties = {
 }
 
 // ── Sub-screens ───────────────────────────────────────────────
-function LoadScreen() {
+function BriefingGenerationScreen({ title }: { title?: string }) {
+  const [stepIndex, setStepIndex] = useState(0)
+  const steps = [
+    'Calibrating reading competency parameters...',
+    'Synthesizing novel academic case scenarios...',
+    'Verifying logical paragraph sequence & distractor traps...',
+    'Finalizing dynamic 5-case session...',
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex(prev => (prev + 1) % steps.length)
+    }, 1200)
+    return () => clearInterval(timer)
+  }, [steps.length])
+
   return (
     <div className={styles.loadingWrap} style={{
       minHeight: '100vh', background: C.pageBg,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      fontFamily: FONT, padding: 24, textAlign: 'center',
     }}>
-      <span style={{ color: C.textLight, fontSize: 12, letterSpacing: '0.18em', fontFamily: FONT }}>
-        LOADING NODE
-      </span>
-      <div className={styles.loadingDots}>
-        <div className={styles.dot} />
-        <div className={styles.dot} />
-        <div className={styles.dot} />
+      <div className={styles.screenCard} style={{
+        maxWidth: 500, width: '100%', background: '#F2DEC1',
+        border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
+        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+      }}>
+        <div style={stampS}>CRITICA PEDAGOGICAL ENGINE</div>
+        <h3 style={{ fontSize: 17, color: C.btnDark, margin: '8px 0 14px', fontFamily: FONT }}>
+          {title ? title.toUpperCase() : 'GENERATING DYNAMIC CASE FILE'}
+        </h3>
+        <div style={{
+          background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6,
+          padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: 12, color: C.textDark, fontFamily: FONT, fontWeight: 600 }}>
+            {steps[stepIndex]}
+          </p>
+        </div>
+        <div className={styles.loadingDots} style={{ justifyContent: 'center' }}>
+          <div className={styles.dot} />
+          <div className={styles.dot} />
+          <div className={styles.dot} />
+        </div>
       </div>
     </div>
   )
@@ -163,14 +195,14 @@ function DeepDiveScreen({ node, onContinue }: { node: NodeData; onContinue: () =
   )
 }
 
-function MasteryScreen({ node, data, onDashboard, onNext }:
-  { node: NodeData; data: any; onDashboard: () => void; onNext: () => void }) {
+function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
+  { node: NodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div className={styles.screenCard} style={{ maxWidth: 480, width: '100%',
+      <div className={styles.screenCard} style={{ maxWidth: 520, width: '100%',
         background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 8,
-        padding: 52, textAlign: 'center' }}>
+        padding: 48, textAlign: 'center' }}>
         <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94', fontSize: 16, padding: '8px 24px' }}>
           ✓ NODE MASTERED
         </div>
@@ -182,6 +214,11 @@ function MasteryScreen({ node, data, onDashboard, onNext }:
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {data?.next_node && <button onClick={onNext} style={btnPrimary}>NEXT NODE →</button>}
+          {onReplay && (
+            <button onClick={onReplay} style={{ ...btnPrimary, background: '#22aa55', color: '#fff', borderColor: '#4ddd94' }}>
+              REPLAY WITH FRESH QUESTIONS ↻
+            </button>
+          )}
           <button onClick={onDashboard} style={btnSm}>← DASHBOARD</button>
         </div>
       </div>
@@ -298,13 +335,6 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
     )
   }
 
-  const quickNotes: Record<number, string[]> = {
-    0: ['Red thread = your connection', 'Nodes turn teal when linked', '6 cards total to sequence'],
-    1: ['Gold outline = selected',      'Read content before linking', 'Click again to deselect'],
-    2: ['Numbered circle = order',      'Node turns teal once linked',  'Clear All to restart'],
-    3: ['Bar fills as gaps placed',     'Submit unlocks at all filled', 'Partial retry on wrong'],
-  }
-
   return (
     <div className={styles.tutorialOverlay} style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
@@ -358,36 +388,32 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
 
           {/* Board preview + notes */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, padding: 14, borderRadius: 4 }}>
-            <div style={{ flex: 1, minHeight: 180, background: C.cardPaper, border: `1px solid ${C.cardBdrIdle}`, padding: 18, position: 'relative', borderRadius: 4 }}>
-              <div style={{ position: 'absolute', top: 12, left: 18, fontSize: 11, fontWeight: 700, color: C.textMid, letterSpacing: '0.1em', fontFamily: FONT }}>
-                {['THE BOARD', 'SELECTED STATE', 'THREAD DRAWN', 'AFTER SUBMITTING'][step]}
-              </div>
+            <div style={{ flex: 1, minHeight: 180, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, padding: 14, position: 'relative', borderRadius: 4 }}>
               {renderBoard()}
             </div>
-            <div style={{ width: 112, background: C.cardPaper, border: `1px solid ${C.cardBdrIdle}`, padding: '12px 12px 14px', borderRadius: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 12, fontFamily: FONT }}>QUICK NOTES</div>
-              {quickNotes[step]?.map((note, i) => (
-                <div key={i} style={{ fontSize: 10, lineHeight: 1.55, color: C.textDark, fontFamily: FONT, marginBottom: i < 2 ? 10 : 0 }}>
-                  • {note}
-                </div>
-              ))}
+            <div style={{ width: 130, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, padding: '12px 10px', borderRadius: 4, flexShrink: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 8 }}>FIELD TIPS</div>
+              <div style={{ fontSize: 10, lineHeight: 1.45, color: C.textDark }}>
+                Draw thread from top claim to supporting reasons to conclusion.
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 22 }}>
+          {/* Nav buttons */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
             <button
               onClick={isFirst ? onClose : onBack}
               className={styles.tutorialSecondaryBtn}
-              style={{ minWidth: 160, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11, letterSpacing: '0.06em', padding: '10px 24px', fontFamily: FONT, fontWeight: 700, cursor: 'pointer', borderRadius: 4 }}
+              style={{ ...btnSm, minWidth: 140, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11 }}
             >
-              {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
+              {isFirst ? 'SKIP BRIEFING' : '← BACK'}
             </button>
             <button
               onClick={isLast ? onStart : onNext}
               className={styles.tutorialPrimaryBtn}
-              style={{ minWidth: 170, background: C.btnDark, color: C.btnGold, border: 'none', fontSize: 11, letterSpacing: '0.06em', padding: '10px 28px', fontFamily: FONT, fontWeight: 700, cursor: 'pointer', borderRadius: 4 }}
+              style={{ ...btnPrimary, minWidth: 160, fontSize: 11 }}
             >
-              {isLast ? 'START TRAINING →' : 'NEXT →'}
+              {isLast ? 'BEGIN MISSION →' : 'NEXT STEP →'}
             </button>
           </div>
         </div>
@@ -396,7 +422,7 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
   )
 }
 
-// ── Main page ─────────────────────────────────────────────────
+// ── Main component ───────────────────────────────────────────
 export default function LogicThreadPage() {
   const router = useRouter()
   const params = useParams()
@@ -410,13 +436,15 @@ export default function LogicThreadPage() {
   const [wrongCount,   setWrongCount]   = useState(0)
   const [showHint,     setShowHint]     = useState(false)
   const [hintText,     setHintText]     = useState('')
+  const [socraticText, setSocraticText] = useState('')
+  const [socraticLoading, setSocraticLoading] = useState(false)
   const [masteryData,  setMasteryData]  = useState<any>(null)
   const [errorMsg,     setErrorMsg]     = useState('')
   const [tutorialOpen, setTutorialOpen] = useState(false)
   const [tutorialStep, setTutorialStep] = useState(0)
 
-  const [sessionQueue,   setSessionQueue]   = useState<string[]>([])
-  const [questionIndex,  setQuestionIndex]  = useState(0)
+  const [sessionQueue,     setSessionQueue]     = useState<string[]>([])
+  const [questionIndex,    setQuestionIndex]    = useState(0)
   const [sessionId,        setSessionId]        = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<any[]>([])
   const [sessionStartId,   setSessionStartId]   = useState<string | null>(null)
@@ -429,9 +457,15 @@ export default function LogicThreadPage() {
     try {
       if (sessionExercises.length > targetIndex) {
         const ex = sessionExercises[targetIndex]
+        setNode(prev => prev ? ({
+          ...prev,
+          title: ex.topic_title || prev.title,
+          reading_passage: ex.reading_passage || prev.reading_passage,
+          paragraph_blocks: ex.paragraph_blocks || prev.paragraph_blocks,
+        }) : ex)
         setBlocks([...ex.paragraph_blocks].sort(() => Math.random() - 0.5))
         setChain([]); setSubmitState('idle'); setWrongCount(0)
-        setShowHint(false); setHintText(''); setPhase('task')
+        setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
         return
       }
       const targetNodeId = queue[targetIndex] || nodeId
@@ -439,77 +473,82 @@ export default function LogicThreadPage() {
       setNode(d)
       setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5))
       setChain([]); setSubmitState('idle'); setWrongCount(0)
-      setShowHint(false); setHintText(''); setPhase('task')
+      setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.'); setPhase('error')
     }
   }, [sessionExercises, nodeId])
 
   // ── Load node & AI Session ──────────────────────────────────
-  useEffect(() => {
+  const startSession = useCallback(async (forceFresh = false) => {
+    setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
-    
-    // Attempt to load AI-generated 5-question session
-    apiFetch(`/ai/session/logic_thread/${start}/`)
-      .then((sessionData: any) => {
-        setSessionId(sessionData.session_id)
-        setSessionExercises(sessionData.exercises || [])
-        setNode({
-          node_id: sessionData.node_id,
-          title: sessionData.title,
-          focus: sessionData.focus,
-          difficulty: sessionData.difficulty,
-          micro_lesson_text: sessionData.micro_lesson_text,
-          reading_passage: sessionData.reading_passage,
-          deep_dive_required: sessionData.deep_dive_required,
-          paragraph_blocks: sessionData.exercises?.[0]?.paragraph_blocks || [],
-        })
-        const firstBlocks = sessionData.exercises?.[0]?.paragraph_blocks || []
-        setBlocks([...firstBlocks].sort(() => Math.random() - 0.5))
-        setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-        setQuestionIndex(0)
-        setPhase('micro_lesson')
+
+    try {
+      const sessionData = await fetchNodeSession('logic_thread', start, forceFresh)
+      setSessionId(sessionData.session_id)
+      setSessionExercises(sessionData.exercises || [])
+      setNode({
+        node_id: sessionData.node_id,
+        title: sessionData.title,
+        focus: sessionData.focus,
+        difficulty: sessionData.difficulty,
+        micro_lesson_text: sessionData.micro_lesson_text,
+        reading_passage: sessionData.reading_passage,
+        deep_dive_required: sessionData.deep_dive_required,
+        paragraph_blocks: sessionData.exercises?.[0]?.paragraph_blocks || [],
       })
-      .catch(() => {
-        // Fallback to legacy static node queue
-        const saved = loadSession('logic_thread', start)
-        if (saved && saved.sessionQueue.length === 5) {
-          setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
-          if (saved.next_node) setSavedNextNode(saved.next_node)
-          if (saved.streak !== undefined) setSavedStreak(saved.streak)
-          const activeId = saved.sessionQueue[saved.questionIndex] ?? start
-          apiFetch(`/nodes/logic-thread/${activeId}/`)
-            .then((d: NodeData) => {
-              setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5)); setPhase('task')
-            })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
-            })
-        } else {
-          apiFetch(`/nodes/logic-thread/${start}/`)
-            .then((d: NodeData) => {
-              setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5))
-              setPhase('micro_lesson')
-              apiFetch('/progression/dashboard/')
-                .then((prog: any) => {
-                  const unlocked: string[] = prog.unlocked_nodes ?? []
-                  const queue = buildSessionQueue('logic_thread', start, unlocked)
-                  setSessionQueue(queue); setQuestionIndex(0)
-                  saveSession('logic_thread', start, { sessionQueue: queue, questionIndex: 0 })
-                })
-                .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
-            })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
-            })
-        }
-      })
+      const firstBlocks = sessionData.exercises?.[0]?.paragraph_blocks || []
+      setBlocks([...firstBlocks].sort(() => Math.random() - 0.5))
+      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
+      setQuestionIndex(0)
+      setChain([]); setSubmitState('idle'); setWrongCount(0)
+      setShowHint(false); setHintText(''); setSocraticText('')
+      setPhase(forceFresh ? 'task' : 'micro_lesson')
+    } catch {
+      // Fallback to legacy static node queue
+      const saved = loadSession('logic_thread', start)
+      if (saved && saved.sessionQueue.length === 5) {
+        setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
+        if (saved.next_node) setSavedNextNode(saved.next_node)
+        if (saved.streak !== undefined) setSavedStreak(saved.streak)
+        const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+        apiFetch(`/nodes/logic-thread/${activeId}/`)
+          .then((d: NodeData) => {
+            setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5)); setPhase('task')
+          })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
+          })
+      } else {
+        apiFetch(`/nodes/logic-thread/${start}/`)
+          .then((d: NodeData) => {
+            setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5))
+            setPhase('micro_lesson')
+            apiFetch('/progression/dashboard/')
+              .then((prog: any) => {
+                const unlocked: string[] = prog.unlocked_nodes ?? []
+                const queue = buildSessionQueue('logic_thread', start, unlocked)
+                setSessionQueue(queue); setQuestionIndex(0)
+                saveSession('logic_thread', start, { sessionQueue: queue, questionIndex: 0 })
+              })
+              .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
+          })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
+          })
+      }
+    }
   }, [nodeId, router])
+
+  useEffect(() => {
+    startSession(false)
+  }, [startSession])
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'log_node_01') return
@@ -546,6 +585,19 @@ export default function LogicThreadPage() {
     }
     setShowHint(true)
   }, [nodeId, node, sessionId, sessionExercises, questionIndex])
+
+  const handleAskSocraticAdvice = async () => {
+    if (!sessionId) return
+    setSocraticLoading(true)
+    try {
+      const res = await fetchLiveSocraticHint(sessionId, questionIndex, { sequence: chain }, wrongCount + 1)
+      setSocraticText(res.socratic_hint || '')
+    } catch {
+      setSocraticText('Review how the primary claim transitions to supporting evidence.')
+    } finally {
+      setSocraticLoading(false)
+    }
+  }
 
   const handleCardClick = (blockId: string) => {
     if (submitState !== 'idle') return
@@ -591,13 +643,13 @@ export default function LogicThreadPage() {
               setPhase('mastery')
             }
           } catch { setSubmitState('idle') }
-        }, 1800)
+        }, 1600)
         return
       } else {
         const next = wrongCount + 1
         setWrongCount(next); setSubmitState('incorrect')
-        setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1500)
-        if (next >= 3) fetchHint(Math.min(next - 2, 3))
+        setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1400)
+        if (next >= 2) fetchHint(Math.min(next, 3))
         return
       }
     }
@@ -645,7 +697,7 @@ export default function LogicThreadPage() {
   }
 
   // ── Phase guards ────────────────────────────────────────────
-  if (phase === 'loading')      return <LoadScreen />
+  if (phase === 'loading')      return <BriefingGenerationScreen title={node?.title} />
   if (phase === 'error')        return <ErrorScreen msg={errorMsg} onBack={() => router.push('/dashboard')} />
   if (phase === 'micro_lesson') return <LessonScreen node={node!} onContinue={() => setPhase(node?.deep_dive_required ? 'deep_dive' : 'task')} />
   if (phase === 'deep_dive')    return <DeepDiveScreen node={node!} onContinue={() => setPhase('task')} />
@@ -653,6 +705,7 @@ export default function LogicThreadPage() {
     <MasteryScreen node={node!} data={masteryData}
       onDashboard={() => router.push('/dashboard')}
       onNext={() => masteryData?.next_node && router.push(`/nodes/logic-thread/${masteryData.next_node}`)}
+      onReplay={() => startSession(true)}
     />
   )
 
@@ -670,6 +723,7 @@ export default function LogicThreadPage() {
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, zIndex: 100 }}>
         {[
           { label: 'Hint', action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
+          { label: 'Fresh Case ↻', action: () => startSession(true) },
           { label: 'End Session', action: () => {
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('logic_thread', sessionStartId, {
@@ -717,7 +771,7 @@ export default function LogicThreadPage() {
               letterSpacing: '0.12em', background: 'rgba(255,255,255,0.3)', fontFamily: FONT,
             }}>
               <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-              <span style={{ color: C.accentRed }}>CONNECT THE PARAGRAPHS TO FORM ITS OVERALL MEANING</span>
+              <span style={{ color: C.accentRed }}>CONNECT THE PARAGRAPHS IN LOGICAL SEQUENCE</span>
             </div>
           </div>
 
@@ -732,7 +786,7 @@ export default function LogicThreadPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               {sessionQueue.length > 0 && (
                 <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, background: 'rgba(0,0,0,0.1)', borderRadius: 20, padding: '5px 14px' }}>
-                  Q {questionIndex + 1} / {sessionQueue.length}
+                  CASE {questionIndex + 1} / {sessionQueue.length}
                 </span>
               )}
               <button
@@ -745,38 +799,43 @@ export default function LogicThreadPage() {
             </div>
           </div>
 
-          {/* progress bar */}
+          {/* Progress bar */}
           {sessionQueue.length > 0 && (
             <div style={{ padding: '0 24px 10px' }}>
-              <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
-                <div className={styles.progressBar} style={{
+              <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${((questionIndex + 1) / sessionQueue.length) * 100}%`,
                   height: '100%',
-                  width: `${((questionIndex + (submitState === 'correct' ? 1 : 0)) / sessionQueue.length) * 100}%`,
-                  background: 'rgba(0,0,0,0.35)', borderRadius: 4,
+                  background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)] ?? '#4ddd94',
+                  transition: 'width 0.4s ease',
                 }} />
               </div>
             </div>
           )}
 
-          {/* ── Canvas ── */}
-          <div style={{ position: 'relative', width: CW, height: CH, flexShrink: 0, background: C.canvas }}>
-
-            {/* Cards */}
-            {blocks.map((block, i) => {
-              const pos      = SCATTER[i]
-              const inChain  = chain.includes(block.block_id)
-              const isLatest = chain[chain.length - 1] === block.block_id && chain.length > 0
+          {/* ── Bulletin board canvas ── */}
+          <div style={{
+            width: CW, height: CH, background: C.canvas,
+            position: 'relative', overflow: 'hidden',
+          }}>
+            {blocks.map((block, index) => {
+              const pos       = SCATTER[index] ?? { x: 50 + index * 140, y: 100 }
+              const inChain   = chain.includes(block.block_id)
+              const chainPos  = chain.indexOf(block.block_id)
+              const isLatest  = chain.length > 0 && chain[chain.length - 1] === block.block_id
 
               const border =
                 submitState === 'correct'   && inChain ? '2px solid #22aa55' :
                 submitState === 'incorrect' && inChain ? '2px solid #cc3333' :
-                isLatest                               ? `2px solid ${C.btnGold}` :
-                                                         `1px solid ${C.cardBdrIdle}`
+                isLatest                               ? `2px solid ${C.btnGoldBdr}` :
+                inChain                                ? `2px solid ${C.textMid}` :
+                `1px solid ${C.cardBdrIdle}`
 
               const bg =
-                submitState === 'correct'   && inChain ? '#f2fff5' :
-                submitState === 'incorrect' && inChain ? '#fff2f0' :
-                isLatest                               ? '#FFFDE8' : C.cardPaper
+                submitState === 'correct'   && inChain ? '#f0fff4' :
+                submitState === 'incorrect' && inChain ? '#fff0f0' :
+                isLatest                               ? '#FFF8E7' :
+                C.cardPaper
 
               const cardAnim =
                 submitState === 'correct'   && inChain ? styles.cardCorrect :
@@ -854,7 +913,7 @@ export default function LogicThreadPage() {
               })}
             </svg>
 
-            {/* Hint overlay */}
+            {/* Hint & Live Socratic overlay */}
             {showHint && (
               <div className={styles.hintOverlay} style={{
                 position: 'absolute', inset: 0,
@@ -864,22 +923,44 @@ export default function LogicThreadPage() {
                 <div className={styles.hintCard} style={{
                   background: C.cardPaper, border: `2px solid ${C.cardBdrIdle}`,
                   borderRadius: 6, padding: '18px 20px 16px',
-                  maxWidth: 260, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+                  maxWidth: 320, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
-                    SCAFFOLD HINT
+                    AGENT CRIT — SCAFFOLD HINT
                   </div>
-                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 16px', fontFamily: FONT }}>
+                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: FONT }}>
                     {hintText}
                   </p>
-                  <button onClick={() => setShowHint(false)} style={{
-                    fontSize: 11, fontWeight: 700, color: C.textDark,
-                    background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
-                    padding: '7px 16px', cursor: 'pointer',
-                    fontFamily: FONT, letterSpacing: '0.06em', borderRadius: 6,
-                  }}>
-                    Close
-                  </button>
+
+                  {socraticText && (
+                    <div style={{ background: '#FFF2D6', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '10px 12px', margin: '0 0 14px' }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: C.textMid, marginBottom: 4 }}>SOCRATIC GUIDANCE</div>
+                      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: C.textDark }}>{socraticText}</p>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      onClick={handleAskSocraticAdvice}
+                      disabled={socraticLoading}
+                      style={{
+                        fontSize: 10, fontWeight: 700, color: C.textDark,
+                        background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
+                        padding: '6px 12px', cursor: 'pointer',
+                        fontFamily: FONT, letterSpacing: '0.04em', borderRadius: 4,
+                      }}
+                    >
+                      {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
+                    </button>
+                    <button onClick={() => { setShowHint(false); setSocraticText('') }} style={{
+                      fontSize: 10, fontWeight: 700, color: C.textMid,
+                      background: 'transparent', border: `1px solid ${C.textMid}`,
+                      padding: '6px 12px', cursor: 'pointer',
+                      fontFamily: FONT, borderRadius: 4,
+                    }}>
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -895,7 +976,7 @@ export default function LogicThreadPage() {
               {chain.length} / {blocks.length} CONNECTED
               {wrongCount > 0 && (
                 <span style={{ marginLeft: 14, color: C.accentRed }}>
-                  ATTEMPTS: {wrongCount}{wrongCount >= 3 && ' — HINT AVAILABLE'}
+                  ATTEMPTS: {wrongCount}{wrongCount >= 2 && ' — HINT READY'}
                 </span>
               )}
             </span>

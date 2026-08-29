@@ -13,10 +13,15 @@ from .validators import (
     validate_fact_scanner_exercise,
     calculate_question_hash,
     compute_jaccard_similarity,
+    check_novelty_against_history,
+    check_intra_session_diversity,
 )
 from .prompt_builder import (
     build_system_instruction,
     build_generation_prompt,
+    build_socratic_hint_prompt,
+    select_novel_domains,
+    EDUCATIONAL_DOMAINS,
 )
 from .fallback_pool import get_fallback_batch
 from .session_service import SessionService
@@ -103,7 +108,7 @@ class GeminiAIIntegrationTests(TestCase):
             "reading_passage": "Recent 2024 reports confirm progress. A 1980 report says otherwise. New studies support 2024 data.",
             "article_sentences": [
                 {"sentence_id": "s1", "text": "Recent 2024 reports confirm progress.", "is_flawed": False, "flaw_reason": ""},
-                {"sentence_id": "s2", "text": "A 1980 report says otherwise.", "is_flawed": True, "flaw_reason": "Outdated 1980 source"},
+                {"sentence_id": "s2", "text": "A 1980 report says otherwise.", "is_flawed": True, "flaw_reason": "Outdated 1980 source used for modern trend"},
                 {"sentence_id": "s3", "text": "New studies support 2024 data.", "is_flawed": False, "flaw_reason": ""}
             ],
             "sentence_explanations": {"s2": "Outdated"},
@@ -128,16 +133,43 @@ class GeminiAIIntegrationTests(TestCase):
         self.assertEqual(h1, h2)
         self.assertNotEqual(h1, h3)
 
-    def test_prompt_builder_negative_constraints(self):
-        prompt = build_generation_prompt(
-            module='logic_thread',
-            node_info={'node_id': 'log_node_01', 'title': 'Narration', 'focus': 'Chronology', 'micro_lesson_text': 'Order matter.'},
-            previous_topics=['Photosynthesis', 'Roman Architecture'],
-            count=5
-        )
-        self.assertIn('Photosynthesis', prompt)
-        self.assertIn('Roman Architecture', prompt)
-        self.assertIn('NEGATIVE CONSTRAINTS', prompt)
+    def test_novelty_and_jaccard_filters(self):
+        past_passages = [
+            "Photosynthesis is the process by which plants turn sunlight into energy."
+        ]
+        past_hashes = {"some_old_hash"}
+
+        # Duplicate hash
+        ex_dup_hash = {"reading_passage": "Completely new text."}
+        h_dup = calculate_question_hash('logic_thread', ex_dup_hash)
+        past_hashes.add(h_dup)
+        is_novel, reason = check_novelty_against_history('logic_thread', ex_dup_hash, past_hashes, past_passages)
+        self.assertFalse(is_novel)
+
+        # High similarity rephrased passage
+        ex_rephrased = {"reading_passage": "Photosynthesis is the process by which green plants convert sunlight into chemical energy."}
+        is_novel, reason = check_novelty_against_history('logic_thread', ex_rephrased, {"other_hash"}, past_passages)
+        self.assertFalse(is_novel)
+
+        # Genuinely novel passage
+        ex_novel = {"reading_passage": "Deep subterranean caverns harbor unique troglobitic organisms adapted to perpetual darkness."}
+        is_novel, reason = check_novelty_against_history('logic_thread', ex_novel, {"other_hash"}, past_passages)
+        self.assertTrue(is_novel)
+
+    def test_intra_session_diversity(self):
+        diverse_exercises = [
+            {"reading_passage": "Deep ocean currents circulate warm equatorial waters."},
+            {"reading_passage": "Ancient Roman concrete utilized volcanic ash for structural resilience."},
+            {"reading_passage": "Quantum computing harnesses superposition for exponential calculation speed."},
+        ]
+        is_diverse, msg = check_intra_session_diversity(diverse_exercises)
+        self.assertTrue(is_diverse, msg)
+
+    def test_domain_rotation(self):
+        past_topics = ["Marine Biology Expedition", "Space Exploration Missions"]
+        selected = select_novel_domains(past_topics, 3)
+        self.assertEqual(len(selected), 3)
+        self.assertTrue(len(EDUCATIONAL_DOMAINS) >= 30)
 
     def test_fallback_pool_generation(self):
         for mod in ['logic_thread', 'snap_gap', 'tap_clues', 'fact_scanner']:
@@ -171,3 +203,38 @@ class GeminiAIIntegrationTests(TestCase):
             feedback_query={"tier": 1}
         )
         self.assertTrue(fb['hint'])
+
+        # Test live socratic hint fallback
+        socratic = SessionService.get_live_socratic_hint(
+            session_id=session['session_id'],
+            exercise_index=0,
+            submission_payload={"sequence": ["p2", "p1"]},
+            error_count=2
+        )
+        self.assertTrue(socratic.get('socratic_hint'))
+
+    def test_retake_guarantees_different_questions(self):
+        student_id = "test_student_retake_unique"
+        node_id = "snp_node_01"
+
+        # First take
+        session1 = SessionService.start_or_get_session(
+            student_id=student_id,
+            module="snap_gap",
+            node_id=node_id,
+            force_fresh=True
+        )
+        passages_take1 = [ex.get('reading_passage') for ex in session1['exercises']]
+
+        # Complete or start second take with fresh
+        session2 = SessionService.start_or_get_session(
+            student_id=student_id,
+            module="snap_gap",
+            node_id=node_id,
+            force_fresh=True
+        )
+        passages_take2 = [ex.get('reading_passage') for ex in session2['exercises']]
+
+        # Verify that take 2 contains questions not in take 1
+        self.assertNotEqual(passages_take1[0], passages_take2[0])
+        self.assertNotEqual(session1['session_id'], session2['session_id'])

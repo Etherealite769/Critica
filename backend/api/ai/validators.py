@@ -1,7 +1,7 @@
 # backend/api/ai/validators.py
 import hashlib
 import re
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Set, Optional
 
 
 def normalize_text(text: str) -> str:
@@ -18,7 +18,7 @@ def calculate_question_hash(module: str, exercise: Dict[str, Any]) -> str:
     """
     passage = exercise.get('reading_passage', '')
     norm_passage = normalize_text(passage)
-    
+
     if module == 'logic_thread':
         blocks = exercise.get('paragraph_blocks', [])
         content = norm_passage + "_" + "".join(normalize_text(b.get('text', '')) for b in blocks)
@@ -51,20 +51,66 @@ def compute_jaccard_similarity(text1: str, text2: str) -> float:
     return len(intersection) / len(union)
 
 
+def check_novelty_against_history(
+    module: str,
+    exercise: Dict[str, Any],
+    past_hashes: Set[str],
+    past_passages: List[str],
+    max_jaccard: float = 0.35,
+) -> Tuple[bool, str]:
+    """
+    Verifies that a generated exercise is novel and not a duplicate or rephrasing
+    of any past exercise attempted by the student.
+    """
+    q_hash = calculate_question_hash(module, exercise)
+    if q_hash in past_hashes:
+        return False, f"Duplicate question hash {q_hash[:8]} matches past student attempt."
+
+    curr_passage = exercise.get('reading_passage', '')
+    for past_p in past_passages:
+        if not past_p:
+            continue
+        sim = compute_jaccard_similarity(curr_passage, past_p)
+        if sim > max_jaccard:
+            return False, f"Semantic similarity ({sim:.2f}) with past question exceeds threshold ({max_jaccard})."
+
+    return True, ""
+
+
+def check_intra_session_diversity(
+    exercises: List[Dict[str, Any]],
+    max_jaccard: float = 0.40,
+) -> Tuple[bool, str]:
+    """
+    Ensures that exercises within a single 5-question session explore diverse themes and text.
+    """
+    passages = [ex.get('reading_passage', '') for ex in exercises if ex.get('reading_passage')]
+    for i in range(len(passages)):
+        for j in range(i + 1, len(passages)):
+            sim = compute_jaccard_similarity(passages[i], passages[j])
+            if sim > max_jaccard:
+                return False, f"Exercises {i+1} and {j+1} are too similar (Jaccard {sim:.2f} > {max_jaccard})."
+    return True, ""
+
+
 def validate_logic_thread_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
     blocks = ex.get('paragraph_blocks', [])
     seq = ex.get('correct_sequence', [])
-    
+
     if len(blocks) < 2:
         return False, "Exercise must have at least 2 paragraph blocks."
-    
+
     block_ids = {b.get('block_id') for b in blocks if b.get('block_id')}
     if len(block_ids) != len(blocks):
         return False, "Duplicate or missing block_ids in paragraph_blocks."
-        
+
+    for b in blocks:
+        if not b.get('text', '').strip():
+            return False, f"Block {b.get('block_id')} contains empty text."
+
     if set(seq) != block_ids or len(seq) != len(blocks):
         return False, f"correct_sequence {seq} does not match block IDs {list(block_ids)}."
-        
+
     hints = ex.get('scaffold_hints', [])
     if len(hints) < 3:
         return False, "Must provide 3 scaffold hints (tiers 1, 2, and 3)."
@@ -82,6 +128,9 @@ def validate_snap_gap_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
 
     if len(dock) < len(pairs):
         return False, "Transition tile dock must contain at least as many tiles as sentence pairs."
+
+    if len(set(dock)) != len(dock):
+        return False, "Transition tile dock contains duplicate tiles."
 
     for p in pairs:
         pid = p.get('pair_id')
@@ -104,8 +153,12 @@ def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
 
     for w in words:
         target_word = normalize_text(w.get('word', ''))
-        if target_word and target_word not in norm_passage:
-            return False, f"Locked word '{w.get('word')}' not found in reading passage."
+        if not target_word:
+            return False, "Locked word is empty."
+
+        # Word boundary verification in normalized text
+        if not re.search(r'\b' + re.escape(target_word) + r'\b', norm_passage):
+            return False, f"Locked word '{w.get('word')}' not found as standalone token in reading passage."
 
         clue_ids = w.get('correct_clue_ids', [])
         if not clue_ids:
@@ -113,8 +166,12 @@ def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
 
         for clue in clue_ids:
             norm_clue = normalize_text(clue)
-            if norm_clue and norm_clue not in norm_passage:
-                return False, f"Clue word '{clue}' for '{w.get('word')}' is not present in the reading passage."
+            if not norm_clue:
+                continue
+            if norm_clue == target_word:
+                return False, f"Clue '{clue}' cannot be identical to target word '{w.get('word')}'."
+            if not re.search(r'\b' + re.escape(norm_clue) + r'\b', norm_passage):
+                return False, f"Clue word '{clue}' for '{w.get('word')}' is not present as standalone token in passage."
 
     return True, ""
 
@@ -133,8 +190,10 @@ def validate_fact_scanner_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
         return False, "Exercise must have at least 1 reliable (non-flawed) sentence."
 
     for s in sentences:
-        if s.get('is_flawed') and not s.get('flaw_reason'):
-            return False, f"Flawed sentence '{s.get('sentence_id')}' must include a flaw_reason."
+        if s.get('is_flawed'):
+            reason = s.get('flaw_reason', '').strip()
+            if len(reason) < 5:
+                return False, f"Flawed sentence '{s.get('sentence_id')}' must include a substantive flaw_reason."
 
     return True, ""
 

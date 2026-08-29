@@ -7,6 +7,23 @@ from rest_framework import status
 from api.progression.services import ProgressionManagementService
 from api.scaffold.scaffold_service import ScaffoldEngineService
 from .session_service import SessionService
+from .gemini_client import GeminiClient
+
+
+class AIHealthCheckView(APIView):
+    """
+    GET /api/ai/status/
+    Returns AI service status, active model, and SDK availability.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        client = GeminiClient()
+        return Response({
+            'status': 'online' if client.is_available() else 'offline_fallback',
+            'sdk_type': client.sdk_type,
+            'api_configured': bool(client.api_key),
+        }, status=status.HTTP_200_OK)
 
 
 class SessionLoadView(APIView):
@@ -35,6 +52,31 @@ class SessionLoadView(APIView):
             return Response(session_payload, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': f"Failed to load AI session: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SessionRegenerateView(APIView):
+    """
+    POST /api/ai/session/<module>/<node_id>/regenerate/
+    Forces generation of a brand-new 5-question AI session with guaranteed novel questions.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, module, node_id):
+        student_id = str(request.user.id)
+
+        if not ProgressionManagementService.is_node_unlocked(student_id, node_id):
+            return Response({'error': 'Node is locked.'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            session_payload = SessionService.start_or_get_session(
+                student_id=student_id,
+                module=module,
+                node_id=node_id,
+                force_fresh=True
+            )
+            return Response(session_payload, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f"Failed to regenerate session: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SessionEvaluateStepView(APIView):
@@ -82,6 +124,27 @@ class SessionFeedbackView(APIView):
             session_id=session_id,
             exercise_index=int(exercise_index),
             feedback_query=feedback_data
+        )
+        return Response(res, status=status.HTTP_200_OK)
+
+
+class SessionLiveHintView(APIView):
+    """
+    POST /api/ai/session/<session_id>/live-hint/<exercise_index>/
+    Body: { submission_state, error_count }
+    Generates dynamic Socratic hints on demand.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id, exercise_index):
+        payload = request.data.get('submission_state', request.data)
+        error_count = int(request.data.get('error_count', 1))
+
+        res = SessionService.get_live_socratic_hint(
+            session_id=session_id,
+            exercise_index=int(exercise_index),
+            submission_payload=payload,
+            error_count=error_count,
         )
         return Response(res, status=status.HTTP_200_OK)
 

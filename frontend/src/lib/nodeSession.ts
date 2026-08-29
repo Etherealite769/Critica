@@ -1,5 +1,5 @@
 // src/lib/nodeSession.ts
-// Shared utilities for multi-question AI sessions with difficulty tiers.
+// Shared utilities for multi-question AI sessions with difficulty tiers and zero-repetition guarantees.
 import { apiFetch } from './api'
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
@@ -45,10 +45,13 @@ export interface DynamicSessionData {
   total_exercises:    number
   exercises:          any[]
   current_index:      number
+  is_fallback?:       boolean
+  model_used?:        string
 }
 
 /**
  * Fetch or generate a 5-question AI session for a node attempt.
+ * Set forceFresh=true for guaranteed brand-new questions on retakes.
  */
 export async function fetchNodeSession(
   module: string,
@@ -57,6 +60,18 @@ export async function fetchNodeSession(
 ): Promise<DynamicSessionData> {
   const query = forceFresh ? '?fresh=true' : ''
   return await apiFetch(`/ai/session/${module}/${nodeId}/${query}`)
+}
+
+/**
+ * Regenerates a brand-new 5-question AI session for the node attempt.
+ */
+export async function regenerateNodeSession(
+  module: string,
+  nodeId: string,
+): Promise<DynamicSessionData> {
+  return await apiFetch(`/ai/session/${module}/${nodeId}/regenerate/`, {
+    method: 'POST',
+  })
 }
 
 /**
@@ -84,6 +99,21 @@ export async function fetchSessionFeedback(
   return await apiFetch(`/ai/session/${sessionId}/feedback/${exerciseIndex}/`, {
     method: 'POST',
     body: JSON.stringify(feedbackData),
+  })
+}
+
+/**
+ * Fetches live on-demand Socratic pedagogical advice from Gemini based on student error.
+ */
+export async function fetchLiveSocraticHint(
+  sessionId: string,
+  exerciseIndex: number,
+  submissionState: any,
+  errorCount = 1,
+): Promise<{ socratic_hint: string }> {
+  return await apiFetch(`/ai/session/${sessionId}/live-hint/${exerciseIndex}/`, {
+    method: 'POST',
+    body: JSON.stringify({ submission_state: submissionState, error_count: errorCount }),
   })
 }
 
