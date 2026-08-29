@@ -2,7 +2,8 @@
 import json
 import logging
 import os
-from typing import Dict, Any, Optional, Type
+import time
+from typing import Dict, Any, Optional, Type, List
 from pydantic import BaseModel
 from django.conf import settings
 
@@ -22,18 +23,22 @@ MODULE_SCHEMA_MAP: Dict[str, Type[BaseModel]] = {
     'fact_scanner': FactScannerSessionBatchSchema,
 }
 
-DEFAULT_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+PRIMARY_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+FALLBACK_MODELS = [PRIMARY_MODEL, 'gemini-2.0-flash', 'gemini-1.5-flash']
+# Deduplicate while preserving order
+MODEL_CASCADE = list(dict.fromkeys(FALLBACK_MODELS))
 
 
 class GeminiClient:
     """
     Unified Google Gemini API Client supporting structured JSON output,
-    automatic fallback between SDKs, and error logging.
+    multi-model fallback cascade, live Socratic hints, and robust error handling.
     """
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, 'GEMINI_API_KEY', None) or os.getenv('GEMINI_API_KEY', '')
         self.client = None
+        self.sdk_type = "none"
         self._init_sdk()
 
     def _init_sdk(self):
@@ -41,7 +46,7 @@ class GeminiClient:
             logger.warning("GEMINI_API_KEY is not configured in settings or environment variables.")
             return
 
-        # Attempt to use google-genai first
+        # Attempt to use modern google-genai first
         try:
             from google import genai
             self.client = genai.Client(api_key=self.api_key)
@@ -71,12 +76,13 @@ class GeminiClient:
         module: str,
         system_instruction: str,
         user_prompt: str,
-        temperature: float = 0.7,
-        max_output_tokens: int = 4096,
+        temperature: float = 0.85,
+        max_output_tokens: int = 8192,
     ) -> Optional[Dict[str, Any]]:
         """
         Calls Gemini API with structured JSON Schema constraint matching the module.
-        Returns the parsed Python dictionary or None if generation failed.
+        Cascades through candidate models if the primary model fails or is rate-limited.
+        Returns parsed Python dictionary with generation metadata or None if generation failed.
         """
         if not self.is_available():
             logger.warning("GeminiClient: Cannot generate - API key or SDK unavailable.")
@@ -87,45 +93,88 @@ class GeminiClient:
             logger.error(f"No schema mapping found for module '{module}'")
             return None
 
-        # Call with google-genai
-        if self.sdk_type == "google-genai":
+        for model_name in MODEL_CASCADE:
+            start_time = time.time()
             try:
-                from google.genai import types
-                response = self.client.models.generate_content(
-                    model=DEFAULT_MODEL,
-                    contents=user_prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        response_mime_type="application/json",
-                        response_schema=schema_cls,
-                        temperature=temperature,
-                        max_output_tokens=max_output_tokens,
-                    ),
-                )
-                if response and response.text:
-                    parsed = json.loads(response.text)
-                    return parsed
-            except Exception as e:
-                logger.error(f"Gemini API error (google-genai): {e}")
+                # Call with google-genai
+                if self.sdk_type == "google-genai":
+                    from google.genai import types
+                    response = self.client.models.generate_content(
+                        model=model_name,
+                        contents=user_prompt,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_instruction,
+                            response_mime_type="application/json",
+                            response_schema=schema_cls,
+                            temperature=temperature,
+                            max_output_tokens=max_output_tokens,
+                        ),
+                    )
+                    if response and response.text:
+                        parsed = json.loads(response.text)
+                        elapsed = time.time() - start_time
+                        logger.info(f"GeminiClient: Generated batch via {model_name} in {elapsed:.2f}s")
+                        parsed['_model_used'] = model_name
+                        parsed['_latency_ms'] = int(elapsed * 1000)
+                        return parsed
 
-        # Call with google-generativeai fallback
-        elif self.sdk_type == "google-generativeai":
-            try:
-                model = self.client.GenerativeModel(
-                    model_name=DEFAULT_MODEL,
-                    system_instruction=system_instruction,
-                    generation_config={
-                        "response_mime_type": "application/json",
-                        "response_schema": schema_cls,
-                        "temperature": temperature,
-                        "max_output_tokens": max_output_tokens,
-                    }
-                )
-                response = model.generate_content(user_prompt)
-                if response and response.text:
-                    parsed = json.loads(response.text)
-                    return parsed
+                # Call with google-generativeai fallback
+                elif self.sdk_type == "google-generativeai":
+                    model = self.client.GenerativeModel(
+                        model_name=model_name,
+                        system_instruction=system_instruction,
+                        generation_config={
+                            "response_mime_type": "application/json",
+                            "response_schema": schema_cls,
+                            "temperature": temperature,
+                            "max_output_tokens": max_output_tokens,
+                        }
+                    )
+                    response = model.generate_content(user_prompt)
+                    if response and response.text:
+                        parsed = json.loads(response.text)
+                        elapsed = time.time() - start_time
+                        logger.info(f"GeminiClient: Generated batch via {model_name} in {elapsed:.2f}s")
+                        parsed['_model_used'] = model_name
+                        parsed['_latency_ms'] = int(elapsed * 1000)
+                        return parsed
+
             except Exception as e:
-                logger.error(f"Gemini API error (google-generativeai): {e}")
+                logger.warning(f"Gemini generation failed for model {model_name}: {e}. Retrying next model in cascade...")
+
+        logger.error("GeminiClient: All models in cascade failed.")
+        return None
+
+    def generate_live_socratic_hint(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_output_tokens: int = 350,
+    ) -> Optional[str]:
+        """
+        Generates a fast, real-time Socratic hint tailored to the student's current board state.
+        """
+        if not self.is_available():
+            return None
+
+        for model_name in MODEL_CASCADE:
+            try:
+                if self.sdk_type == "google-genai":
+                    response = self.client.models.generate_content(
+                        model=model_name,
+                        contents=prompt,
+                        config={"temperature": temperature, "max_output_tokens": max_output_tokens},
+                    )
+                    if response and response.text:
+                        return response.text.strip()
+
+                elif self.sdk_type == "google-generativeai":
+                    model = self.client.GenerativeModel(model_name=model_name)
+                    response = model.generate_content(prompt)
+                    if response and response.text:
+                        return response.text.strip()
+
+            except Exception as e:
+                logger.warning(f"Socratic hint generation failed on {model_name}: {e}")
 
         return None

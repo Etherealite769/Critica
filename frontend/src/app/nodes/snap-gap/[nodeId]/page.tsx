@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
+  fetchNodeSession, fetchLiveSocraticHint,
 } from '@/lib/nodeSession'
 
 // ── Types ─────────────────────────────────────────
@@ -200,12 +201,50 @@ const S = {
 }
 
 // ── Sub-screens ───────────────────────────────────
-function LoadScreen() {
+function BriefingGenerationScreen({ title }: { title?: string }) {
+  const [stepIndex, setStepIndex] = useState(0)
+  const steps = [
+    'Calibrating coherence & transition markers...',
+    'Synthesizing novel academic sentence pairs...',
+    'Calibrating transition tiles & distractor logic...',
+    'Finalizing dynamic 5-case session...',
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex(prev => (prev + 1) % steps.length)
+    }, 1200)
+    return () => clearInterval(timer)
+  }, [steps.length])
+
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      fontFamily: F, color: C.textLight, fontSize: 13, letterSpacing: '0.1em' }}>
-      LOADING NODE...
+      flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      fontFamily: F, padding: 24, textAlign: 'center' }}>
+      <div style={{
+        maxWidth: 500, width: '100%', background: '#F2DEC1',
+        border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
+        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+      }}>
+        <div style={S.stamp}>CRITICA PEDAGOGICAL ENGINE</div>
+        <h3 style={{ fontSize: 17, color: C.textDark, margin: '8px 0 14px', fontFamily: F }}>
+          {title ? title.toUpperCase() : 'GENERATING SNAP-IN GAP CASE FILE'}
+        </h3>
+        <div style={{
+          background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: 6,
+          padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: 12, color: C.textDark, fontFamily: F, fontWeight: 600 }}>
+            {steps[stepIndex]}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textLight }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.btnGold }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textMid }} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -262,13 +301,13 @@ function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: 
   )
 }
 
-function MasteryScreen({ node, data, onDashboard, onNext }:
-  { node: SnapNodeData; data: any; onDashboard: () => void; onNext: () => void }) {
+function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
+  { node: SnapNodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
-      <div style={{ maxWidth: 480, width: '100%', background: C.cardPaper,
-        border: `2px solid ${C.tileGreen}`, borderRadius: 8, padding: 52, textAlign: 'center' }}>
+      <div style={{ maxWidth: 520, width: '100%', background: C.cardPaper,
+        border: `2px solid ${C.tileGreen}`, borderRadius: 8, padding: 48, textAlign: 'center' }}>
         <div style={{ ...S.stamp, color: C.tileGreen, borderColor: C.tileGreen,
           fontSize: 16, padding: '8px 24px' }}>
           ✓ NODE MASTERED
@@ -282,6 +321,11 @@ function MasteryScreen({ node, data, onDashboard, onNext }:
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {data?.next_node && (
             <button onClick={onNext} style={S.btnPrimary}>NEXT NODE →</button>
+          )}
+          {onReplay && (
+            <button onClick={onReplay} style={{ ...S.btnPrimary, background: '#22aa55', color: '#fff', borderColor: '#4ddd94' }}>
+              REPLAY WITH FRESH QUESTIONS ↻
+            </button>
           )}
           <button onClick={onDashboard} style={S.btnSm}>← DASHBOARD</button>
         </div>
@@ -566,84 +610,96 @@ export default function SnapInGapPage() {
     }
   }, [sessionExercises, nodeId])
 
-  // ── load ─────────────────────────────────────────
-  useEffect(() => {
+  // ── startSession ──────────────────────────────────
+  const startSession = useCallback(async (forceFresh = false) => {
+    setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
 
-    // Attempt to load AI-generated 5-question session
-    apiFetch(`/ai/session/snap_gap/${start}/`)
-      .then((sessionData: any) => {
-        setSessionId(sessionData.session_id)
-        setSessionExercises(sessionData.exercises || [])
-        const firstEx = sessionData.exercises?.[0]
-        setSnapNode({
-          node_id: sessionData.node_id,
-          title: sessionData.title,
-          focus: sessionData.focus,
-          difficulty: sessionData.difficulty,
-          micro_lesson_text: sessionData.micro_lesson_text,
-          reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
-          deep_dive_required: sessionData.deep_dive_required,
-          sentence_pairs: firstEx?.sentence_pairs || [],
-          transition_tile_dock: firstEx?.transition_tile_dock || [],
-        })
-        setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-        setQuestionIndex(0)
-        setPhase('micro_lesson')
+    try {
+      const sessionData = await fetchNodeSession('snap_gap', start, forceFresh)
+      setSessionId(sessionData.session_id)
+      setSessionExercises(sessionData.exercises || [])
+      const firstEx = sessionData.exercises?.[0]
+      setSnapNode({
+        node_id: sessionData.node_id,
+        title: sessionData.title,
+        focus: sessionData.focus,
+        difficulty: sessionData.difficulty,
+        micro_lesson_text: sessionData.micro_lesson_text,
+        reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+        deep_dive_required: sessionData.deep_dive_required,
+        sentence_pairs: firstEx?.sentence_pairs || [],
+        transition_tile_dock: firstEx?.transition_tile_dock || [],
       })
-      .catch(() => {
-        // Fallback to legacy static node queue
-        const saved = loadSession('snap_gap', start)
-        if (saved && saved.sessionQueue.length === 5) {
-          setSessionQueue(saved.sessionQueue)
-          setQuestionIndex(saved.questionIndex)
-          if (saved.next_node) setSavedNextNode(saved.next_node)
-          if (saved.streak !== undefined) setSavedStreak(saved.streak)
+      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
+      setQuestionIndex(0)
+      setPairIdx(0)
+      setBoard({})
+      setLocked([])
+      setTileState('idle')
+      setWrongs(0)
+      setFbText('')
+      setHintText('')
+      setDrawer(false)
+      setHintOverlay(false)
+      setPhase(forceFresh ? 'task' : 'micro_lesson')
+    } catch {
+      // Fallback to legacy static node queue
+      const saved = loadSession('snap_gap', start)
+      if (saved && saved.sessionQueue.length === 5) {
+        setSessionQueue(saved.sessionQueue)
+        setQuestionIndex(saved.questionIndex)
+        if (saved.next_node) setSavedNextNode(saved.next_node)
+        if (saved.streak !== undefined) setSavedStreak(saved.streak)
 
-          const activeId = saved.sessionQueue[saved.questionIndex] ?? start
-          apiFetch(`/nodes/snap-gap/${activeId}/`)
-            .then((d: SnapNodeData) => {
-              setSnapNode(d)
-              setPhase('task')
-            })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed to load node.')
-              setPhase('error')
-            })
-        } else {
-          apiFetch(`/nodes/snap-gap/${start}/`)
-            .then((d: SnapNodeData) => {
-              setSnapNode(d)
-              setPhase('micro_lesson')
+        const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+        apiFetch(`/nodes/snap-gap/${activeId}/`)
+          .then((d: SnapNodeData) => {
+            setSnapNode(d)
+            setPhase('task')
+          })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed to load node.')
+            setPhase('error')
+          })
+      } else {
+        apiFetch(`/nodes/snap-gap/${start}/`)
+          .then((d: SnapNodeData) => {
+            setSnapNode(d)
+            setPhase('micro_lesson')
 
-              apiFetch('/progression/dashboard/')
-                .then((prog: any) => {
-                  const unlocked: string[] = prog.unlocked_nodes ?? []
-                  const queue = buildSessionQueue('snap_gap', start, unlocked)
-                  setSessionQueue(queue)
-                  setQuestionIndex(0)
-                  saveSession('snap_gap', start, {
-                    sessionQueue: queue,
-                    questionIndex: 0,
-                  })
+            apiFetch('/progression/dashboard/')
+              .then((prog: any) => {
+                const unlocked: string[] = prog.unlocked_nodes ?? []
+                const queue = buildSessionQueue('snap_gap', start, unlocked)
+                setSessionQueue(queue)
+                setQuestionIndex(0)
+                saveSession('snap_gap', start, {
+                  sessionQueue: queue,
+                  questionIndex: 0,
                 })
-                .catch(() => {
-                  setSessionQueue([start])
-                  setQuestionIndex(0)
-                })
-            })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed to load node.')
-              setPhase('error')
-            })
-        }
-      })
+              })
+              .catch(() => {
+                setSessionQueue([start])
+                setQuestionIndex(0)
+              })
+          })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed to load node.')
+            setPhase('error')
+          })
+      }
+    }
   }, [nodeId, router])
+
+  useEffect(() => {
+    startSession(false)
+  }, [startSession])
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'snp_node_01') return
@@ -920,7 +976,7 @@ export default function SnapInGapPage() {
   }
 
   // ── phase guards ──────────────────────────────────
-  if (phase === 'loading')      return <LoadScreen />
+  if (phase === 'loading')      return <BriefingGenerationScreen title={snapNode?.title} />
   if (phase === 'error')        return <ErrorScreen msg={errorMsg} onBack={() => router.push('/dashboard')} />
   if (phase === 'micro_lesson') return <LessonScreen node={snapNode!} onContinue={() => setPhase(snapNode!.deep_dive_required ? 'deep_dive' : 'task')} />
   if (phase === 'deep_dive')    return <DeepDiveScreen node={snapNode!} onContinue={() => setPhase('task')} />
@@ -929,6 +985,7 @@ export default function SnapInGapPage() {
       node={snapNode!} data={masteryData}
       onDashboard={() => router.push('/dashboard')}
       onNext={() => masteryData?.next_node && router.push(`/nodes/snap-gap/${masteryData.next_node}`)}
+      onReplay={() => startSession(true)}
     />
   )
 
@@ -967,6 +1024,21 @@ export default function SnapInGapPage() {
           onMouseEnter={e => (e.currentTarget.style.background = C.board)}
           onMouseLeave={e => (e.currentTarget.style.background = C.btnGold)}
         >HINT</button>
+        <button
+          onClick={() => startSession(true)}
+          style={{
+            writingMode: 'vertical-lr',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
+            color: C.textDark, background: C.btnGold,
+            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer', padding: '14px 8px',
+            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
+            fontFamily: F,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = C.board)}
+          onMouseLeave={e => (e.currentTarget.style.background = C.btnGold)}
+        >FRESH CASE ↻</button>
         <button
           onClick={() => {
             if (sessionStartId && sessionQueue.length > 0) {

@@ -9,6 +9,7 @@ import { apiFetch } from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
+  fetchNodeSession, fetchLiveSocraticHint,
 } from '@/lib/nodeSession'
 
 // ── Palette (identical to Logic Thread) ───────────
@@ -87,10 +88,50 @@ const TUTORIAL_STEPS = [
 ] as const
 
 // ── Sub-screens ────────────────────────────────────
-function LoadScreen() {
+function BriefingGenerationScreen({ title }: { title?: string }) {
+  const [stepIndex, setStepIndex] = useState(0)
+  const steps = [
+    'Calibrating contextual vocabulary clues...',
+    'Synthesizing novel academic reading passages...',
+    'Calibrating target academic terms & synonym anchors...',
+    'Finalizing dynamic 5-case session...',
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex(prev => (prev + 1) % steps.length)
+    }, 1200)
+    return () => clearInterval(timer)
+  }, [steps.length])
+
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, color: C.textLight, fontSize: 14, letterSpacing: '0.1em' }}>
-      LOADING NODE...
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
+      flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      fontFamily: FONT, padding: 24, textAlign: 'center' }}>
+      <div style={{
+        maxWidth: 500, width: '100%', background: '#F2DEC1',
+        border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
+        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+      }}>
+        <div style={stamp}>CRITICA PEDAGOGICAL ENGINE</div>
+        <h3 style={{ fontSize: 17, color: C.btnDark, margin: '8px 0 14px', fontFamily: FONT }}>
+          {title ? title.toUpperCase() : 'GENERATING TAP THE CLUES CASE FILE'}
+        </h3>
+        <div style={{
+          background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: 6,
+          padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <p style={{ margin: 0, fontSize: 12, color: C.textDark, fontFamily: FONT, fontWeight: 600 }}>
+            {steps[stepIndex]}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textLight }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.btnGold }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textMid }} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -134,17 +175,22 @@ function DeepDiveScreen({ node, onContinue }: { node: TapNodeData; onContinue: (
   )
 }
 
-function MasteryScreen({ node, data, onDashboard, onNext }: {
-  node: TapNodeData; data: any; onDashboard: () => void; onNext: () => void
+function MasteryScreen({ node, data, onDashboard, onNext, onReplay }: {
+  node: TapNodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void
 }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div style={{ maxWidth: 480, width: '100%', background: '#0A1E0A', border: `2px solid ${C.green}`, borderRadius: 8, padding: 52, textAlign: 'center' }}>
+      <div style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: `2px solid ${C.green}`, borderRadius: 8, padding: 48, textAlign: 'center' }}>
         <div style={{ ...stamp, color: C.green, borderColor: C.green, fontSize: 16, padding: '8px 24px' }}>✓ NODE MASTERED</div>
         <h2 style={{ fontSize: 20, color: C.green, margin: '8px 0 16px', fontFamily: FONT }}>{node.title}</h2>
         <p style={{ fontSize: 13, color: C.textLight, margin: '0 0 28px', fontFamily: FONT }}>Streak: {data?.streak ?? 0} days</p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {data?.next_node && <button onClick={onNext} style={btnPrimary}>NEXT NODE →</button>}
+          {onReplay && (
+            <button onClick={onReplay} style={{ ...btnPrimary, background: '#22aa55', color: '#fff', borderColor: '#4ddd94' }}>
+              REPLAY WITH FRESH QUESTIONS ↻
+            </button>
+          )}
           <button onClick={onDashboard} style={btnSm}>← DASHBOARD</button>
         </div>
       </div>
@@ -380,66 +426,78 @@ export default function TapCluesPage() {
     }
   }, [sessionExercises, nodeId])
 
-  useEffect(() => {
+  // ── startSession ──────────────────────────────────
+  const startSession = useCallback(async (forceFresh = false) => {
+    setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
 
-    // Attempt to load AI-generated 5-question session
-    apiFetch(`/ai/session/tap_clues/${start}/`)
-      .then((sessionData: any) => {
-        setSessionId(sessionData.session_id)
-        setSessionExercises(sessionData.exercises || [])
-        const firstEx = sessionData.exercises?.[0]
-        setTapNode({
-          node_id: sessionData.node_id,
-          title: sessionData.title,
-          focus: sessionData.focus,
-          difficulty: sessionData.difficulty,
-          micro_lesson_text: sessionData.micro_lesson_text,
-          reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
-          deep_dive_required: sessionData.deep_dive_required,
-          locked_words: firstEx?.locked_words || [],
-        })
-        setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-        setQuestionIndex(0)
-        setPhase('micro_lesson')
+    try {
+      const sessionData = await fetchNodeSession('tap_clues', start, forceFresh)
+      setSessionId(sessionData.session_id)
+      setSessionExercises(sessionData.exercises || [])
+      const firstEx = sessionData.exercises?.[0]
+      setTapNode({
+        node_id: sessionData.node_id,
+        title: sessionData.title,
+        focus: sessionData.focus,
+        difficulty: sessionData.difficulty,
+        micro_lesson_text: sessionData.micro_lesson_text,
+        reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+        deep_dive_required: sessionData.deep_dive_required,
+        locked_words: firstEx?.locked_words || [],
       })
-      .catch(() => {
-        // Fallback to legacy static node queue
-        const saved = loadSession('tap_clues', start)
-        if (saved && saved.sessionQueue.length === 5) {
-          setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
-          if (saved.next_node) setSavedNextNode(saved.next_node)
-          if (saved.streak !== undefined) setSavedStreak(saved.streak)
-          const activeId = saved.sessionQueue[saved.questionIndex] ?? start
-          apiFetch(`/nodes/tap-clues/${activeId}/`)
-            .then((d: TapNodeData) => { setTapNode(d); setPhase('task') })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed.'); setPhase('error')
-            })
-        } else {
-          apiFetch(`/nodes/tap-clues/${start}/`)
-            .then((d: TapNodeData) => {
-              setTapNode(d); setPhase('micro_lesson')
-              apiFetch('/progression/dashboard/')
-                .then((prog: any) => {
-                  const unlocked: string[] = prog.unlocked_nodes ?? []
-                  const queue = buildSessionQueue('tap_clues', start, unlocked)
-                  setSessionQueue(queue); setQuestionIndex(0)
-                  saveSession('tap_clues', start, { sessionQueue: queue, questionIndex: 0 })
-                })
-                .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
-            })
-            .catch((e: any) => {
-              if (e?.status === 401)              { router.push('/auth');      return }
-              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-              setErrorMsg(e?.error ?? 'Failed.'); setPhase('error')
-            })
-        }
-      })
+      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
+      setQuestionIndex(0)
+      setUnlockedWords([])
+      setActiveWordId(null)
+      setFoundClues({})
+      setDefPanel(null)
+      setWrongs(0)
+      setFbText('')
+      setDrawer(false)
+      setHintOverlay(false)
+      setPhase(forceFresh ? 'task' : 'micro_lesson')
+    } catch {
+      // Fallback to legacy static node queue
+      const saved = loadSession('tap_clues', start)
+      if (saved && saved.sessionQueue.length === 5) {
+        setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
+        if (saved.next_node) setSavedNextNode(saved.next_node)
+        if (saved.streak !== undefined) setSavedStreak(saved.streak)
+        const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+        apiFetch(`/nodes/tap-clues/${activeId}/`)
+          .then((d: TapNodeData) => { setTapNode(d); setPhase('task') })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed.'); setPhase('error')
+          })
+      } else {
+        apiFetch(`/nodes/tap-clues/${start}/`)
+          .then((d: TapNodeData) => {
+            setTapNode(d); setPhase('micro_lesson')
+            apiFetch('/progression/dashboard/')
+              .then((prog: any) => {
+                const unlocked: string[] = prog.unlocked_nodes ?? []
+                const queue = buildSessionQueue('tap_clues', start, unlocked)
+                setSessionQueue(queue); setQuestionIndex(0)
+                saveSession('tap_clues', start, { sessionQueue: queue, questionIndex: 0 })
+              })
+              .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
+          })
+          .catch((e: any) => {
+            if (e?.status === 401)              { router.push('/auth');      return }
+            if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+            setErrorMsg(e?.error ?? 'Failed.'); setPhase('error')
+          })
+      }
+    }
   }, [nodeId, router])
+
+  useEffect(() => {
+    startSession(false)
+  }, [startSession])
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'tap_node_01') return
@@ -680,7 +738,7 @@ export default function TapCluesPage() {
   }
 
   // ── Phase guards ───────────────────────────────
-  if (phase === 'loading')      return <LoadScreen />
+  if (phase === 'loading')      return <BriefingGenerationScreen title={tapNode?.title} />
   if (phase === 'error')        return <ErrorScreen msg={errorMsg} onBack={() => router.push('/dashboard')} />
   if (phase === 'micro_lesson') return <LessonScreen node={tapNode!} onContinue={() => setPhase(tapNode?.deep_dive_required ? 'deep_dive' : 'task')} />
   if (phase === 'deep_dive')    return <DeepDiveScreen node={tapNode!} onContinue={() => setPhase('task')} />
@@ -688,6 +746,7 @@ export default function TapCluesPage() {
     <MasteryScreen node={tapNode!} data={masteryData}
       onDashboard={() => router.push('/dashboard')}
       onNext={() => masteryData?.next_node && router.push(`/nodes/tap-clues/${masteryData.next_node}`)}
+      onReplay={() => startSession(true)}
     />
   )
 
@@ -705,6 +764,7 @@ export default function TapCluesPage() {
       <div style={{ position: 'fixed', left: 0, top: '20%', transform: 'translateY(-20%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, zIndex: 100 }}>
         {[
           { label: 'Hint', action: () => fetchHint() },
+          { label: 'Fresh Case ↻', action: () => startSession(true) },
           { label: 'End Session', action: () => {
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('tap_clues', sessionStartId, {
