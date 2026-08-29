@@ -1,9 +1,10 @@
 // src/lib/nodeSession.ts
-// Shared utilities for multi-question sessions with difficulty tiers.
+// Shared utilities for multi-question AI sessions with difficulty tiers.
+import { apiFetch } from './api'
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
 
-/** Node index prefixes map to difficulty tiers 1–5 */
+/** Node index prefixes map to difficulty tiers 1–3 */
 function nodeNumFromId(nodeId: string): number {
   const parts = nodeId.split('_')
   const n = parseInt(parts[parts.length - 1], 10)
@@ -29,7 +30,75 @@ export const DIFFICULTY_COLORS: Record<number, string> = {
   3: '#f5a623',   // amber
 }
 
-// ── Session queue ──────────────────────────────────────────────────────────
+// ── AI Dynamic Question Session API Clients ────────────────────────────────
+
+export interface DynamicSessionData {
+  session_id:         string
+  node_id:            string
+  module:             string
+  title:              string
+  focus:              string
+  difficulty:         number
+  micro_lesson_text:  string
+  deep_dive_required: boolean
+  reading_passage:    string
+  total_exercises:    number
+  exercises:          any[]
+  current_index:      number
+}
+
+/**
+ * Fetch or generate a 5-question AI session for a node attempt.
+ */
+export async function fetchNodeSession(
+  module: string,
+  nodeId: string,
+  forceFresh = false,
+): Promise<DynamicSessionData> {
+  const query = forceFresh ? '?fresh=true' : ''
+  return await apiFetch(`/ai/session/${module}/${nodeId}/${query}`)
+}
+
+/**
+ * Evaluates an individual exercise step within an AI session.
+ */
+export async function evaluateSessionStep(
+  sessionId: string,
+  exerciseIndex: number,
+  payload: any,
+): Promise<any> {
+  return await apiFetch(`/ai/session/${sessionId}/evaluate/${exerciseIndex}/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+/**
+ * Fetches dynamic feedback and tiered scaffold hints for an AI exercise step.
+ */
+export async function fetchSessionFeedback(
+  sessionId: string,
+  exerciseIndex: number,
+  feedbackData: any,
+): Promise<{ explanation: string; hint: string; hint_tier: number }> {
+  return await apiFetch(`/ai/session/${sessionId}/feedback/${exerciseIndex}/`, {
+    method: 'POST',
+    body: JSON.stringify(feedbackData),
+  })
+}
+
+/**
+ * Submits the finished session for mastery, advances progression, and returns streak info.
+ */
+export async function completeSessionMastery(
+  sessionId: string,
+): Promise<{ status: string; next_node?: string; streak?: number; unlocked_nodes?: string[] }> {
+  return await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+    method: 'POST',
+  })
+}
+
+// ── Legacy / Fallback Session Queue Utilities ──────────────────────────────
 
 /** All node IDs per module, in order */
 const MODULE_NODES: Record<string, string[]> = {
@@ -56,14 +125,6 @@ const MODULE_NODES: Record<string, string[]> = {
   ],
 }
 
-/** Nodes grouped by difficulty tier within a module */
-function nodesByTier(module: string): Record<number, string[]> {
-  const all = MODULE_NODES[module] ?? []
-  const tiers: Record<number, string[]> = { 1: [], 2: [], 3: [] }
-  for (const id of all) tiers[nodeDifficulty(id)].push(id)
-  return tiers
-}
-
 /** Fisher-Yates shuffle */
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -74,11 +135,6 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
-/**
- * Build a 5-question session queue starting from startNodeId.
- * Questions come from the same module and get difficult only up to the difficulty of startNodeId.
- * Questions 2-5 are sorted by difficulty to increment in difficulty.
- */
 export function buildSessionQueue(
   module:      string,
   startNodeId: string,
@@ -88,13 +144,11 @@ export function buildSessionQueue(
   const allNodes = MODULE_NODES[module] ?? []
   const targetLength = 5
 
-  // Candidate pools: only difficulties <= startD, excluding startNodeId
   const sameTier = shuffle(
     allNodes.filter(id => nodeDifficulty(id) === startD && id !== startNodeId)
   )
   const lowerTiers = allNodes.filter(id => nodeDifficulty(id) < startD)
 
-  // Group and shuffle lower tiers to maintain randomness
   const lowerTiersByD: Record<number, string[]> = { 1: [], 2: [], 3: [] }
   for (const id of lowerTiers) {
     const d = nodeDifficulty(id)
@@ -111,7 +165,6 @@ export function buildSessionQueue(
   const queue: string[] = [startNodeId]
   const seen = new Set([startNodeId])
 
-  // Fill with lower tiers first
   for (const id of sortedLower) {
     if (queue.length >= targetLength) break
     if (!seen.has(id)) {
@@ -120,7 +173,6 @@ export function buildSessionQueue(
     }
   }
 
-  // Fill with same tier
   for (const id of sameTier) {
     if (queue.length >= targetLength) break
     if (!seen.has(id)) {
@@ -129,7 +181,6 @@ export function buildSessionQueue(
     }
   }
 
-  // Sort questions 2 to queue.length by difficulty to increment difficulty
   const remaining = queue.slice(1)
   remaining.sort((a, b) => nodeDifficulty(a) - nodeDifficulty(b))
 
@@ -144,6 +195,7 @@ export interface SessionProgress {
   savedAt:       number   // epoch ms
   next_node?:    string
   streak?:       number
+  session_id?:   string
 }
 
 function storageKey(module: string, startNodeId: string): string {
@@ -171,7 +223,6 @@ export function loadSession(
     const raw = localStorage.getItem(storageKey(module, startNodeId))
     if (!raw) return null
     const data = JSON.parse(raw) as SessionProgress
-    // Expire after 24 hours
     if (Date.now() - data.savedAt > 86_400_000) {
       localStorage.removeItem(storageKey(module, startNodeId))
       return null

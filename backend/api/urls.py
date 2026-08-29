@@ -19,4 +19,6 @@ urlpatterns = [
          include('api.modules.tap_clues.urls')),
     path('nodes/fact-scanner/',
          include('api.modules.fact_scanner.urls')),
+    path('ai/',
+         include('api.ai.urls')),
 ]
