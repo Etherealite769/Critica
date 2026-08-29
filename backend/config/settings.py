@@ -78,7 +78,7 @@ INSTALLED_APPS = [
     'api.modules.snap_gap',
     'api.modules.tap_clues',
     'api.modules.fact_scanner',
-    'api.seed',
+    'api.ai',
 ]
 
 MIDDLEWARE = [
@@ -194,3 +194,7 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
 }
+
+# Google Gemini AI Configuration
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')

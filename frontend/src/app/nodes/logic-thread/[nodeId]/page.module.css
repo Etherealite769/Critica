@@ -1,0 +1,215 @@
+/* ── Keyframes ─────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pinPop {
+  0%   { transform: scale(0); opacity: 0; }
+  65%  { transform: scale(1.25); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  18%       { transform: translateX(-7px); }
+  36%       { transform: translateX(7px); }
+  54%       { transform: translateX(-5px); }
+  72%       { transform: translateX(5px); }
+}
+
+@keyframes correctPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(34,170,85,0.55); }
+  60%  { box-shadow: 0 0 0 14px rgba(34,170,85,0);   }
+  100% { box-shadow: 0 0 0 0   rgba(34,170,85,0);    }
+}
+
+@keyframes submitPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255,223,167,0.7); }
+  60%  { box-shadow: 0 0 0 12px rgba(255,223,167,0);  }
+  100% { box-shadow: 0 0 0 0   rgba(255,223,167,0);   }
+}
+
+@keyframes drawThread {
+  from { stroke-dashoffset: 1200; opacity: 0; }
+  to   { stroke-dashoffset: 0;    opacity: 0.92; }
+}
+
+@keyframes dot1 {
+  0%,80%,100% { transform: scale(0.55); opacity: 0.35; }
+  40%          { transform: scale(1);    opacity: 1;    }
+}
+
+@keyframes tabSlide {
+  from { transform: translateX(-110%) scaleY(0.7); opacity: 0; }
+  to   { transform: translateX(0)     scaleY(1);   opacity: 1; }
+}
+
+@keyframes boardEnter {
+  from { opacity: 0; transform: scale(0.97) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes hintSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Loading screen ─────────────────────────────── */
+.loadingWrap {
+  animation: fadeIn 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.loadingDots {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #C49A5A;
+  animation: dot1 1.3s infinite ease-in-out;
+}
+.dot:nth-child(2) { animation-delay: 0.18s; }
+.dot:nth-child(3) { animation-delay: 0.36s; }
+
+/* ── Screen cards (lesson / deep dive / mastery) ── */
+.screenCard {
+  animation: scaleIn 0.38s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+
+/* ── Board wrapper ──────────────────────────────── */
+.boardEnter {
+  animation: boardEnter 0.45s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+
+/* ── Cards ──────────────────────────────────────── */
+.card {
+  transition:
+    transform   0.18s ease,
+    box-shadow  0.18s ease,
+    border-color 0.15s ease,
+    background  0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.015) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.34) !important;
+  z-index: 4 !important;
+}
+
+.cardEnter {
+  animation: scaleIn 0.22s ease forwards;
+}
+
+.cardCorrect {
+  animation: correctPulse 0.7s ease forwards;
+}
+
+.cardIncorrect {
+  animation: shake 0.48s ease;
+}
+
+/* ── Folder tabs ────────────────────────────────── */
+.folderTab {
+  transition: background 0.15s ease, box-shadow 0.15s ease, padding 0.15s ease;
+}
+
+.folderTab:nth-child(1) { animation: tabSlide 0.3s 0.05s ease both; }
+.folderTab:nth-child(2) { animation: tabSlide 0.3s 0.14s ease both; }
+
+.folderTab:hover {
+  padding-right: 13px !important;
+  box-shadow: 4px 3px 12px rgba(0,0,0,0.45) !important;
+}
+
+/* ── Submit button ──────────────────────────────── */
+.submitBtn {
+  transition: background 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.submitBtn:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.32) !important;
+}
+
+.submitBtn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.submitBtnReady {
+  animation: submitPulse 2.2s infinite;
+}
+
+/* ── Tutorial button ────────────────────────────── */
+.tutorialBtn {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.tutorialBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+
+/* ── SVG thread ─────────────────────────────────── */
+.threadPath {
+  stroke-dasharray: 1200;
+  animation: drawThread 0.45s ease forwards;
+}
+
+/* ── SVG pin ────────────────────────────────────── */
+.pin {
+  animation: pinPop 0.32s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+}
+
+/* ── Hint overlay ───────────────────────────────── */
+.hintOverlay {
+  animation: fadeIn 0.2s ease;
+}
+
+.hintCard {
+  animation: hintSlide 0.28s ease;
+}
+
+/* ── Tutorial overlay ───────────────────────────── */
+.tutorialOverlay {
+  animation: fadeIn 0.22s ease;
+}
+
+.tutorialModal {
+  animation: scaleIn 0.32s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+
+/* ── Tutorial nav item ──────────────────────────── */
+.tutorialNavItem {
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  cursor: default;
+}
+
+/* ── Tutorial action buttons ────────────────────── */
+.tutorialSecondaryBtn {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.tutorialSecondaryBtn:hover { transform: translateY(-1px); filter: brightness(0.96); }
+
+.tutorialPrimaryBtn {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.tutorialPrimaryBtn:hover { transform: translateY(-1px); filter: brightness(1.06); }

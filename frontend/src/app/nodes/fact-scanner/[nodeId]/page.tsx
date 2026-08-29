@@ -200,10 +200,29 @@ export default function FactScannerPage() {
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
 
+  const [sessionId,        setSessionId]        = useState<string | null>(null)
+  const [sessionExercises, setSessionExercises] = useState<any[]>([])
+
   // ── Load question ──────────────────────────────────────────
-  const loadQuestion = useCallback(async (targetNodeId: string) => {
+  const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
     setPhase('loading')
     try {
+      if (sessionExercises.length > targetIndex) {
+        const ex = sessionExercises[targetIndex]
+        setFactNode(prev => prev ? ({
+          ...prev,
+          title: ex.topic_title || prev.title,
+          reading_passage: ex.reading_passage || prev.reading_passage,
+          article_sentences: ex.article_sentences || prev.article_sentences,
+        }) : ex)
+        setSelected(null); setQuarantined([]); setFlawReasons({})
+        setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
+        setFbText(''); setDrawer(false); setHintOverlay(false)
+        setPhase('task')
+        return
+      }
+
+      const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/fact-scanner/${targetNodeId}/`)
       setFactNode(d)
       setSelected(null); setQuarantined([]); setFlawReasons({})
@@ -214,44 +233,69 @@ export default function FactScannerPage() {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
       setPhase('error')
     }
-  }, [])
+  }, [sessionExercises, nodeId])
 
   // ── Init ──────────────────────────────────────────────────
   useEffect(() => {
     const start = nodeId
     setSessionStartId(start)
-    const saved = loadSession('fact_scanner', start)
-    if (saved && saved.sessionQueue.length === 5) {
-      setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
-      if (saved.next_node) setSavedNextNode(saved.next_node)
-      if (saved.streak !== undefined) setSavedStreak(saved.streak)
-      const activeId = saved.sessionQueue[saved.questionIndex] ?? start
-      apiFetch(`/nodes/fact-scanner/${activeId}/`)
-        .then((d: FactNodeData) => { setFactNode(d); setPhase('task') })
-        .catch((e: any) => {
-          if (e?.status === 401) { router.push('/auth'); return }
-          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
+
+    // Attempt to load AI-generated 5-question session
+    apiFetch(`/ai/session/fact_scanner/${start}/`)
+      .then((sessionData: any) => {
+        setSessionId(sessionData.session_id)
+        setSessionExercises(sessionData.exercises || [])
+        const firstEx = sessionData.exercises?.[0]
+        setFactNode({
+          node_id: sessionData.node_id,
+          title: sessionData.title,
+          focus: sessionData.focus,
+          craap_criterion: firstEx?.craap_criterion || 'CURRENCY',
+          difficulty: sessionData.difficulty,
+          micro_lesson_text: sessionData.micro_lesson_text,
+          reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+          deep_dive_required: sessionData.deep_dive_required,
+          article_sentences: firstEx?.article_sentences || [],
         })
-    } else {
-      apiFetch(`/nodes/fact-scanner/${start}/`)
-        .then((d: FactNodeData) => {
-          setFactNode(d); setPhase('micro_lesson')
-          apiFetch('/progression/dashboard/')
-            .then((prog: any) => {
-              const unlocked: string[] = prog.unlocked_nodes ?? []
-              const queue = buildSessionQueue('fact_scanner', start, unlocked)
-              setSessionQueue(queue); setQuestionIndex(0)
-              saveSession('fact_scanner', start, { sessionQueue: queue, questionIndex: 0 })
+        setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
+        setQuestionIndex(0)
+        setPhase('micro_lesson')
+      })
+      .catch(() => {
+        // Fallback to legacy static node queue
+        const saved = loadSession('fact_scanner', start)
+        if (saved && saved.sessionQueue.length === 5) {
+          setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
+          if (saved.next_node) setSavedNextNode(saved.next_node)
+          if (saved.streak !== undefined) setSavedStreak(saved.streak)
+          const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+          apiFetch(`/nodes/fact-scanner/${activeId}/`)
+            .then((d: FactNodeData) => { setFactNode(d); setPhase('task') })
+            .catch((e: any) => {
+              if (e?.status === 401) { router.push('/auth'); return }
+              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+              setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
             })
-            .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
-        })
-        .catch((e: any) => {
-          if (e?.status === 401) { router.push('/auth'); return }
-          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
-        })
-    }
+        } else {
+          apiFetch(`/nodes/fact-scanner/${start}/`)
+            .then((d: FactNodeData) => {
+              setFactNode(d); setPhase('micro_lesson')
+              apiFetch('/progression/dashboard/')
+                .then((prog: any) => {
+                  const unlocked: string[] = prog.unlocked_nodes ?? []
+                  const queue = buildSessionQueue('fact_scanner', start, unlocked)
+                  setSessionQueue(queue); setQuestionIndex(0)
+                  saveSession('fact_scanner', start, { sessionQueue: queue, questionIndex: 0 })
+                })
+                .catch(() => { setSessionQueue([start]); setQuestionIndex(0) })
+            })
+            .catch((e: any) => {
+              if (e?.status === 401) { router.push('/auth'); return }
+              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+              setErrorMsg(e?.error ?? 'Failed to load node.'); setPhase('error')
+            })
+        }
+      })
   }, [nodeId, router])
 
   useEffect(() => {
@@ -264,6 +308,23 @@ export default function FactScannerPage() {
 
   // ── Hint ─────────────────────────────────────────────────
   const fetchHint = useCallback(async (isInactivity = false) => {
+    if (sessionId && sessionExercises.length > questionIndex) {
+      try {
+        const res = await apiFetch(
+          `/ai/session/${sessionId}/feedback/${questionIndex}/`,
+          { method: 'POST', body: JSON.stringify({ tier: 2 }) },
+        )
+        setHintOverlayText(res.hint || res.explanation || 'Re-read the micro-lesson carefully.')
+        setHintOverlayTier(res.hint_tier ?? 2)
+        setHintOverlay(true); setHintsUsed(h => h + 1)
+        return
+      } catch {
+        setHintOverlayText('Re-read the micro-lesson and apply the criterion to each sentence.')
+        setHintOverlay(true)
+        return
+      }
+    }
+
     const activeNodeId = factNode?.node_id ?? nodeId
     try {
       const res = await apiFetch(
@@ -277,7 +338,7 @@ export default function FactScannerPage() {
       setHintOverlayText('Re-read the micro-lesson and apply the criterion to each sentence.')
       setHintOverlay(true)
     }
-  }, [nodeId, factNode])
+  }, [nodeId, factNode, sessionId, sessionExercises, questionIndex])
 
   // ── Timer ────────────────────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -305,6 +366,32 @@ export default function FactScannerPage() {
   const handleScanAndQuarantine = async () => {
     if (!factNode || !selected || evaluating) return
     resetTimer(); setEvaluating(true); setAttempts(a => a + 1)
+
+    // AI Dynamic Exercise Evaluation
+    if (sessionId && sessionExercises.length > questionIndex) {
+      const currentEx = sessionExercises[questionIndex]
+      const sentence = currentEx.article_sentences?.find((s: any) => s.sentence_id === selected)
+      const isCorrect = sentence?.is_flawed ?? false
+
+      if (isCorrect) {
+        setQuarantined(prev => [...prev, selected])
+        setFlawReasons(prev => ({ ...prev, [selected]: sentence?.flaw_reason || 'Violates the CRAAP criterion.' }))
+        setFlawsFound(f => f + 1); setSelected(null)
+      } else {
+        try {
+          const fb = await apiFetch(
+            `/ai/session/${sessionId}/feedback/${questionIndex}/`,
+            { method: 'POST', body: JSON.stringify({ sentence_id: selected, tier: 1 }) },
+          )
+          setFbText(fb.explanation ?? 'That sentence does not violate the criterion.')
+        } catch { setFbText('That sentence does not violate the CRAAP criterion.') }
+        setDrawer(true); setSelected(null)
+      }
+      setEvaluating(false)
+      return
+    }
+
+    // Legacy Evaluation
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${factNode.node_id}/evaluate-sentence/`,
@@ -332,6 +419,49 @@ export default function FactScannerPage() {
   const handleSubmitMastery = async () => {
     if (!factNode || submitting) return
     setSubmitting(true)
+
+    // 1. AI Dynamic Session Submission
+    if (sessionId && sessionExercises.length > questionIndex) {
+      const currentEx = sessionExercises[questionIndex]
+      const flawedIds = (currentEx.article_sentences || [])
+        .filter((s: any) => s.is_flawed)
+        .map((s: any) => s.sentence_id)
+      const isMastered = flawedIds.every((id: string) => quarantined.includes(id)) && quarantined.length === flawedIds.length
+
+      apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
+        method: 'POST',
+        body: JSON.stringify({ quarantined_ids: quarantined, node_id: nodeId, module: 'fact_scanner' }),
+      }).catch(() => {})
+
+      if (isMastered) {
+        const nextIdx = questionIndex + 1
+        if (nextIdx < sessionExercises.length) {
+          setQuestionIndex(nextIdx)
+          loadQuestion(nextIdx, sessionQueue)
+          setSubmitting(false)
+        } else {
+          try {
+            const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            if (sessionStartId) clearSession('fact_scanner', sessionStartId)
+            setMasteryData({
+              next_node: finalRes.next_node,
+              streak: finalRes.streak ?? 1,
+            })
+            setPhase('mastery')
+          } catch {
+            setSubmitting(false)
+          }
+        }
+        return
+      } else {
+        setFbText('Some flawed sentences were missed or extra sentences quarantined. Review carefully.')
+        setDrawer(true)
+        setSubmitting(false)
+        return
+      }
+    }
+
+    // 2. Legacy Submission
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${factNode.node_id}/mastery/`,
@@ -345,7 +475,7 @@ export default function FactScannerPage() {
             next_node: savedNextNode || undefined,
             streak: savedStreak !== null ? savedStreak : undefined,
           })
-          setQuestionIndex(nextIdx); loadQuestion(sessionQueue[nextIdx])
+          setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
         } else {
           let finalRes = res
           if (sessionStartId) {

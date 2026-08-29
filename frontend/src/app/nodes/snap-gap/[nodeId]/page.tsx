@@ -509,14 +509,42 @@ export default function SnapInGapPage() {
   // session state
   const [sessionQueue,   setSessionQueue]   = useState<string[]>([])
   const [questionIndex,  setQuestionIndex]  = useState(0)
+  const [sessionId,      setSessionId]      = useState<string | null>(null)
+  const [sessionExercises, setSessionExercises] = useState<any[]>([])
   const [sessionStartId, setSessionStartId] = useState<string | null>(null)
   const [savedNextNode,  setSavedNextNode]  = useState<string | null>(null)
   const [savedStreak,    setSavedStreak]    = useState<number | null>(null)
 
   // ── Load a question inline ──────────────────
-  const loadQuestion = useCallback(async (targetNodeId: string) => {
+  const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
     setPhase('loading')
     try {
+      if (sessionExercises.length > targetIndex) {
+        const ex = sessionExercises[targetIndex]
+        setSnapNode(prev => prev ? ({
+          ...prev,
+          title: ex.topic_title || prev.title,
+          reading_passage: ex.reading_passage || prev.reading_passage,
+          sentence_pairs: ex.sentence_pairs || prev.sentence_pairs,
+          transition_tile_dock: ex.transition_tile_dock || prev.transition_tile_dock,
+        }) : ex)
+        setPairIdx(0)
+        setBoard({})
+        setLocked([])
+        setTileState('idle')
+        setWrongs(0)
+        setFbText('')
+        setHintText('')
+        setHintTier(0)
+        setDrawer(false)
+        setHintOverlay(false)
+        setHintOverlayText('')
+        setHintOverlayTier(0)
+        setPhase('task')
+        return
+      }
+
+      const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/snap-gap/${targetNodeId}/`)
       setSnapNode(d)
       setPairIdx(0)
@@ -536,61 +564,85 @@ export default function SnapInGapPage() {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
       setPhase('error')
     }
-  }, [])
+  }, [sessionExercises, nodeId])
 
   // ── load ─────────────────────────────────────────
   useEffect(() => {
     const start = nodeId
     setSessionStartId(start)
-    const saved = loadSession('snap_gap', start)
 
-    if (saved && saved.sessionQueue.length === 5) {
-      setSessionQueue(saved.sessionQueue)
-      setQuestionIndex(saved.questionIndex)
-      if (saved.next_node) setSavedNextNode(saved.next_node)
-      if (saved.streak !== undefined) setSavedStreak(saved.streak)
-
-      const activeId = saved.sessionQueue[saved.questionIndex] ?? start
-      apiFetch(`/nodes/snap-gap/${activeId}/`)
-        .then((d: SnapNodeData) => {
-          setSnapNode(d)
-          setPhase('task')
+    // Attempt to load AI-generated 5-question session
+    apiFetch(`/ai/session/snap_gap/${start}/`)
+      .then((sessionData: any) => {
+        setSessionId(sessionData.session_id)
+        setSessionExercises(sessionData.exercises || [])
+        const firstEx = sessionData.exercises?.[0]
+        setSnapNode({
+          node_id: sessionData.node_id,
+          title: sessionData.title,
+          focus: sessionData.focus,
+          difficulty: sessionData.difficulty,
+          micro_lesson_text: sessionData.micro_lesson_text,
+          reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+          deep_dive_required: sessionData.deep_dive_required,
+          sentence_pairs: firstEx?.sentence_pairs || [],
+          transition_tile_dock: firstEx?.transition_tile_dock || [],
         })
-        .catch((e: any) => {
-          if (e?.status === 401)              { router.push('/auth');      return }
-          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.')
-          setPhase('error')
-        })
-    } else {
-      apiFetch(`/nodes/snap-gap/${start}/`)
-        .then((d: SnapNodeData) => {
-          setSnapNode(d)
-          setPhase('micro_lesson')
+        setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
+        setQuestionIndex(0)
+        setPhase('micro_lesson')
+      })
+      .catch(() => {
+        // Fallback to legacy static node queue
+        const saved = loadSession('snap_gap', start)
+        if (saved && saved.sessionQueue.length === 5) {
+          setSessionQueue(saved.sessionQueue)
+          setQuestionIndex(saved.questionIndex)
+          if (saved.next_node) setSavedNextNode(saved.next_node)
+          if (saved.streak !== undefined) setSavedStreak(saved.streak)
 
-          apiFetch('/progression/dashboard/')
-            .then((prog: any) => {
-              const unlocked: string[] = prog.unlocked_nodes ?? []
-              const queue = buildSessionQueue('snap_gap', start, unlocked)
-              setSessionQueue(queue)
-              setQuestionIndex(0)
-              saveSession('snap_gap', start, {
-                sessionQueue: queue,
-                questionIndex: 0,
-              })
+          const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+          apiFetch(`/nodes/snap-gap/${activeId}/`)
+            .then((d: SnapNodeData) => {
+              setSnapNode(d)
+              setPhase('task')
             })
-            .catch(() => {
-              setSessionQueue([start])
-              setQuestionIndex(0)
+            .catch((e: any) => {
+              if (e?.status === 401)              { router.push('/auth');      return }
+              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+              setErrorMsg(e?.error ?? 'Failed to load node.')
+              setPhase('error')
             })
-        })
-        .catch((e: any) => {
-          if (e?.status === 401)              { router.push('/auth');      return }
-          if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
-          setErrorMsg(e?.error ?? 'Failed to load node.')
-          setPhase('error')
-        })
-    }
+        } else {
+          apiFetch(`/nodes/snap-gap/${start}/`)
+            .then((d: SnapNodeData) => {
+              setSnapNode(d)
+              setPhase('micro_lesson')
+
+              apiFetch('/progression/dashboard/')
+                .then((prog: any) => {
+                  const unlocked: string[] = prog.unlocked_nodes ?? []
+                  const queue = buildSessionQueue('snap_gap', start, unlocked)
+                  setSessionQueue(queue)
+                  setQuestionIndex(0)
+                  saveSession('snap_gap', start, {
+                    sessionQueue: queue,
+                    questionIndex: 0,
+                  })
+                })
+                .catch(() => {
+                  setSessionQueue([start])
+                  setQuestionIndex(0)
+                })
+            })
+            .catch((e: any) => {
+              if (e?.status === 401)              { router.push('/auth');      return }
+              if (e?.error === 'Node is locked.') { router.push('/dashboard'); return }
+              setErrorMsg(e?.error ?? 'Failed to load node.')
+              setPhase('error')
+            })
+        }
+      })
   }, [nodeId, router])
 
   useEffect(() => {
@@ -606,6 +658,25 @@ export default function SnapInGapPage() {
 
   // ── feedback ──────────────────────────────────────
   const callFeedback = useCallback(async (pair_id: string, tile: string, inactivity: boolean) => {
+    if (sessionId && sessionExercises.length > questionIndex) {
+      try {
+        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+          method: 'POST',
+          body: JSON.stringify({ pair_id, selected_tile: tile, tier: 1 }),
+        })
+        setFbText(res.explanation ?? 'That transition does not fit here. Re-read both sentences.')
+        setHintText(res.hint ?? '')
+        setHintTier(res.hint_tier ?? 1)
+        setDrawer(true)
+        return
+      } catch {
+        setFbText('That transition does not fit here. Re-read both sentences.')
+        setHintText('')
+        setDrawer(true)
+        return
+      }
+    }
+
     const activeNodeId = snapNode?.node_id ?? nodeId
     try {
       const res = await apiFetch(`/nodes/snap-gap/${activeNodeId}/feedback/`, {
@@ -625,7 +696,7 @@ export default function SnapInGapPage() {
       setHintText('')
       setDrawer(true)
     }
-  }, [nodeId, snapNode])
+  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex])
 
   // ── timer ─────────────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -647,6 +718,24 @@ export default function SnapInGapPage() {
 
   // ── fetch hint overlay ────────────────────────────
   const fetchHint = useCallback(async () => {
+    if (sessionId && sessionExercises.length > questionIndex) {
+      try {
+        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+          method: 'POST',
+          body: JSON.stringify({ tier: 2 }),
+        })
+        const text = res.hint || res.explanation || 'Re-read the two sentences and think about how they relate logically.'
+        setHintOverlayText(text)
+        setHintOverlayTier(res.hint_tier ?? 2)
+        setHintOverlay(true)
+        return
+      } catch {
+        setHintOverlayText('Re-read the two sentences and think about how they relate logically.')
+        setHintOverlay(true)
+        return
+      }
+    }
+
     const activeNodeId = snapNode?.node_id ?? nodeId
     try {
       const res = await apiFetch(`/nodes/snap-gap/${activeNodeId}/feedback/`, {
@@ -665,7 +754,7 @@ export default function SnapInGapPage() {
       setHintOverlayText('Re-read the two sentences and think about how they relate logically.')
       setHintOverlay(true)
     }
-  }, [nodeId, snapNode])
+  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex])
 
   // ── tile click ────────────────────────────────────
   const handleTile = async (tile: string) => {
@@ -673,6 +762,33 @@ export default function SnapInGapPage() {
     resetTimer()
     const pair = snapNode.sentence_pairs[pairIdx]
     if (!pair) return
+
+    // AI Dynamic Exercise Evaluation
+    if (sessionId && sessionExercises.length > questionIndex) {
+      const currentEx = sessionExercises[questionIndex]
+      const correctTile = currentEx.correct_tile_map?.[pair.pair_id]
+      const isCorrect = (correctTile === tile)
+
+      if (isCorrect) {
+        setTileState('correct')
+        setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
+        setLocked(prev => [...prev, pair.pair_id])
+        setTimeout(() => {
+          setTileState('idle')
+          if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
+        }, 900)
+      } else {
+        setTileState('incorrect')
+        const nextWrongs = wrongs + 1
+        setWrongs(nextWrongs)
+        setTimeout(() => setTileState('idle'), 600)
+        await callFeedback(pair.pair_id, tile, false)
+        if (nextWrongs >= 3) fetchHint()
+      }
+      return
+    }
+
+    // Legacy Evaluation
     try {
       const res = await apiFetch(`/nodes/snap-gap/${snapNode.node_id}/evaluate-gap/`, {
         method: 'POST',
@@ -701,6 +817,49 @@ export default function SnapInGapPage() {
   const handleSubmit = async () => {
     if (!snapNode || submitting) return
     setSubmitting(true)
+
+    // 1. AI Dynamic Session Submission
+    if (sessionId && sessionExercises.length > questionIndex) {
+      const currentEx = sessionExercises[questionIndex]
+      const correctTileMap = currentEx.correct_tile_map || {}
+      const isCorrect = Object.keys(correctTileMap).every(pid => board[pid] === correctTileMap[pid])
+
+      apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
+        method: 'POST',
+        body: JSON.stringify({ board_state: board, node_id: nodeId, module: 'snap_gap' }),
+      }).catch(() => {})
+
+      if (isCorrect) {
+        const nextIdx = questionIndex + 1
+        if (nextIdx < sessionExercises.length) {
+          setQuestionIndex(nextIdx)
+          loadQuestion(nextIdx, sessionQueue)
+          setSubmitting(false)
+        } else {
+          // Finished all 5 questions
+          try {
+            const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            if (sessionStartId) clearSession('snap_gap', sessionStartId)
+            setMasteryData({
+              next_node: finalRes.next_node,
+              streak: finalRes.streak ?? 1,
+            })
+            setPhase('mastery')
+          } catch {
+            setSubmitting(false)
+          }
+        }
+        return
+      } else {
+        setFbText('Some pairs are incorrect. Check and retry.')
+        setHintText('')
+        setDrawer(true)
+        setSubmitting(false)
+        return
+      }
+    }
+
+    // 2. Legacy Submission
     try {
       const res = await apiFetch(`/nodes/snap-gap/${snapNode.node_id}/mastery/`, {
         method: 'POST',
@@ -725,7 +884,7 @@ export default function SnapInGapPage() {
             })
           }
           setQuestionIndex(nextIdx)
-          loadQuestion(sessionQueue[nextIdx])
+          loadQuestion(nextIdx, sessionQueue)
         } else {
           let finalRes = res
           if (sessionStartId) {
