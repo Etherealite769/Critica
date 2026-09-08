@@ -31,31 +31,68 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fahptlbc+_5y8o_2^da#895p1v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [
-    host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()
+from corsheaders.defaults import default_headers
+
+_env_allowed_hosts = os.getenv('ALLOWED_HOSTS', '')
+if _env_allowed_hosts:
+    ALLOWED_HOSTS = [host.strip() for host in _env_allowed_hosts.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = [
+        'localhost',
+        '127.0.0.1',
+        '.vercel.app',
+        'critica-sigma.vercel.app',
+        'critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
+        'critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
+    ]
+
+# Default origins for development and Vercel deployments
+_default_cors_origins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://critica-sigma.vercel.app',
+    'https://critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
+    'https://critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
+]
+_env_cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+if _env_cors_origins:
+    CORS_ALLOWED_ORIGINS = list(dict.fromkeys(
+        _default_cors_origins + [origin.strip() for origin in _env_cors_origins.split(',') if origin.strip()]
+    ))
+else:
+    CORS_ALLOWED_ORIGINS = _default_cors_origins
+
+# Automatically allow all Vercel preview and production subdomains
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.vercel\.app$",
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    origin.strip() for origin in os.getenv(
-        'CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000,http://127.0.0.1:3000,https://critica-sigma.vercel.app'
-    ).split(',') if origin.strip()
-]
+# Allow Private Network Access (PNA) for public HTTPS Vercel frontend calling local backend
+CORS_ALLOW_PRIVATE_NETWORK = True
 
 CORS_ALLOW_CREDENTIALS = True
 
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',
 ]
+
+# CSRF Trusted Origins for Django 4+ (required for cross-origin POST/PUT/PATCH/DELETE)
+_default_csrf_origins = [
+    'https://*.vercel.app',
+    'https://critica-sigma.vercel.app',
+    'https://critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
+    'https://critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+]
+_env_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+if _env_csrf_origins:
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
+        _default_csrf_origins + [origin.strip() for origin in _env_csrf_origins.split(',') if origin.strip()]
+    ))
+else:
+    CSRF_TRUSTED_ORIGINS = _default_csrf_origins
+
 
 
 # Application definition
