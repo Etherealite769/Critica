@@ -33,18 +33,23 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 from corsheaders.defaults import default_headers
 
+_default_allowed_hosts = [
+    'localhost',
+    '127.0.0.1',
+    '.vercel.app',
+    '.onrender.com',
+    '.railway.app',
+    'critica-sigma.vercel.app',
+    'critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
+    'critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
+]
 _env_allowed_hosts = os.getenv('ALLOWED_HOSTS', '')
 if _env_allowed_hosts:
-    ALLOWED_HOSTS = [host.strip() for host in _env_allowed_hosts.split(',') if host.strip()]
+    ALLOWED_HOSTS = list(dict.fromkeys(
+        _default_allowed_hosts + [host.strip() for host in _env_allowed_hosts.split(',') if host.strip()]
+    ))
 else:
-    ALLOWED_HOSTS = [
-        'localhost',
-        '127.0.0.1',
-        '.vercel.app',
-        'critica-sigma.vercel.app',
-        'critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
-        'critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
-    ]
+    ALLOWED_HOSTS = _default_allowed_hosts
 
 # Default origins for development and Vercel deployments
 _default_cors_origins = [
@@ -120,6 +125,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -208,6 +214,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default Auto Field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
