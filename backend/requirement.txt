@@ -64,7 +64,7 @@ djangorestframework-simplejwt==5.3.1
 pymongo==4.17.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
-pywin32==311
+pywin32==311; sys_platform == 'win32'
 pyzmq==27.1.0
 qrcode==8.2
 realtime==2.20.0
