@@ -167,12 +167,15 @@ DATABASES = {
 }
 
 # MongoDB Connection
+import certifi
+
 MONGO_URI = os.getenv('MONGO_URI')
 if MONGO_URI:
     connect(
         'CriticaDB',
         host=MONGO_URI,
         serverSelectionTimeoutMS=5000,
+        tlsCAFile=certifi.where(),
     )
 else:
     # Default to local MongoDB for development
