@@ -23,8 +23,8 @@ MODULE_SCHEMA_MAP: Dict[str, Type[BaseModel]] = {
     'fact_scanner': FactScannerSessionBatchSchema,
 }
 
-PRIMARY_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
-FALLBACK_MODELS = [PRIMARY_MODEL, 'gemini-2.0-flash', 'gemini-1.5-flash']
+PRIMARY_MODEL = os.getenv('GEMINI_MODEL', 'gemini-flash-latest')
+FALLBACK_MODELS = [PRIMARY_MODEL, 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.1-flash-lite']
 # Deduplicate while preserving order
 MODEL_CASCADE = list(dict.fromkeys(FALLBACK_MODELS))
 
@@ -99,19 +99,43 @@ class GeminiClient:
                 # Call with google-genai
                 if self.sdk_type == "google-genai":
                     from google.genai import types
-                    response = self.client.models.generate_content(
-                        model=model_name,
-                        contents=user_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_instruction,
-                            response_mime_type="application/json",
-                            response_schema=schema_cls,
-                            temperature=temperature,
-                            max_output_tokens=max_output_tokens,
-                        ),
-                    )
+                    try:
+                        response = self.client.models.generate_content(
+                            model=model_name,
+                            contents=user_prompt,
+                            config=types.GenerateContentConfig(
+                                system_instruction=system_instruction,
+                                response_mime_type="application/json",
+                                response_schema=schema_cls,
+                                temperature=temperature,
+                                max_output_tokens=max_output_tokens,
+                            ),
+                        )
+                    except Exception as schema_err:
+                        err_str = str(schema_err)
+                        if "additionalProperties" in err_str or "400" in err_str:
+                            logger.info(f"Retrying {model_name} with JSON mode without schema constraint due to API limitation: {err_str[:120]}")
+                            schema_hint = f"\n\nReturn strict JSON adhering to the following schema definition:\n{json.dumps(schema_cls.model_json_schema())}"
+                            response = self.client.models.generate_content(
+                                model=model_name,
+                                contents=f"{user_prompt}{schema_hint}",
+                                config=types.GenerateContentConfig(
+                                    system_instruction=system_instruction,
+                                    response_mime_type="application/json",
+                                    temperature=temperature,
+                                    max_output_tokens=max_output_tokens,
+                                ),
+                            )
+                        else:
+                            raise schema_err
+
                     if response and response.text:
                         parsed = json.loads(response.text)
+                        try:
+                            validated = schema_cls.model_validate(parsed)
+                            parsed = validated.model_dump()
+                        except Exception as val_err:
+                            logger.warning(f"Pydantic validation note: {val_err}")
                         elapsed = time.time() - start_time
                         logger.info(f"GeminiClient: Generated batch via {model_name} in {elapsed:.2f}s")
                         parsed['_model_used'] = model_name
@@ -120,19 +144,38 @@ class GeminiClient:
 
                 # Call with google-generativeai fallback
                 elif self.sdk_type == "google-generativeai":
-                    model = self.client.GenerativeModel(
-                        model_name=model_name,
-                        system_instruction=system_instruction,
-                        generation_config={
-                            "response_mime_type": "application/json",
-                            "response_schema": schema_cls,
-                            "temperature": temperature,
-                            "max_output_tokens": max_output_tokens,
-                        }
-                    )
-                    response = model.generate_content(user_prompt)
+                    try:
+                        model = self.client.GenerativeModel(
+                            model_name=model_name,
+                            system_instruction=system_instruction,
+                            generation_config={
+                                "response_mime_type": "application/json",
+                                "response_schema": schema_cls,
+                                "temperature": temperature,
+                                "max_output_tokens": max_output_tokens,
+                            }
+                        )
+                        response = model.generate_content(user_prompt)
+                    except Exception as legacy_err:
+                        model = self.client.GenerativeModel(
+                            model_name=model_name,
+                            system_instruction=system_instruction,
+                            generation_config={
+                                "response_mime_type": "application/json",
+                                "temperature": temperature,
+                                "max_output_tokens": max_output_tokens,
+                            }
+                        )
+                        schema_hint = f"\n\nReturn strict JSON adhering to the following schema definition:\n{json.dumps(schema_cls.model_json_schema())}"
+                        response = model.generate_content(f"{user_prompt}{schema_hint}")
+
                     if response and response.text:
                         parsed = json.loads(response.text)
+                        try:
+                            validated = schema_cls.model_validate(parsed)
+                            parsed = validated.model_dump()
+                        except Exception as val_err:
+                            logger.warning(f"Pydantic validation note: {val_err}")
                         elapsed = time.time() - start_time
                         logger.info(f"GeminiClient: Generated batch via {model_name} in {elapsed:.2f}s")
                         parsed['_model_used'] = model_name

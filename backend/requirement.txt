@@ -94,3 +94,4 @@ websockets==15.0.1
 whitenoise==6.11.0
 yarg==0.1.9
 gunicorn==23.0.0
+google-genai>=1.0.0
