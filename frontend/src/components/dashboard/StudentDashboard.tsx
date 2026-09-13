@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
 import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModal'
+import LexicalClipboardModal   from './LexicalClipboardModal'
+import QuickReviewModal       from './QuickReviewModal'
+import MetricLogModal         from './MetricLogModal'
 
 // ── Types ───────────────────────────────────────
 interface NodeStatus {
@@ -356,6 +359,9 @@ export default function StudentDashboard() {
   const [scrollPos, setScrollPos] = useState(0)
   const [showMenu, setShowMenu]   = useState(false)
   const [showOnboardingGuide, setShowOnboardingGuide] = useState(false)
+  const [showLexicalModal, setShowLexicalModal] = useState(false)
+  const [showQuickReviewModal, setShowQuickReviewModal] = useState(false)
+  const [showMetricLogModal, setShowMetricLogModal] = useState(false)
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -918,18 +924,18 @@ export default function StudentDashboard() {
           {[
             {
               icon:    '📋',
-              label:   'LEXICAL\nCLIPBOAD',
-              onClick: () => router.push('/lexical'),
+              label:   'LEXICAL\nCLIPBOARD',
+              onClick: () => setShowLexicalModal(true),
             },
             {
               icon:    '📄',
               label:   'QUICK\nREVIEW',
-              onClick: () => {},
+              onClick: () => setShowQuickReviewModal(true),
             },
             {
               icon:    '📈',
               label:   'METRIC\nLOG',
-              onClick: () => {},
+              onClick: () => setShowMetricLogModal(true),
             },
           ].map((item, idx) => (
             <div
@@ -970,6 +976,20 @@ export default function StudentDashboard() {
         onStartFirstNode={() => {
           handleStartNode('/nodes/logic-thread', 'log_node_01', 'unlocked')
         }}
+      />
+
+      {/* ── SIDEBAR INVESTIGATIVE MODALS ── */}
+      <LexicalClipboardModal
+        isOpen={showLexicalModal}
+        onClose={() => setShowLexicalModal(false)}
+      />
+      <QuickReviewModal
+        isOpen={showQuickReviewModal}
+        onClose={() => setShowQuickReviewModal(false)}
+      />
+      <MetricLogModal
+        isOpen={showMetricLogModal}
+        onClose={() => setShowMetricLogModal(false)}
       />
     </div>
   )
