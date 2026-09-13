@@ -54,6 +54,7 @@ class DashboardView(APIView):
                 profile.completed_nodes),
             'unlocked_nodes':  profile.unlocked_nodes,
             'completed_nodes': profile.completed_nodes,
+            'onboarding_completed': getattr(profile, 'onboarding_completed', False),
             'module_status':   module_status,
         })
 
@@ -104,5 +105,17 @@ class NodeResetView(APIView):
         return Response({
             'status':          'reset',
             'completed_nodes': profile.completed_nodes,
+        })
+
+
+class OnboardingCompleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        student_id = str(request.user.id)
+        profile = ProgressionManagementService.complete_onboarding(student_id)
+        return Response({
+            'status':               'success',
+            'onboarding_completed': getattr(profile, 'onboarding_completed', True),
         })
     

@@ -252,7 +252,7 @@ LOGIC_THREAD_TEMPLATES = [
         ]
     },
 
-    # ── Tier 3 (4 blocks, complex epistemology) ──
+    # ── Tier 3 (5 blocks, advanced academic synthesis) ──
     {
         "tier": 3,
         "domain": "Fluid Mechanics & Physics",
@@ -261,17 +261,19 @@ LOGIC_THREAD_TEMPLATES = [
             ("p1", "When any solid body is submerged within an incompressible fluid, it encounters hydrostatic pressure perpendicular to all exposed surfaces.", 1),
             ("p2", "Because fluid pressure increases monotonically with depth, vertical pressure against the lower base exceeds downward pressure upon the apex.", 2),
             ("p3", "This spatial pressure differential integrates into an upward resultant vector termed the buoyant force.", 3),
-            ("p4", "When this buoyant vector precisely counterbalances the object's gravitational weight, the system attains stable hydrostatic equilibrium.", 4),
+            ("p4", "According to Archimedes' principle, the magnitude of this net upward force equals the exact weight of the displaced liquid volume.", 4),
+            ("p5", "When this buoyant vector precisely counterbalances the object's gravitational weight, the system attains stable hydrostatic equilibrium.", 5),
         ],
         "explanations": {
             "p2__p1": "Derives the vertical pressure gradient from the foundational premise of hydrostatic immersion.",
             "p3__p2": "Synthesizes the vertical pressure discrepancy into the single resultant buoyant force vector.",
-            "p4__p3": "Concludes with the equilibrium condition when the upward vector equals downward gravity."
+            "p4__p3": "Quantifies the buoyant force magnitude via Archimedes' displacement principle.",
+            "p5__p4": "Concludes with the neutral equilibrium condition when the upward buoyant vector equals downward gravity."
         },
         "hints": [
             "Establish the general principle of hydrostatic immersion first.",
-            "Analyze how pressure varies with vertical depth.",
-            "Derive the buoyant force vector and culminate in equilibrium."
+            "Analyze how fluid pressure varies with vertical immersion depth.",
+            "Derive the buoyant force vector, apply Archimedes' law, and culminate in equilibrium."
         ]
     },
     {
@@ -282,17 +284,19 @@ LOGIC_THREAD_TEMPLATES = [
             ("p1", "A contiguous, interbreeding biological population occupies a broad geographic habitat under uniform environmental selection.", 1),
             ("p2", "Subsequently, a geological event—such as a tectonic rift or river diversion—erects an impassable physical barrier.", 2),
             ("p3", "Isolated on opposite margins, the bifurcated subpopulations accumulate disparate genetic mutations and adaptive alleles independently.", 3),
-            ("p4", "Over evolutionary epochs, these accumulated genomic divergences establish permanent prezygotic and postzygotic reproductive isolation.", 4),
+            ("p4", "Over evolutionary epochs, these accumulated genomic divergences alter morphological traits and mating rituals between the separated groups.", 4),
+            ("p5", "Consequently, even if the physical barrier later dissolves, the lineages exhibit permanent reproductive isolation and constitute distinct species.", 5),
         ],
         "explanations": {
             "p2__p1": "The physical barrier divides the previously uniform panmictic population in p1.",
             "p3__p2": "Genomic divergence begins in the isolated populations separated in p2.",
-            "p4__p3": "Cumulative genomic differences in p3 culminate in full speciation and reproductive isolation."
+            "p4__p3": "Cumulative genomic differences alter mating rituals and morphological traits.",
+            "p5__p4": "Permanent reproductive isolation proves that speciation is complete even upon secondary contact."
         },
         "hints": [
             "Start with the ancestral contiguous population.",
             "Introduce the geological vicariance barrier.",
-            "Trace independent genetic divergence to irreversible reproductive isolation."
+            "Trace independent genetic divergence to phenotypic divergence, culminating in reproductive isolation."
         ]
     },
     {
@@ -303,17 +307,42 @@ LOGIC_THREAD_TEMPLATES = [
             ("p1", "Conventional superconducting qubits suffer rapid decoherence due to stray thermal and electromagnetic background noise.", 1),
             ("p2", "Topological quantum computing evades this vulnerability by encoding quantum states into non-Abelian anyon braids in two-dimensional electron gases.", 2),
             ("p3", "Because quantum information is stored globally across topological braiding paths rather than in localized physical states, local perturbations cannot corrupt the data.", 3),
-            ("p4", "Consequently, fault-tolerant logic gates can be executed without exponential active error-correction overhead.", 4),
+            ("p4", "Mathematical knot invariants ensure that any continuous local deformation of the braid leaves the encoded unitary matrix completely intact.", 4),
+            ("p5", "Consequently, fault-tolerant logic gates can be executed with intrinsic physical protection rather than exponential active error-correction overhead.", 5),
         ],
         "explanations": {
             "p2__p1": "Contrasts conventional decoherence vulnerability with non-Abelian anyon encoding.",
             "p3__p2": "Explains why non-local topological encoding resists local physical perturbation.",
-            "p4__p3": "Derives the architectural advantage of fault-tolerant quantum logic without overhead."
+            "p4__p3": "Mathematical knot invariants provide the formal guarantee that local deformations do not change the braid's topology.",
+            "p5__p4": "Derives the architectural advantage of fault-tolerant quantum logic without error-correction overhead."
         },
         "hints": [
             "Identify the fundamental noise obstacle in classical superconducting qubits.",
             "Introduce the topological anyon braiding mechanism as the solution.",
-            "Conclude with fault-tolerant gate execution benefits."
+            "Trace topological non-locality to knot invariance, and conclude with fault-tolerant gate benefits."
+        ]
+    },
+    {
+        "tier": 3,
+        "domain": "Astrophysics & Cosmochemistry",
+        "topic": "Stellar Nucleosynthesis and Supernova Remnant Enrichment",
+        "blocks": [
+            ("p1", "Massive stars sustain core hydrostatic equilibrium by fusing hydrogen into helium within extreme gravitational furnaces.", 1),
+            ("p2", "Once core hydrogen is depleted, successive stages of gravitational contraction ignite progressively heavier fuels up to iron.", 2),
+            ("p3", "Because fusing iron is endothermic and consumes energy, the degenerate core abruptly ceases radiation pressure and collapses.", 3),
+            ("p4", "The resulting rebound shockwave blasts through outer stellar envelopes in a catastrophic core-collapse supernova explosion.", 4),
+            ("p5", "This violent dispersal scatters newly synthesized heavy elements across the interstellar medium, seeding future planetary systems.", 5),
+        ],
+        "explanations": {
+            "p2__p1": "Hydrogen depletion triggers gravitational contraction and successive heavier fusion burning stages.",
+            "p3__p2": "Iron's endothermic nature terminates outward radiation pressure, triggering core collapse.",
+            "p4__p3": "Core collapse rebound produces the outward supersonic supernova shockwave.",
+            "p5__p4": "Supernova ejection enriches the interstellar medium with heavy elements for nascent star systems."
+        },
+        "hints": [
+            "Begin with steady-state hydrogen fusion in the stellar core.",
+            "Follow the progression through heavier fuel burning until iron is formed.",
+            "Trace iron core collapse to shockwave rebound and interstellar elemental enrichment."
         ]
     }
 ]

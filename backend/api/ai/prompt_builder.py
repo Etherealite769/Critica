@@ -38,9 +38,9 @@ EDUCATIONAL_DOMAINS = [
 ]
 
 DIFFICULTY_DESCRIPTORS = {
-    1: "Basics / Foundation (Lexile 700-900L / CEFR B1): Clear and direct sentence structures, obvious transitions/clues, high clarity, and concise passages (40-70 words per exercise).",
-    2: "Intermediate (Lexile 950-1150L / CEFR B2): Moderate syntactic complexity, multi-step logical linkages, subtle distractors, and standard academic prose (70-110 words per exercise).",
-    3: "Advanced (Lexile 1200-1400L+ / CEFR C1): Nuanced academic prose, complex multi-clause sentences, fine distinctions between closely related concepts, and deep comprehension demands (100-150 words per exercise)."
+    1: "Basics / Foundation (Lexile 700-900L / CEFR B1): Clear and direct sentence structures, obvious transitions/clues, high clarity, and concise passages with exactly 3 paragraph blocks to connect in sequence (50-80 words per exercise).",
+    2: "Intermediate (Lexile 950-1150L / CEFR B2): Moderate syntactic complexity, multi-step logical linkages, subtle distractors, and standard academic prose with exactly 4 paragraph blocks to connect in sequence (80-120 words per exercise).",
+    3: "Advanced (Lexile 1200-1400L+ / CEFR C1): Nuanced academic prose, complex multi-clause sentences, fine distinctions between closely related concepts, and deep comprehension demands with exactly 5 paragraph blocks to connect in sequence (120-170 words per exercise)."
 }
 
 
@@ -120,13 +120,13 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
 """
 
     if module == 'logic_thread':
-        block_count = 2 if difficulty == 1 else (3 if difficulty == 2 else 4)
+        block_count = 3 if difficulty == 1 else (4 if difficulty == 2 else 5)
         prompt += f"""
 [LOGIC THREAD SPECIFIC REQUIREMENTS]:
 For each of the {count} exercises:
 1. `topic_title`: A distinct, descriptive title for the passage topic.
 2. `reading_passage`: The full, cohesive paragraph when read in correct sequence.
-3. `paragraph_blocks`: Exactly {block_count} blocks ('p1', 'p2', ...). Each block must be a distinct, self-contained sentence or segment.
+3. `paragraph_blocks`: Exactly {block_count} blocks ('p1', 'p2', ... up to 'p{block_count}'). Each block must be a distinct, self-contained sentence or segment.
 4. `correct_sequence`: The exact ordered list of block_ids (e.g. {['p' + str(i+1) for i in range(block_count)]}).
 5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological/causal dependency requires p1 first').
 6. `scaffold_hints`: Exactly 3 hints (tier 1: gentle cue, tier 2: structural signal word pointer, tier 3: explicit sequence step).

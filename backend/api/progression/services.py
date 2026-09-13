@@ -194,3 +194,10 @@ class ProgressionManagementService:
             profile.completed_nodes.remove(node_id)
             profile.save()
         return profile
+
+    @staticmethod
+    def complete_onboarding(student_id):
+        profile = ProgressionManagementService\
+            .get_or_create_profile(student_id)
+        profile.complete_onboarding()
+        return profile
