@@ -20,10 +20,15 @@ class StudentProfileDocument(me.Document):
                           me.StringField(),
                           default=list)
     streak_count    = me.IntField(default=0)
+    onboarding_completed = me.BooleanField(default=False)
     last_active     = me.DateTimeField(
                           default=datetime.utcnow)
 
     meta = {'collection': 'student_profiles'}
+
+    def complete_onboarding(self):
+        self.onboarding_completed = True
+        self.save()
 
     def unlock_node(self, node_id: str):
         if node_id not in self.unlocked_nodes:

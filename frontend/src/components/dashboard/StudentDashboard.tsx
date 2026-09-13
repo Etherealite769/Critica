@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
+import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModal'
 
 // ── Types ───────────────────────────────────────
 interface NodeStatus {
@@ -14,11 +15,13 @@ interface ModuleStatus {
   nodes:           NodeStatus[]
 }
 interface DashboardData {
+  student_id?:     string
   username:        string
   first_name:      string
   last_name:       string
   streak:          number
   completed_count: number
+  onboarding_completed?: boolean
   module_status: {
     logic_thread:  ModuleStatus
     snap_gap:      ModuleStatus
@@ -352,12 +355,23 @@ export default function StudentDashboard() {
   const [error, setError]         = useState('')
   const [scrollPos, setScrollPos] = useState(0)
   const [showMenu, setShowMenu]   = useState(false)
+  const [showOnboardingGuide, setShowOnboardingGuide] = useState(false)
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
     try {
       const d = await apiFetch('/progression/dashboard/')
       setDashboard(d)
+
+      // Auto-trigger Onboarding Guide for new users or if not completed
+      const studentId = d?.student_id || 'user'
+      const localCompleted = typeof window !== 'undefined'
+        ? localStorage.getItem(`critica_onboarding_completed_${studentId}`) === 'true'
+        : false
+
+      if (d && d.onboarding_completed === false && !localCompleted) {
+        setShowOnboardingGuide(true)
+      }
     } catch (e: any) {
       const code =
         e?.code ?? e?.detail?.code ?? ''
@@ -532,6 +546,19 @@ export default function StudentDashboard() {
           &nbsp;Completed
         </div>
 
+        {/* ── FIELD GUIDE BUTTON ── */}
+        <button
+          onClick={() => setShowOnboardingGuide(true)}
+          className="flex items-center gap-1.5
+            font-mono text-xs text-[#D4B896]
+            hover:text-[#FFF8ED] hover:border-[#C49A5A]
+            px-2.5 py-1 rounded border border-[#8C5A3C]
+            bg-[#2D0909]/60 cursor-pointer transition-all"
+          title="Open the Field Manual & Interactive Demo">
+          <span>📖</span>
+          <span className="font-bold">FIELD GUIDE</span>
+        </button>
+
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
@@ -548,14 +575,26 @@ export default function StudentDashboard() {
             <div className="absolute top-full
               right-0 mt-2 bg-[#2a0a00]
               border border-[#5a2010] rounded-sm
-              shadow-lg z-50 min-w-[150px]">
+              shadow-lg z-50 min-w-[170px]">
+              <button
+                onClick={() => {
+                  setShowMenu(false)
+                  setShowOnboardingGuide(true)
+                }}
+                className="w-full text-left px-4
+                  py-2 text-xs font-mono text-[#D4B896]
+                  hover:bg-[#3a1010]
+                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
+                <span>📖</span> Field Manual & Demo
+              </button>
+              <div className="h-px bg-[#5a2010]" />
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4
                   py-2 text-xs font-mono text-[#D4B896]
                   hover:bg-[#3a1010]
-                  hover:text-[#F4E6CC] transition-colors">
-                Logout
+                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
+                <span>🚪</span> Logout
               </button>
             </div>
           )}
@@ -917,6 +956,21 @@ export default function StudentDashboard() {
         </aside>
         </div>{/* end center container */}
       </div>{/* end body */}
+
+      {/* ── ONBOARDING GUIDE & INTERACTIVE DEMO MODAL ── */}
+      <OnboardingGuideModal
+        isOpen={showOnboardingGuide}
+        onClose={() => setShowOnboardingGuide(false)}
+        studentName={
+          dashboard?.first_name
+            ? `${dashboard.first_name} ${dashboard.last_name || ''}`.trim()
+            : dashboard?.username || 'Investigator'
+        }
+        studentId={dashboard?.student_id || 'user'}
+        onStartFirstNode={() => {
+          handleStartNode('/nodes/logic-thread', 'log_node_01', 'unlocked')
+        }}
+      />
     </div>
   )
 }

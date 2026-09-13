@@ -1,6 +1,6 @@
 # backend/api/progression/urls.py
 from django.urls import path
-from .views import DashboardView, ModuleNodesView, NodeResetView
+from .views import DashboardView, ModuleNodesView, NodeResetView, OnboardingCompleteView
 
 urlpatterns = [
     path('dashboard/',
@@ -9,4 +9,6 @@ urlpatterns = [
          ModuleNodesView.as_view()),
     path('reset/',
          NodeResetView.as_view()),
+    path('onboarding/complete/',
+         OnboardingCompleteView.as_view()),
 ]

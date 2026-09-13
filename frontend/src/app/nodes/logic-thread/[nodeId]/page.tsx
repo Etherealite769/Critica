@@ -37,14 +37,44 @@ const TUTORIAL_STEPS = [
 // ── Canvas geometry ──────────────────────────────────────────
 const CW = 900, CH = 520, CARD_W = 230, CARD_H = 138
 
-const SCATTER = [
-  { x: 52,  y: 38  },
-  { x: 288, y: 188 },
-  { x: 52,  y: 248 },
-  { x: 504, y: 48  },
-  { x: 504, y: 228 },
-  { x: 288, y: 316 },
-]
+export function getScatterPositions(count: number) {
+  // Basics: exactly 3 cards (Triangle / V-stagger formation)
+  if (count <= 3) {
+    return [
+      { x: 65,  y: 65 },
+      { x: 335, y: 240 },
+      { x: 605, y: 75 },
+    ]
+  }
+  // Intermediate: exactly 4 cards (Staggered 2x2 detective formation)
+  if (count === 4) {
+    return [
+      { x: 80,  y: 45 },
+      { x: 550, y: 55 },
+      { x: 130, y: 265 },
+      { x: 500, y: 275 },
+    ]
+  }
+  // Advanced: exactly 5 cards (3 top, 2 bottom staggered formation)
+  if (count === 5) {
+    return [
+      { x: 45,  y: 35 },
+      { x: 335, y: 30 },
+      { x: 625, y: 40 },
+      { x: 175, y: 255 },
+      { x: 505, y: 260 },
+    ]
+  }
+  // Fallback for 6+ cards
+  return [
+    { x: 52,  y: 38  },
+    { x: 288, y: 188 },
+    { x: 52,  y: 248 },
+    { x: 504, y: 48  },
+    { x: 504, y: 228 },
+    { x: 288, y: 316 },
+  ]
+}
 
 function bezierPath(x1: number, y1: number, x2: number, y2: number) {
   const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
@@ -771,7 +801,7 @@ export default function LogicThreadPage() {
               letterSpacing: '0.12em', background: 'rgba(255,255,255,0.3)', fontFamily: FONT,
             }}>
               <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-              <span style={{ color: C.accentRed }}>CONNECT THE PARAGRAPHS IN LOGICAL SEQUENCE</span>
+              <span style={{ color: C.accentRed }}>CONNECT ALL {blocks.length || 3} PARAGRAPHS IN LOGICAL SEQUENCE</span>
             </div>
           </div>
 
@@ -780,7 +810,7 @@ export default function LogicThreadPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.12)', borderRadius: 20, padding: '5px 14px' }}>
               <div style={{ width: 9, height: 9, borderRadius: '50%', background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: FONT }}>
-                LVL {node!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[node!.difficulty ?? nodeDifficulty(nodeId)]}
+                LVL {node!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[node!.difficulty ?? nodeDifficulty(nodeId)]} ({blocks.length} CARDS)
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -818,100 +848,114 @@ export default function LogicThreadPage() {
             width: CW, height: CH, background: C.canvas,
             position: 'relative', overflow: 'hidden',
           }}>
-            {blocks.map((block, index) => {
-              const pos       = SCATTER[index] ?? { x: 50 + index * 140, y: 100 }
-              const inChain   = chain.includes(block.block_id)
-              const chainPos  = chain.indexOf(block.block_id)
-              const isLatest  = chain.length > 0 && chain[chain.length - 1] === block.block_id
-
-              const border =
-                submitState === 'correct'   && inChain ? '2px solid #22aa55' :
-                submitState === 'incorrect' && inChain ? '2px solid #cc3333' :
-                isLatest                               ? `2px solid ${C.btnGoldBdr}` :
-                inChain                                ? `2px solid ${C.textMid}` :
-                `1px solid ${C.cardBdrIdle}`
-
-              const bg =
-                submitState === 'correct'   && inChain ? '#f0fff4' :
-                submitState === 'incorrect' && inChain ? '#fff0f0' :
-                isLatest                               ? '#FFF8E7' :
-                C.cardPaper
-
-              const cardAnim =
-                submitState === 'correct'   && inChain ? styles.cardCorrect :
-                submitState === 'incorrect' && inChain ? styles.cardIncorrect :
-                styles.card
-
+            {(() => {
+              const positions = getScatterPositions(blocks.length)
               return (
-                <div
-                  key={block.block_id}
-                  onClick={() => handleCardClick(block.block_id)}
-                  className={`${cardAnim} ${styles.cardEnter}`}
-                  style={{
-                    position: 'absolute', left: pos.x, top: pos.y,
-                    width: CARD_W, height: CARD_H,
-                    background: bg, border, borderRadius: 10,
-                    boxShadow: isLatest ? '0 4px 18px rgba(196,154,90,0.45)' : '0 3px 12px rgba(0,0,0,0.22)',
-                    cursor: submitState === 'idle' ? 'pointer' : 'default',
-                    padding: '22px 14px 12px',
-                    userSelect: 'none', zIndex: 2,
-                    display: 'flex', alignItems: 'center', overflow: 'hidden',
-                  }}
-                >
-                  {/* pin hole decoration */}
-                  <div style={{
-                    position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
-                    width: 7, height: 7, borderRadius: '50%',
-                    background: isLatest ? C.accentRed : C.cardBdrIdle,
-                    boxShadow: isLatest ? `0 0 0 2px rgba(128,0,32,0.25)` : 'none',
-                    transition: 'background 0.2s',
-                  }} />
-                  <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: C.textDark, fontFamily: FONT, fontWeight: inChain ? 600 : 400 }}>
-                    {block.text}
-                  </p>
-                </div>
-              )
-            })}
+                <>
+                  {blocks.map((block, index) => {
+                    const pos       = positions[index] ?? { x: 50 + index * 140, y: 100 }
+                    const inChain   = chain.includes(block.block_id)
+                    const chainPos  = chain.indexOf(block.block_id)
+                    const isLatest  = chain.length > 0 && chain[chain.length - 1] === block.block_id
 
-            {/* SVG — threads and pins */}
-            <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }} width={CW} height={CH}>
-              {chain.slice(0, -1).map((_, i) => {
-                const fi = blocks.findIndex(b => b.block_id === chain[i])
-                const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
-                if (fi < 0 || ti < 0) return null
-                const fp = { x: SCATTER[fi].x + CARD_W / 2, y: SCATTER[fi].y }
-                const tp = { x: SCATTER[ti].x + CARD_W / 2, y: SCATTER[ti].y }
-                return (
-                  <path
-                    key={`${chain[i]}->${chain[i + 1]}`}
-                    className={styles.threadPath}
-                    d={bezierPath(fp.x, fp.y, tp.x, tp.y)}
-                    stroke={lineColor}
-                    strokeWidth={2.5}
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                )
-              })}
-              {chain.map((blockId, i) => {
-                const bi = blocks.findIndex(b => b.block_id === blockId)
-                if (bi < 0) return null
-                const px = SCATTER[bi].x + CARD_W / 2
-                const py = SCATTER[bi].y
-                const pinColor = submitState === 'correct' ? '#22aa55'
-                  : submitState === 'incorrect' ? '#cc3333'
-                  : C.textMid
-                return (
-                  <g key={`pin-${blockId}-${i}`} className={styles.pin}>
-                    <circle cx={px} cy={py} r={13} fill="white" stroke={pinColor} strokeWidth={2} />
-                    <text x={px} y={py + 4.5} textAnchor="middle"
-                      fontSize={11} fontWeight={700} fill={pinColor} fontFamily={FONT}>
-                      {i + 1}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
+                    const border =
+                      submitState === 'correct'   && inChain ? '2px solid #22aa55' :
+                      submitState === 'incorrect' && inChain ? '2px solid #cc3333' :
+                      isLatest                               ? `2px solid ${C.btnGoldBdr}` :
+                      inChain                                ? `2px solid ${C.textMid}` :
+                      `1px solid ${C.cardBdrIdle}`
+
+                    const bg =
+                      submitState === 'correct'   && inChain ? '#f0fff4' :
+                      submitState === 'incorrect' && inChain ? '#fff0f0' :
+                      isLatest                               ? '#FFF8E7' :
+                      C.cardPaper
+
+                    const cardAnim =
+                      submitState === 'correct'   && inChain ? styles.cardCorrect :
+                      submitState === 'incorrect' && inChain ? styles.cardIncorrect :
+                      styles.card
+
+                    return (
+                      <div
+                        key={block.block_id}
+                        onClick={() => handleCardClick(block.block_id)}
+                        className={`${cardAnim} ${styles.cardEnter}`}
+                        style={{
+                          position: 'absolute', left: pos.x, top: pos.y,
+                          width: CARD_W, height: CARD_H,
+                          background: bg, border, borderRadius: 10,
+                          boxShadow: isLatest ? '0 4px 18px rgba(196,154,90,0.45)' : '0 3px 12px rgba(0,0,0,0.22)',
+                          cursor: submitState === 'idle' ? 'pointer' : 'default',
+                          padding: '22px 14px 12px',
+                          userSelect: 'none', zIndex: 2,
+                          display: 'flex', alignItems: 'center', overflow: 'hidden',
+                        }}
+                      >
+                        {/* pin hole decoration */}
+                        <div style={{
+                          position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                          width: 7, height: 7, borderRadius: '50%',
+                          background: isLatest ? C.accentRed : C.cardBdrIdle,
+                          boxShadow: isLatest ? `0 0 0 2px rgba(128,0,32,0.25)` : 'none',
+                          transition: 'background 0.2s',
+                        }} />
+                        <p style={{
+                          margin: 0,
+                          fontSize: blocks.length >= 5 ? 12 : 13,
+                          lineHeight: blocks.length >= 5 ? 1.5 : 1.7,
+                          color: C.textDark,
+                          fontFamily: FONT,
+                          fontWeight: inChain ? 600 : 400
+                        }}>
+                          {block.text}
+                        </p>
+                      </div>
+                    )
+                  })}
+
+                  {/* SVG — threads and pins */}
+                  <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }} width={CW} height={CH}>
+                    {chain.slice(0, -1).map((_, i) => {
+                      const fi = blocks.findIndex(b => b.block_id === chain[i])
+                      const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
+                      if (fi < 0 || ti < 0) return null
+                      const fp = { x: (positions[fi]?.x ?? 0) + CARD_W / 2, y: positions[fi]?.y ?? 0 }
+                      const tp = { x: (positions[ti]?.x ?? 0) + CARD_W / 2, y: positions[ti]?.y ?? 0 }
+                      return (
+                        <path
+                          key={`${chain[i]}->${chain[i + 1]}`}
+                          className={styles.threadPath}
+                          d={bezierPath(fp.x, fp.y, tp.x, tp.y)}
+                          stroke={lineColor}
+                          strokeWidth={2.5}
+                          fill="none"
+                          strokeLinecap="round"
+                        />
+                      )
+                    })}
+                    {chain.map((blockId, i) => {
+                      const bi = blocks.findIndex(b => b.block_id === blockId)
+                      if (bi < 0) return null
+                      const px = (positions[bi]?.x ?? 0) + CARD_W / 2
+                      const py = positions[bi]?.y ?? 0
+                      const pinColor = submitState === 'correct' ? '#22aa55'
+                        : submitState === 'incorrect' ? '#cc3333'
+                        : C.textMid
+                      return (
+                        <g key={`pin-${blockId}-${i}`} className={styles.pin}>
+                          <circle cx={px} cy={py} r={13} fill="white" stroke={pinColor} strokeWidth={2} />
+                          <text x={px} y={py + 4.5} textAnchor="middle"
+                            fontSize={11} fontWeight={700} fill={pinColor} fontFamily={FONT}>
+                            {i + 1}
+                          </text>
+                        </g>
+                      )
+                    })}
+                  </svg>
+                </>
+              )
+            })()}
 
             {/* Hint & Live Socratic overlay */}
             {showHint && (
