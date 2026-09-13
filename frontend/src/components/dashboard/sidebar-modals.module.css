@@ -1,0 +1,413 @@
+/* frontend/src/components/dashboard/sidebar-modals.module.css */
+
+/* ── Modal Overlay & Backdrop ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 2, 2, 0.85);
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Dossier Container (Aged Paper Folder) ── */
+.dossierContainer {
+  width: 100%;
+  max-width: 960px;
+  max-height: 90vh;
+  background: #F2DEC1;
+  border: 2px solid #8C5A3C;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(140, 90, 60, 0.3),
+    inset 0 0 60px rgba(196, 154, 90, 0.15);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-serif, "Georgia", serif);
+  color: #432818;
+  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ── Manila Folder Tab Header ── */
+.folderHeader {
+  background: #2D0909;
+  border-bottom: 2px solid #C49A5A;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.headerBadge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: #C49A5A;
+  color: #2D0909;
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+}
+
+.headerTitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #F4E6CC;
+  text-transform: uppercase;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.closeButton {
+  background: transparent;
+  border: 1px solid #8C5A3C;
+  color: #D4B896;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.closeButton:hover {
+  background: #C49A5A;
+  color: #1a0000;
+  border-color: #C49A5A;
+}
+
+/* ── Sub Navigation Tabs ── */
+.subNavBar {
+  background: #E2CBA8;
+  border-bottom: 1.5px solid #8C5A3C;
+  display: flex;
+  padding: 0 1rem;
+  gap: 0.35rem;
+  overflow-x: auto;
+}
+
+.navTab {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.65rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6A381F;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.navTab:hover {
+  color: #2D0909;
+  background: rgba(196, 154, 90, 0.25);
+}
+
+.navTabActive {
+  color: #2D0909;
+  border-bottom: 3px solid #8C2424;
+  background: #F2DEC1;
+  font-weight: 800;
+}
+
+/* ── Content Body ── */
+.contentBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: #F2DEC1;
+}
+
+/* ── Official Stamp ── */
+.stampBox {
+  display: inline-block;
+  border: 2px solid #8C2424;
+  color: #8C2424;
+  font-family: var(--font-mono, monospace);
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  border-radius: 3px;
+  transform: rotate(-2deg);
+  opacity: 0.9;
+  user-select: none;
+}
+
+.stampBoxSuccess {
+  border-color: #2E6B3A;
+  color: #2E6B3A;
+}
+
+/* ── Search & Filter Bar ── */
+.searchBarRow {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+  border-radius: 3px;
+  padding: 0.5rem 0.85rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  color: #432818;
+  outline: none;
+}
+
+.searchInput:focus {
+  border-color: #2D0909;
+  box-shadow: 0 0 0 2px rgba(140, 90, 60, 0.2);
+}
+
+/* ── Flashcard 3D Container ── */
+.flashcardPerspective {
+  perspective: 1200px;
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.flashcard {
+  width: 100%;
+  max-width: 580px;
+  min-height: 290px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.flashcardFlipped {
+  transform: rotateY(180deg);
+}
+
+.flashcardFace {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border: 2px solid #8C5A3C;
+  border-radius: 8px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  background: #FFF8ED;
+}
+
+.flashcardBack {
+  transform: rotateY(180deg);
+  background: #FAF0DF;
+  border-color: #C49A5A;
+}
+
+/* ── Matrix & Table Styles ── */
+.retroTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  margin-top: 0.75rem;
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+}
+
+.retroTable th {
+  background: #2D0909;
+  color: #F4E6CC;
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-bottom: 1.5px solid #C49A5A;
+}
+
+.retroTable td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(140, 90, 60, 0.25);
+  color: #432818;
+}
+
+.retroTable tr:nth-child(even) td {
+  background: rgba(242, 222, 193, 0.35);
+}
+
+.retroTable tr:hover td {
+  background: rgba(196, 154, 90, 0.25);
+}
+
+/* ── KPI Grid ── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpiCard {
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+  border-radius: 4px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.kpiLabel {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6A381F;
+}
+
+.kpiValue {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #2D0909;
+}
+
+.kpiSubtext {
+  font-size: 0.75rem;
+  color: #8C5A3C;
+}
+
+/* ── Forensic Card in Lexical Grid ── */
+.wordCard {
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+  border-radius: 4px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.wordCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+  border-color: #2D0909;
+}
+
+/* ── Quick Review Cheat Card ── */
+.cheatCard {
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.cheatCardTitle {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #2D0909;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Buttons ── */
+.tacticalBtn {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1.5px solid #8C5A3C;
+  background: #FFF8ED;
+  color: #432818;
+}
+
+.tacticalBtn:hover {
+  background: #C49A5A;
+  color: #2D0909;
+}
+
+.tacticalBtnPrimary {
+  background: #2D0909;
+  border-color: #C49A5A;
+  color: #F4E6CC;
+}
+
+.tacticalBtnPrimary:hover {
+  background: #4A1212;
+  color: #FFF8ED;
+}
+
+.tacticalBtnSuccess {
+  background: #1C4425;
+  border-color: #2E6B3A;
+  color: #E2F0D9;
+}
+
+.tacticalBtnSuccess:hover {
+  background: #2E6B3A;
+  color: #FFFFFF;
+}
