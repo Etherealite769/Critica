@@ -411,3 +411,86 @@
   background: #2E6B3A;
   color: #FFFFFF;
 }
+
+/* ── Live Realtime Pulse Badge ── */
+.livePulseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(46, 107, 58, 0.15);
+  border: 1px solid #2E6B3A;
+  color: #1C4425;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #2E6B3A;
+  box-shadow: 0 0 6px #2E6B3A;
+  animation: pulseDot 1.8s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 10px #2E6B3A; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+/* ── XP Toast Notification ── */
+.xpToast {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: #2D0909;
+  border: 1.5px solid #C49A5A;
+  color: #F4E6CC;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 100;
+  animation: slideDownToast 0.3s ease-out;
+}
+
+@keyframes slideDownToast {
+  from { transform: translateY(-15px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ── Daily Clearance Banner ── */
+.dailyCompleteBanner {
+  background: linear-gradient(135deg, #FAF0DF 0%, #F5E6CC 100%);
+  border: 2px solid #C49A5A;
+  border-radius: 6px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 580px;
+  width: 100%;
+  box-shadow: 0 8px 25px rgba(67, 40, 24, 0.12);
+  margin: 1.5rem auto;
+}
+
+/* ── Form Drawer for Direct Evidence Log ── */
+.evidenceForm {
+  background: #FFF8ED;
+  border: 1.5px solid #8C5A3C;
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+

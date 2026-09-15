@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import styles from './sidebar-modals.module.css'
 import { apiFetch } from '@/lib/api'
+import { subscribeToProgressionUpdates } from '@/lib/realtime-sync'
 
 interface MetricLogModalProps {
   isOpen: boolean
@@ -30,8 +31,14 @@ interface MetricsData {
   username: string
   streak: number
   completed_count: number
+  total_xp?: number
   rank_title: string
   rank_level: number
+  current_level_min_xp?: number
+  next_level_xp?: number
+  xp_in_level?: number
+  xp_needed_in_level?: number
+  level_progress_pct?: number
   total_attempts: number
   correct_attempts: number
   overall_accuracy: number
@@ -140,6 +147,24 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
       fetchMetrics()
     }
   }, [isOpen, fetchMetrics])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const unsub = subscribeToProgressionUpdates(payload => {
+      setMetrics(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          streak: payload.streak !== undefined ? payload.streak : prev.streak,
+          total_xp: payload.total_xp !== undefined ? payload.total_xp : prev.total_xp,
+          rank_level: payload.level !== undefined ? payload.level : prev.rank_level,
+          rank_title: payload.level_title !== undefined ? payload.level_title : prev.rank_title,
+          level_progress_pct: payload.progress_pct !== undefined ? payload.progress_pct : prev.level_progress_pct,
+        }
+      })
+    })
+    return () => unsub()
+  }, [isOpen])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -260,6 +285,56 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <span className={styles.stampBoxSuccess} style={{ transform: 'none' }}>
                         RANK LEVEL {metrics.rank_level}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── EXP PROGRESSION HUD ── */}
+                  <div
+                    style={{
+                      background: '#FFF8ED',
+                      border: '1.5px solid #8C5A3C',
+                      borderRadius: '4px',
+                      padding: '1rem 1.25rem',
+                      marginBottom: '1.25rem',
+                      boxShadow: '0 2px 8px rgba(140, 90, 60, 0.08)',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', fontWeight: 'bold', color: '#2D0909', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ color: '#C49A5A' }}>⚡</span> CLEARANCE EXPERIENCE (EXP) PROGRESSION
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6A381F' }}>
+                        <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '10px',
+                        backgroundColor: '#E8D8B8',
+                        borderRadius: '9999px',
+                        overflow: 'hidden',
+                        border: '1px solid #8C5A3C',
+                        position: 'relative',
+                      }}>
+                      <div
+                        style={{
+                          width: `${metrics.level_progress_pct ?? 0}%`,
+                          height: '100%',
+                          background: 'linear-gradient(90deg, #8C5A3C 0%, #C49A5A 50%, #2E6B3A 100%)',
+                          transition: 'width 0.6s ease-in-out',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.68rem', color: '#8C5A3C' }}>
+                      <span>Tier Floor: {metrics.current_level_min_xp ?? 0} XP</span>
+                      <span>
+                        {metrics.next_level_xp
+                          ? `${Math.max(0, metrics.next_level_xp - (metrics.total_xp ?? 0))} XP to Next Rank Promotion`
+                          : 'Maximum Clearance Achieved'}
                       </span>
                     </div>
                   </div>

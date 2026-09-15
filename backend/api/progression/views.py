@@ -44,12 +44,18 @@ class DashboardView(APIView):
                 'nodes':           nodes,
             }
 
+        rank_info = ProgressionManagementService.calculate_rank_and_level(getattr(profile, 'total_xp', 0))
         return Response({
             'student_id':      student_id,
             'username':        profile.username,
             'first_name':      request.user.first_name,
             'last_name':       request.user.last_name,
             'streak':          profile.streak_count,
+            'total_xp':        rank_info['total_xp'],
+            'level':           rank_info['level'],
+            'rank_title':      rank_info['rank_title'],
+            'next_level_xp':   rank_info['next_level_xp'],
+            'level_progress_pct': rank_info['level_progress_pct'],
             'completed_count': len(
                 profile.completed_nodes),
             'unlocked_nodes':  profile.unlocked_nodes,
@@ -210,27 +216,22 @@ class StudentMetricsView(APIView):
                     'timestamp': 'Verified Record',
                 })
 
-        # Clearance rank based on completed nodes & streak
-        if completed_count >= 12:
-            rank_title = "Chief Inspector (Level 4)"
-            rank_level = 4
-        elif completed_count >= 6:
-            rank_title = "Senior Case Officer (Level 3)"
-            rank_level = 3
-        elif completed_count >= 2:
-            rank_title = "Field Investigator (Level 2)"
-            rank_level = 2
-        else:
-            rank_title = "Novice Analyst (Level 1)"
-            rank_level = 1
+        # Clearance rank based on calculated total_xp and level engine
+        rank_info = ProgressionManagementService.calculate_rank_and_level(getattr(profile, 'total_xp', 0))
 
         return Response({
             'student_id': student_id,
             'username': profile.username,
             'streak': profile.streak_count,
             'completed_count': completed_count,
-            'rank_title': rank_title,
-            'rank_level': rank_level,
+            'total_xp': rank_info['total_xp'],
+            'rank_title': rank_info['rank_title'],
+            'rank_level': rank_info['level'],
+            'current_level_min_xp': rank_info['current_level_min_xp'],
+            'next_level_xp': rank_info['next_level_xp'],
+            'xp_in_level': rank_info['xp_in_level'],
+            'xp_needed_in_level': rank_info['xp_needed_in_level'],
+            'level_progress_pct': rank_info['level_progress_pct'],
             'total_attempts': total_attempts,
             'correct_attempts': correct_attempts,
             'overall_accuracy': overall_accuracy,
@@ -238,5 +239,16 @@ class StudentMetricsView(APIView):
             'module_stats': module_stats,
             'recent_activity': recent_activity,
         })
+
+
+class StreakCheckInView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        student_id = str(request.user.id)
+        res = ProgressionManagementService.check_in_streak(
+            student_id, request.user.email)
+        return Response(res)
+
 
     

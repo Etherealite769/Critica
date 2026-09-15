@@ -7,6 +7,10 @@ import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModa
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
+import {
+  subscribeToProgressionUpdates,
+  subscribeToLexicalUpdates,
+} from '@/lib/realtime-sync'
 
 // ── Types ───────────────────────────────────────
 interface NodeStatus {
@@ -23,6 +27,11 @@ interface DashboardData {
   first_name:      string
   last_name:       string
   streak:          number
+  total_xp?:       number
+  level?:          number
+  rank_title?:     string
+  next_level_xp?:  number
+  level_progress_pct?: number
   completed_count: number
   onboarding_completed?: boolean
   module_status: {
@@ -362,6 +371,7 @@ export default function StudentDashboard() {
   const [showLexicalModal, setShowLexicalModal] = useState(false)
   const [showQuickReviewModal, setShowQuickReviewModal] = useState(false)
   const [showMetricLogModal, setShowMetricLogModal] = useState(false)
+  const [streakPulse, setStreakPulse] = useState(false)
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -378,16 +388,17 @@ export default function StudentDashboard() {
       if (d && d.onboarding_completed === false && !localCompleted) {
         setShowOnboardingGuide(true)
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { code?: string; detail?: string | { code?: string; detail?: string }; status?: number }
       const code =
-        e?.code ?? e?.detail?.code ?? ''
+        err?.code ?? (typeof err?.detail === 'object' ? err?.detail?.code : '') ?? ''
       const detail =
-        typeof e?.detail === 'string'
-          ? e.detail
-          : e?.detail?.detail ?? ''
+        typeof err?.detail === 'string'
+          ? err.detail
+          : (typeof err?.detail === 'object' ? err?.detail?.detail : '') ?? ''
 
       const isAuthError =
-        e?.status === 401 ||
+        err?.status === 401 ||
         code === 'token_not_valid' ||
         detail.includes('token') ||
         detail.includes('expired')
@@ -404,8 +415,65 @@ export default function StudentDashboard() {
   }, [router])
 
   useEffect(() => {
-    setLoading(true)
     fetchDashboard().finally(() => setLoading(false))
+
+    // Daily streak check-in on dashboard visit
+    apiFetch('/progression/streak/check-in/', { method: 'POST' })
+      .then(res => {
+        if (res && res.streak !== undefined) {
+          setDashboard(prev =>
+            prev
+              ? {
+                  ...prev,
+                  streak: res.streak,
+                  total_xp: res.total_xp,
+                  level: res.level,
+                  rank_title: res.level_title,
+                  level_progress_pct: res.progress_pct,
+                }
+              : null
+          )
+          if (res.new_day) {
+            setStreakPulse(true)
+            setTimeout(() => setStreakPulse(false), 1500)
+          }
+        }
+      })
+      .catch(() => { /* silent check-in fail */ })
+  }, [fetchDashboard])
+
+  // ── Realtime Synchronization Listeners ──────────────
+  useEffect(() => {
+    const unsubProgression = subscribeToProgressionUpdates(payload => {
+      setDashboard(prev => {
+        if (!prev) return prev
+        const updated = { ...prev }
+        if (payload.streak !== undefined) updated.streak = payload.streak
+        if (payload.total_xp !== undefined) updated.total_xp = payload.total_xp
+        if (payload.level !== undefined) updated.level = payload.level
+        if (payload.level_title !== undefined) updated.rank_title = payload.level_title
+        if (payload.progress_pct !== undefined) updated.level_progress_pct = payload.progress_pct
+        return updated
+      })
+      if (payload.streak !== undefined || payload.action === 'streak_updated') {
+        setStreakPulse(true)
+        setTimeout(() => setStreakPulse(false), 1500)
+      }
+      if (payload.action === 'node_mastered') {
+        fetchDashboard()
+      }
+    })
+
+    const unsubLexical = subscribeToLexicalUpdates(payload => {
+      if (payload.action === 'word_reviewed' || payload.action === 'word_logged') {
+        fetchDashboard()
+      }
+    })
+
+    return () => {
+      unsubProgression()
+      unsubLexical()
+    }
   }, [fetchDashboard])
 
   // ── Logout ────────────────────────────────
@@ -428,15 +496,15 @@ export default function StudentDashboard() {
 
   // ── Reset node ────────────────────────────
   const handleResetNode = async (nodeId: string) => {
-    let module = ''
-    if (nodeId.startsWith('log_')) module = 'logic_thread'
-    else if (nodeId.startsWith('snp_')) module = 'snap_gap'
-    else if (nodeId.startsWith('tap_')) module = 'tap_clues'
-    else if (nodeId.startsWith('fac_')) module = 'fact_scanner'
+    let moduleKey = ''
+    if (nodeId.startsWith('log_')) moduleKey = 'logic_thread'
+    else if (nodeId.startsWith('snp_')) moduleKey = 'snap_gap'
+    else if (nodeId.startsWith('tap_')) moduleKey = 'tap_clues'
+    else if (nodeId.startsWith('fac_')) moduleKey = 'fact_scanner'
 
-    if (!module) return
+    if (!moduleKey) return
 
-    localStorage.removeItem(`critica_session__${module}__${nodeId}`)
+    localStorage.removeItem(`critica_session__${moduleKey}__${nodeId}`)
 
     try {
       await apiFetch('/progression/reset/', {
@@ -459,16 +527,16 @@ export default function StudentDashboard() {
       return 100
     }
 
-    let module = ''
-    if (nodeId.startsWith('log_')) module = 'logic_thread'
-    else if (nodeId.startsWith('snp_')) module = 'snap_gap'
-    else if (nodeId.startsWith('tap_')) module = 'tap_clues'
-    else if (nodeId.startsWith('fac_')) module = 'fact_scanner'
+    let moduleKey = ''
+    if (nodeId.startsWith('log_')) moduleKey = 'logic_thread'
+    else if (nodeId.startsWith('snp_')) moduleKey = 'snap_gap'
+    else if (nodeId.startsWith('tap_')) moduleKey = 'tap_clues'
+    else if (nodeId.startsWith('fac_')) moduleKey = 'fact_scanner'
 
-    if (!module) return 0
+    if (!moduleKey) return 0
 
     try {
-      const raw = localStorage.getItem(`critica_session__${module}__${nodeId}`)
+      const raw = localStorage.getItem(`critica_session__${moduleKey}__${nodeId}`)
       if (raw) {
         const data = JSON.parse(raw)
         const qIndex = data.questionIndex ?? 0
@@ -537,13 +605,18 @@ export default function StudentDashboard() {
       <header className="h-[52px] bg-transparent
         flex items-center justify-end gap-9 px-9">
 
-        <div className="flex items-center gap-2
-          font-mono text-xs text-[#D4B896]">
-          <span>🔥</span>
+        {/* ── REALTIME STREAK ── */}
+        <div
+          className={`flex items-center gap-2 font-mono text-xs transition-all duration-300 ${
+            streakPulse ? 'scale-110 text-amber-300 font-bold' : 'text-[#D4B896]'
+          }`}
+          title="Daily Active Streak (Updated in Realtime)">
+          <span className={streakPulse ? 'animate-bounce' : ''}>🔥</span>
           <strong>Streak:</strong>
           &nbsp;{dashboard?.streak ?? 0} Days
         </div>
 
+        {/* ── NODES COMPLETED ── */}
         <div className="flex items-center gap-2
           font-mono text-xs text-[#D4B896]">
           <span>⭐</span>
@@ -551,6 +624,27 @@ export default function StudentDashboard() {
           &nbsp;{dashboard?.completed_count ?? 0}
           &nbsp;Completed
         </div>
+
+        {/* ── REALTIME EXP & LEVEL PILL ── */}
+        <button
+          onClick={() => setShowMetricLogModal(true)}
+          className="flex items-center gap-2 font-mono text-xs text-[#D4B896]
+            hover:text-[#FFF8ED] hover:border-[#C49A5A]
+            px-2.5 py-1 rounded border border-[#8C5A3C]
+            bg-[#2D0909]/60 cursor-pointer transition-all"
+          title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
+          <span className="text-amber-400">⚡</span>
+          <span>
+            <strong>LVL {dashboard?.level ?? 1}</strong>
+            &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
+          </span>
+          <div className="w-12 h-1.5 bg-[#432818] rounded-full overflow-hidden border border-[#8C5A3C]/60 ml-0.5">
+            <div
+              className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
+              style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
+            />
+          </div>
+        </button>
 
         {/* ── FIELD GUIDE BUTTON ── */}
         <button
@@ -699,7 +793,7 @@ export default function StudentDashboard() {
               )}
 
               {/* ── NODE CARDS ── */}
-              {activeNodes.map((node, idx) => {
+              {activeNodes.map((node) => {
                 const meta = NODE_META[node.node_id]
                 if (!meta) return null
 

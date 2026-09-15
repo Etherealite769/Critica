@@ -1,6 +1,12 @@
-# backend/api/progression/urls.py
 from django.urls import path
-from .views import DashboardView, ModuleNodesView, NodeResetView, OnboardingCompleteView, StudentMetricsView
+from .views import (
+    DashboardView,
+    ModuleNodesView,
+    NodeResetView,
+    OnboardingCompleteView,
+    StudentMetricsView,
+    StreakCheckInView,
+)
 
 urlpatterns = [
     path('dashboard/',
@@ -13,4 +19,6 @@ urlpatterns = [
          NodeResetView.as_view()),
     path('onboarding/complete/',
          OnboardingCompleteView.as_view()),
+    path('streak/check-in/',
+         StreakCheckInView.as_view()),
 ]
