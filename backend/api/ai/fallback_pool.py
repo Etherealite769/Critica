@@ -902,9 +902,8 @@ def _format_logic_thread(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
     for bid, text, order in blocks_data:
         p_blocks.append({"block_id": bid, "text": text, "order": order})
     
-    # Shuffle paragraph blocks for student interaction
+    # Shuffle paragraph blocks for student interaction with true random distribution
     shuffled_blocks = list(p_blocks)
-    random.seed(seed_idx + 42)
     random.shuffle(shuffled_blocks)
 
     correct_seq = [b["block_id"] for b in sorted(p_blocks, key=lambda x: x["order"])]
@@ -945,6 +944,9 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
         ct = p.get("correct_tile")
         if ct and ct not in dock_tiles:
             dock_tiles.append(ct)
+
+    # Crucial anti-pattern fix: Shuffle dock_tiles so correct answers are not in fixed positions
+    random.shuffle(dock_tiles)
 
     explanations = {}
     for pair in sentence_pairs:
@@ -991,6 +993,10 @@ def _format_tap_clues(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
             "translation": lw.get("translation", lw.get("definition", "").split(";")[0]),
         })
 
+    # If multiple locked words, randomly permute their presentation order
+    if len(locked) > 1:
+        random.shuffle(locked)
+
     first_clues = locked[0]["correct_clue_ids"][:2] if locked and locked[0]["correct_clue_ids"] else []
     hints = [
         {"tier": 1, "hint_text": "Search the surrounding sentences for definitions, antonyms, or synonyms."},
@@ -1010,7 +1016,13 @@ def _format_tap_clues(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
 def _format_fact_scanner(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
     art_sentences = []
     sentence_exps = {}
-    for sid, text, is_flawed, reason in tpl["sentences"]:
+
+    # Crucial anti-pattern fix: Shuffle sentences so flawed sentence position is unpredictable
+    shuffled_sentences = list(tpl["sentences"])
+    random.shuffle(shuffled_sentences)
+
+    for idx, (_, text, is_flawed, reason) in enumerate(shuffled_sentences):
+        sid = f"s{idx + 1}"
         art_sentences.append({
             "sentence_id": sid,
             "text": text,
@@ -1025,7 +1037,7 @@ def _format_fact_scanner(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
         {"tier": 3, "hint_text": "Quarantine the sentence containing unverified or flawed assertions."},
     ]
 
-    full_text = " ".join([s[1] for s in tpl["sentences"]])
+    full_text = " ".join([s["text"] for s in art_sentences])
     return {
         "exercise_id": f"proc_fac_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",

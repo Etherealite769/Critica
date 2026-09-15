@@ -174,6 +174,7 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
    - Never write bloated sentences that exceed 130 characters, as they will be clipped on bulletin cards.
    - Blocks should be provided in a scrambled order in the paragraph_blocks list (not pre-sorted).
 4. `correct_sequence`: The exact ordered list of block_ids (e.g. ['p2', 'p1', 'p3'] or appropriate sequence).
+   - SEQUENCE VARIETY RULE: Across the {count} exercises, vary the correct_sequence unpredictably (e.g., ['p2', 'p1', 'p3'], ['p3', 'p2', 'p1'], ['p1', 'p3', 'p2']). Never generate consecutive exercises with identical sequence patterns, and never default to chronological order 'p1, p2, p3'.
 5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological dependency requires p1 first').
 6. `scaffold_hints`: Exactly 3 hints (tier 1: gentle cue, tier 2: structural signal word pointer, tier 3: explicit sequence step).
 7. SYNTACTIC VARIETY: Forbid repeating opening phrases, cloned sentence structures, or identical transition markers across exercises in this batch.
@@ -204,6 +205,7 @@ For each of the {count} exercises:
    - `sentence_b`: A complete, grammatically sound sentence that logically continues from sentence_a via the missing transition.
    - CRITICAL GRAMMAR & SPOILER RULE: Do NOT include the transition word in `sentence_b`! `sentence_b` MUST begin with a capitalized first letter as an independent sentence (e.g., 'They install specialized wood paneling...', NOT 'it provided...' and NEVER 'Furthermore, they install...').
 4. `transition_tile_dock`: A list of 4-5 transition words containing the correct transition(s) plus plausible distractors. Ensure all words are correctly spelled (e.g. 'Conversely', NEVER 'Conversly').
+   - DOCK SHUFFLE RULE: Scramble and randomly distribute the tiles in this list. NEVER put the correct tile for pair 1 in the first slot or pair 2 in the second slot. The order of correct answers in the dock must vary unpredictably across every exercise.
 5. `correct_tile_map`: Dict mapping each pair_id to its correct transition tile from the dock (e.g. {{'pair_1': 'Furthermore'}}).
 6. `tile_error_explanations`: Dict providing a clear, 1-sentence explanation for why each distractor is incorrect for the pair (e.g. 'pair_1__However': 'However indicates contrast, but sentence B adds another supporting point.'). Every distractor for every pair MUST have an entry.
 7. `scaffold_hints`: Exactly 3 hints (tier 1: logical relation cue, tier 2: signal word guidance, tier 3: explicit answer reveal).
@@ -215,6 +217,7 @@ For each of the {count} exercises:
 For each of the {count} exercises:
 1. `topic_title`: A distinct, descriptive title.
 2. `reading_passage`: A rich, 2-3 sentence passage containing 1 target academic vocabulary word and clear contextual clue words.
+   - CLUE POSITION VARIETY RULE: Vary the distance and position of context clues relative to the locked word. Some clues should appear before the target word, some after, and some in an adjacent sentence.
 3. `locked_words`: A list containing 1 locked word object.
    - `word`: The target word found verbatim in the passage.
    - `correct_clue_ids`: 1-2 exact clue words or phrases present in the reading passage that reveal the word's meaning.
@@ -238,6 +241,7 @@ For each of the {count} exercises:
    - Exactly 1 or 2 sentences must have `is_flawed: true` (a clear violation of the {craap} criterion, e.g. using a 1980s source for modern tech if Currency, or anonymous blogs for medical advice if Authority).
    - The remaining sentences must have `is_flawed: false`.
    - `flaw_reason`: Clear explanation of the violation if flawed, empty string if sound.
+   - POSITION VARIETY RULE: Across the {count} exercises in this batch, dynamically vary WHICH sentence ID is flawed (e.g., Ex 1 has 's2' flawed, Ex 2 has 's4' flawed, Ex 3 has 's1' flawed, Ex 4 has 's3' flawed, Ex 5 has 's2' flawed). NEVER place the flaw in 's3' repeatedly.
 5. `sentence_explanations`: Dict explaining why each sentence is sound or flawed.
 6. `scaffold_hints`: Exactly 3 hints (tier 1, 2, 3).
 """
