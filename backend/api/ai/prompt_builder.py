@@ -121,29 +121,92 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
 
     if module == 'logic_thread':
         block_count = 3 if difficulty == 1 else (4 if difficulty == 2 else 5)
+        # Determine text structure genre from node_id or focus
+        genre_directive = ""
+        n_id = node_id.lower()
+        if "log_node_01" in n_id or "log_node_02" in n_id or "log_node_03" in n_id or "narration" in focus.lower():
+            genre_directive = """
+- TARGET GENRE: NARRATION & CHRONOLOGY
+- DIVERSIFY PATTERNS ACROSS EXERCISES:
+  * Exercise 1: Step-by-step experimental or technological execution sequence.
+  * Exercise 2: Historical milestone progression with temporal markers (e.g., Initially, Concurrently, Ultimately).
+  * Exercise 3: Natural phenomenon cycle or biological event timeline.
+  * Exercise 4: Cause-driven narrative where an initial trigger unleashes subsequent developments.
+  * Exercise 5: Problem discovery leading to investigation and final resolution.
+- DO NOT use the same opening words (e.g., 'First', 'In the beginning') across exercises."""
+        elif "log_node_04" in n_id or "log_node_05" in n_id or "log_node_06" in n_id or "definition" in focus.lower():
+            genre_directive = """
+- TARGET GENRE: DEFINITION & ELABORATION
+- DIVERSIFY PATTERNS ACROSS EXERCISES:
+  * Exercise 1: Formal term-class-differentia classification (category -> primary distinction -> unique function).
+  * Exercise 2: Operational definition with specific environmental or physical boundary conditions.
+  * Exercise 3: Extended anatomical/structural definition detailing physical mechanisms and components.
+  * Exercise 4: Contrastive definition (defining an elusive phenomenon by explicitly distinguishing it from commonly confused concepts).
+  * Exercise 5: Applied definition showing a theoretical concept manifest in real-world phenomena."""
+        elif "log_node_07" in n_id or "log_node_08" in n_id or "log_node_09" in n_id or "comparison" in focus.lower():
+            genre_directive = """
+- TARGET GENRE: COMPARISON & CONTRAST
+- DIVERSIFY PATTERNS ACROSS EXERCISES:
+  * Exercise 1: Point-by-point alternating comparison across specific functional criteria.
+  * Exercise 2: Block comparison (entity A fully characterized, then entity B contrasted).
+  * Exercise 3: Shared evolutionary/structural baseline leading to a sharp functional divergence.
+  * Exercise 4: Contrastive pivot architecture ('While subject A operates under X, subject B counters with Y').
+  * Exercise 5: Trade-off analysis evaluating the complementary strengths and limitations of two systems."""
+        elif "log_node_10" in n_id or "log_node_11" in n_id or "log_node_12" in n_id or "cause" in focus.lower():
+            genre_directive = """
+- TARGET GENRE: CAUSE & EFFECT
+- DIVERSIFY PATTERNS ACROSS EXERCISES:
+  * Exercise 1: Direct linear causal chain (Factor A triggers Reaction B, producing Outcome C).
+  * Exercise 2: Converging multi-factor causation (two independent conditions combine to produce a threshold event).
+  * Exercise 3: Cascading domino effect (an initial disruption produces wide collateral systemic impacts).
+  * Exercise 4: Negative feedback loop or self-limiting causal mechanism.
+  * Exercise 5: Problem-action-consequence dynamic in ecological or engineering systems."""
+
         prompt += f"""
 [LOGIC THREAD SPECIFIC REQUIREMENTS]:
-For each of the {count} exercises:
+{genre_directive}
+
+[CRITICAL FORMAT & FIT CONSTRAINTS]:
 1. `topic_title`: A distinct, descriptive title for the passage topic.
 2. `reading_passage`: The full, cohesive paragraph when read in correct sequence.
-3. `paragraph_blocks`: Exactly {block_count} blocks ('p1', 'p2', ... up to 'p{block_count}'). Each block must be a distinct, self-contained sentence or segment.
-4. `correct_sequence`: The exact ordered list of block_ids (e.g. {['p' + str(i+1) for i in range(block_count)]}).
-5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological/causal dependency requires p1 first').
+3. `paragraph_blocks`: Exactly {block_count} blocks ('p1', 'p2', ... up to 'p{block_count}').
+   - BOX FIT RULE: Each block MUST be a single, self-contained sentence between 10 and 22 words (STRICT MAXIMUM of 130 characters per block).
+   - Never write bloated sentences that exceed 130 characters, as they will be clipped on bulletin cards.
+   - Blocks should be provided in a scrambled order in the paragraph_blocks list (not pre-sorted).
+4. `correct_sequence`: The exact ordered list of block_ids (e.g. ['p2', 'p1', 'p3'] or appropriate sequence).
+5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological dependency requires p1 first').
 6. `scaffold_hints`: Exactly 3 hints (tier 1: gentle cue, tier 2: structural signal word pointer, tier 3: explicit sequence step).
+7. SYNTACTIC VARIETY: Forbid repeating opening phrases, cloned sentence structures, or identical transition markers across exercises in this batch.
 """
 
     elif module == 'snap_gap':
         pair_count = 1 if difficulty == 1 else 2
+        # Determine transition genre
+        n_id = node_id.lower()
+        if "snp_node_01" in n_id or "snp_node_02" in n_id or "snp_node_03" in n_id or "addition" in focus.lower() or "sequence" in focus.lower():
+            dock_guidance = "Focus on addition markers (e.g., 'Furthermore', 'Moreover', 'Additionally', 'In addition') or sequence markers (e.g., 'Subsequently', 'Meanwhile', 'Prior to this'). Distractors should be drawn from contrast ('However') and cause-and-effect ('Therefore')."
+        elif "snp_node_04" in n_id or "snp_node_05" in n_id or "snp_node_06" in n_id or "contrast" in focus.lower():
+            dock_guidance = "Focus on contrast/concession markers (e.g., 'However', 'Conversely', 'In contrast', 'Nonetheless', 'On the other hand'). Distractors should be drawn from addition ('Furthermore') and cause-and-effect ('Therefore')."
+        elif "snp_node_07" in n_id or "snp_node_08" in n_id or "snp_node_09" in n_id or "cause" in focus.lower():
+            dock_guidance = "Focus on cause-and-effect markers (e.g., 'Therefore', 'Consequently', 'As a result', 'Thus', 'Accordingly'). Distractors should be drawn from contrast ('However') and addition ('Moreover')."
+        else:
+            dock_guidance = "Candidate tiles should include the target transition plus grammatically plausible but logically opposing distractors."
+
         prompt += f"""
 [SNAP-IN GAP SPECIFIC REQUIREMENTS]:
+Target transition focus: {dock_guidance}
+
 For each of the {count} exercises:
 1. `topic_title`: A distinct, descriptive title.
 2. `reading_passage`: The complete passage with transitions smoothly inserted.
-3. `sentence_pairs`: Exactly {pair_count} sentence pairs ('pair_1', etc.) where sentence_b logically continues from sentence_a via a transition word.
-4. `transition_tile_dock`: A list of 4-5 transition words containing the correct transition(s) plus plausible distractors (e.g. ['Furthermore', 'However', 'Therefore', 'In contrast']).
-5. `correct_tile_map`: Dict mapping each pair_id to its correct transition tile from the dock (e.g. {{'pair_1': 'However'}}).
-6. `tile_error_explanations`: Explanations for why each distractor is incorrect for the pair (e.g. 'pair_1__Therefore': 'Therefore indicates a cause-and-effect relationship, but sentence B presents an opposing contrast.').
-7. `scaffold_hints`: Exactly 3 hints (tier 1, 2, 3).
+3. `sentence_pairs`: Exactly {pair_count} sentence pairs ('pair_1', etc.):
+   - `sentence_a`: A complete, grammatically sound sentence ending with a period.
+   - `sentence_b`: A complete, grammatically sound sentence that logically continues from sentence_a via the missing transition.
+   - CRITICAL GRAMMAR & SPOILER RULE: Do NOT include the transition word in `sentence_b`! `sentence_b` MUST begin with a capitalized first letter as an independent sentence (e.g., 'They install specialized wood paneling...', NOT 'it provided...' and NEVER 'Furthermore, they install...').
+4. `transition_tile_dock`: A list of 4-5 transition words containing the correct transition(s) plus plausible distractors. Ensure all words are correctly spelled (e.g. 'Conversely', NEVER 'Conversly').
+5. `correct_tile_map`: Dict mapping each pair_id to its correct transition tile from the dock (e.g. {{'pair_1': 'Furthermore'}}).
+6. `tile_error_explanations`: Dict providing a clear, 1-sentence explanation for why each distractor is incorrect for the pair (e.g. 'pair_1__However': 'However indicates contrast, but sentence B adds another supporting point.'). Every distractor for every pair MUST have an entry.
+7. `scaffold_hints`: Exactly 3 hints (tier 1: logical relation cue, tier 2: signal word guidance, tier 3: explicit answer reveal).
 """
 
     elif module == 'tap_clues':

@@ -105,8 +105,12 @@ def validate_logic_thread_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
         return False, "Duplicate or missing block_ids in paragraph_blocks."
 
     for b in blocks:
-        if not b.get('text', '').strip():
+        text = b.get('text', '').strip()
+        if not text:
             return False, f"Block {b.get('block_id')} contains empty text."
+        # Verify box-fit safety: block should not be an excessively long paragraph
+        if len(text) > 180:
+            return False, f"Block {b.get('block_id')} is too long ({len(text)} chars > 180 chars max for card layout)."
 
     if set(seq) != block_ids or len(seq) != len(blocks):
         return False, f"correct_sequence {seq} does not match block IDs {list(block_ids)}."
@@ -139,6 +143,16 @@ def validate_snap_gap_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
         correct_tile = tile_map[pid]
         if correct_tile not in dock:
             return False, f"Correct tile '{correct_tile}' for pair '{pid}' is not present in transition_tile_dock."
+
+        # Verify sentence_b does not spoil the transition word
+        sb = p.get('sentence_b', '').strip()
+        for tile in dock:
+            if sb.lower().startswith(tile.lower() + ' ') or sb.lower().startswith(tile.lower() + ','):
+                return False, f"Sentence B for pair '{pid}' spoils the transition word '{tile}'."
+
+        # Auto-capitalize sentence_b if lowercase
+        if sb and sb[0].islower():
+            p['sentence_b'] = sb[0].upper() + sb[1:]
 
     return True, ""
 

@@ -88,6 +88,19 @@ export async function evaluateSessionStep(
 }
 
 /**
+ * Explicitly updates the student's current exercise index in the AI session.
+ */
+export async function updateSessionProgress(
+  sessionId: string,
+  currentIndex: number,
+): Promise<any> {
+  return await apiFetch(`/ai/session/${sessionId}/progress/`, {
+    method: 'POST',
+    body: JSON.stringify({ current_index: currentIndex }),
+  })
+}
+
+/**
  * Fetches dynamic feedback and tiered scaffold hints for an AI exercise step.
  */
 export async function fetchSessionFeedback(

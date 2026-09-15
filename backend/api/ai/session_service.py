@@ -307,11 +307,14 @@ class SessionService:
         ex = session_doc.exercises[exercise_index]
         module = session_doc.module
 
+        is_correct = False
+        res: Dict[str, Any] = {}
+
         if module == 'logic_thread':
             submitted_seq = submission_payload.get('sequence', [])
             correct_seq = ex.get('correct_sequence', [])
             is_correct = (submitted_seq == correct_seq)
-            return {
+            res = {
                 'result': 'correct' if is_correct else 'incorrect',
                 'status': 'mastered' if is_correct else 'incomplete',
                 'is_correct': is_correct,
@@ -325,7 +328,7 @@ class SessionService:
                 if correct_tile_map.get(pid) != tile
             ]
             is_correct = (len(incorrect_pairs) == 0 and len(board_state) == len(correct_tile_map))
-            return {
+            res = {
                 'result': 'correct' if is_correct else 'incorrect',
                 'status': 'mastered' if is_correct else 'incomplete',
                 'incorrect_pairs': incorrect_pairs,
@@ -338,7 +341,7 @@ class SessionService:
             all_ids = [w.get('word_id') for w in locked_words]
             remaining = [wid for wid in all_ids if wid not in unlocked_ids]
             is_correct = (len(remaining) == 0)
-            return {
+            res = {
                 'result': 'correct' if is_correct else 'incorrect',
                 'status': 'mastered' if is_correct else 'incomplete',
                 'remaining_word_ids': remaining,
@@ -352,15 +355,50 @@ class SessionService:
             remaining_flawed = [fid for fid in flawed_ids if fid not in quarantined_ids]
             wrongly_quarantined = [qid for qid in quarantined_ids if qid not in flawed_ids]
             is_correct = (len(remaining_flawed) == 0 and len(wrongly_quarantined) == 0)
-            return {
+            res = {
                 'result': 'correct' if is_correct else 'incorrect',
                 'status': 'mastered' if is_correct else 'incomplete',
                 'remaining_flawed_ids': remaining_flawed,
                 'wrongly_quarantined': wrongly_quarantined,
                 'is_correct': is_correct,
             }
+        else:
+            return {'status': 'error', 'message': f'Unsupported module {module}'}
 
-        return {'status': 'error', 'message': f'Unsupported module {module}'}
+        # Automatically advance current_index on correct answer
+        if is_correct:
+            new_idx = max(session_doc.current_index, exercise_index + 1)
+            if new_idx != session_doc.current_index:
+                session_doc.current_index = new_idx
+                session_doc.save()
+
+        res['current_index'] = session_doc.current_index
+        return res
+
+    @classmethod
+    def update_session_progress(
+        cls,
+        session_id: str,
+        current_index: int
+    ) -> Dict[str, Any]:
+        """
+        Explicitly updates the progress (current_index) for an active session.
+        """
+        session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
+        if not session_doc:
+            return {'status': 'error', 'message': 'Session not found'}
+
+        total = len(session_doc.exercises)
+        safe_idx = max(0, min(current_index, total))
+        session_doc.current_index = safe_idx
+        session_doc.save()
+
+        return {
+            'status': 'success',
+            'session_id': session_id,
+            'current_index': session_doc.current_index,
+            'total_exercises': total,
+        }
 
     @classmethod
     def get_live_socratic_hint(
