@@ -36,6 +36,15 @@ interface SnapNodeData {
 type Phase     = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 type TileState = 'idle' | 'correct' | 'incorrect'
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy
+}
+
 const SNAP_GAP_TUTORIAL_KEY =
   'critica_tutorial_seen_snap_gap_first_node'
 
@@ -577,7 +586,7 @@ export default function SnapInGapPage() {
           title: ex.topic_title || prev.title,
           reading_passage: ex.reading_passage || prev.reading_passage,
           sentence_pairs: ex.sentence_pairs || prev.sentence_pairs,
-          transition_tile_dock: ex.transition_tile_dock || prev.transition_tile_dock,
+          transition_tile_dock: shuffleArray(ex.transition_tile_dock || prev.transition_tile_dock || []),
         }) : ex)
         setPairIdx(0)
         setBoard({})
@@ -598,7 +607,7 @@ export default function SnapInGapPage() {
 
       const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/snap-gap/${targetNodeId}/`)
-      setSnapNode(d)
+      setSnapNode({ ...d, transition_tile_dock: shuffleArray(d.transition_tile_dock || []) })
       setPairIdx(0)
       setBoard({})
       setLocked([])
@@ -644,7 +653,7 @@ export default function SnapInGapPage() {
         reading_passage: activeEx?.reading_passage || sessionData.reading_passage || '',
         deep_dive_required: sessionData.deep_dive_required,
         sentence_pairs: activeEx?.sentence_pairs || [],
-        transition_tile_dock: activeEx?.transition_tile_dock || [],
+        transition_tile_dock: shuffleArray(activeEx?.transition_tile_dock || []),
       })
       const totalQ = sessionData.exercises?.length || 5
       const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
