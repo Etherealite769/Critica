@@ -135,23 +135,37 @@ class StudentMetricsView(APIView):
             student_id, request.user.email)
         completed_count = len(profile.completed_nodes)
 
-        # 1. Query telemetry logs with safe fallback for unmigrated or fresh cloud databases
+        # 1. Query telemetry logs: Primary from MongoDB Atlas, fallback to SQLite
         has_telemetry = False
         total_attempts = 0
         correct_attempts = 0
         hints_used_count = 0
-        telemetry_qs = []
+        telemetry_records = []
 
         try:
-            from api.scaffold.models import TelemetryLog
-            qs = TelemetryLog.objects.filter(student_id=student_id).order_by('-timestamp')
-            total_attempts = qs.count()
-            correct_attempts = qs.filter(is_correct=True).count()
-            hints_used_count = qs.filter(hint_used=True).count()
-            telemetry_qs = qs
-            has_telemetry = True
+            from api.scaffold.mongo_models import TelemetryLogDocument
+            mongo_logs = list(TelemetryLogDocument.objects(student_id=student_id).order_by('-timestamp'))
+            if mongo_logs:
+                total_attempts = len(mongo_logs)
+                correct_attempts = sum(1 for log in mongo_logs if log.is_correct)
+                hints_used_count = sum(1 for log in mongo_logs if log.hint_used)
+                telemetry_records = mongo_logs
+                has_telemetry = True
         except Exception:
             has_telemetry = False
+
+        if not has_telemetry:
+            try:
+                from api.scaffold.models import TelemetryLog
+                qs = list(TelemetryLog.objects.filter(student_id=student_id).order_by('-timestamp'))
+                if qs:
+                    total_attempts = len(qs)
+                    correct_attempts = sum(1 for log in qs if log.is_correct)
+                    hints_used_count = sum(1 for log in qs if log.hint_used)
+                    telemetry_records = qs
+                    has_telemetry = True
+            except Exception:
+                pass
 
         # If telemetry table is empty or unpopulated, use profile node milestones
         if total_attempts == 0 and completed_count > 0:
@@ -172,9 +186,9 @@ class StudentMetricsView(APIView):
             comp_len = len(completed_in_mod)
 
             if has_telemetry and total_attempts > 0:
-                m_qs = telemetry_qs.filter(module=m)
-                m_tot = m_qs.count()
-                m_cor = m_qs.filter(is_correct=True).count()
+                m_logs = [log for log in telemetry_records if log.module == m]
+                m_tot = len(m_logs)
+                m_cor = sum(1 for log in m_logs if log.is_correct)
                 m_acc = round((m_cor / m_tot) * 100) if m_tot > 0 else (100 if comp_len > 0 else 0)
             else:
                 m_tot = comp_len
@@ -190,16 +204,17 @@ class StudentMetricsView(APIView):
 
         # Recent timeline
         recent_activity = []
-        if has_telemetry:
+        if has_telemetry and telemetry_records:
             try:
-                for log in telemetry_qs[:10]:
+                for log in telemetry_records[:10]:
+                    ts_str = log.timestamp.strftime('%b %d, %H:%M') if getattr(log, 'timestamp', None) else 'Recent'
                     recent_activity.append({
                         'node_id': log.node_id,
                         'module': log.module,
                         'is_correct': log.is_correct,
                         'hint_used': log.hint_used,
-                        'hint_tier': log.hint_tier,
-                        'timestamp': log.timestamp.strftime('%b %d, %H:%M'),
+                        'hint_tier': getattr(log, 'hint_tier', 0),
+                        'timestamp': ts_str,
                     })
             except Exception:
                 pass

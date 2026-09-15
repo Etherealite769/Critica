@@ -45,13 +45,21 @@ def wipe_data_preserve_accounts():
     GeneratedSessionDocument.objects.delete()
     print(f"[*] Wiped {ai_sess_count} session(s) from generated_question_sessions.")
 
-    # 4. Wipe SQLite Telemetry Logs
+    # 4. Wipe Telemetry Logs (MongoDB Atlas + SQLite fallback)
+    try:
+        from api.scaffold.mongo_models import TelemetryLogDocument
+        mongo_telem_count = TelemetryLogDocument.objects.count()
+        TelemetryLogDocument.objects.delete()
+        print(f"[*] Wiped {mongo_telem_count} log(s) from MongoDB telemetry_logs.")
+    except Exception as e:
+        print(f"[!] Warning: Could not clear MongoDB telemetry_logs: {e}")
+
     try:
         telem_count = TelemetryLog.objects.count()
         TelemetryLog.objects.all().delete()
         print(f"[*] Wiped {telem_count} log(s) from SQLite telemetry_logs.")
     except Exception as e:
-        print(f"[!] Warning: Could not clear telemetry_logs: {e}")
+        print(f"[!] Warning: Could not clear SQLite telemetry_logs: {e}")
 
     # 5. Reset Student Profiles to Default Starter State
     prof_count = StudentProfileDocument.objects.count()

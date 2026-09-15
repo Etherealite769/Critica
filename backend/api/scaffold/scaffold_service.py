@@ -1,4 +1,6 @@
 from .models import TelemetryLog
+from .mongo_models import TelemetryLogDocument
+from datetime import datetime, timezone
 
 class ScaffoldEngineService:
 
@@ -8,14 +10,31 @@ class ScaffoldEngineService:
     @staticmethod
     def should_trigger(student_id, node_id,
                        inactivity_seconds=0):
-        recent = TelemetryLog.objects.filter(
-            student_id=student_id,
-            node_id=node_id,
-        ).order_by('-timestamp')[:3]
+        recent_records = []
+        try:
+            recent_records = list(
+                TelemetryLogDocument.objects(
+                    student_id=str(student_id),
+                    node_id=str(node_id),
+                ).order_by('-timestamp')[:3]
+            )
+        except Exception:
+            recent_records = []
+
+        if not recent_records:
+            try:
+                recent_records = list(
+                    TelemetryLog.objects.filter(
+                        student_id=str(student_id),
+                        node_id=str(node_id),
+                    ).order_by('-timestamp')[:3]
+                )
+            except Exception:
+                recent_records = []
 
         all_wrong = (
-            len(recent) >= 3 and
-            all(not r.is_correct for r in recent)
+            len(recent_records) >= 3 and
+            all(not r.is_correct for r in recent_records)
         )
         timed_out = (
             inactivity_seconds >=
@@ -56,14 +75,37 @@ class ScaffoldEngineService:
                     hint_tier=0,
                     inactivity_trigger=False,
                     word_id='', clue_word_id=''):
-        TelemetryLog.objects.create(
-            student_id=student_id,
-            node_id=node_id,
-            module=module,
-            is_correct=is_correct,
-            hint_used=hint_used,
-            hint_tier=hint_tier,
-            inactivity_trigger=inactivity_trigger,
-            word_id=word_id,
-            clue_word_id=clue_word_id,
-        )
+        now = datetime.now(timezone.utc)
+        # 1. Primary: Save to MongoDB Atlas collection for global sync
+        try:
+            doc = TelemetryLogDocument(
+                student_id=str(student_id),
+                node_id=str(node_id),
+                module=str(module),
+                is_correct=bool(is_correct),
+                hint_used=bool(hint_used),
+                hint_tier=int(hint_tier or 0),
+                inactivity_trigger=bool(inactivity_trigger),
+                word_id=str(word_id or ''),
+                clue_word_id=str(clue_word_id or ''),
+                timestamp=now,
+            )
+            doc.save()
+        except Exception as e:
+            print(f"[Warning] Failed to save telemetry to MongoDB: {e}")
+
+        # 2. Secondary / Local backup: Save to SQLite
+        try:
+            TelemetryLog.objects.create(
+                student_id=str(student_id),
+                node_id=str(node_id),
+                module=str(module),
+                is_correct=bool(is_correct),
+                hint_used=bool(hint_used),
+                hint_tier=int(hint_tier or 0),
+                inactivity_trigger=bool(inactivity_trigger),
+                word_id=str(word_id or ''),
+                clue_word_id=str(clue_word_id or ''),
+            )
+        except Exception:
+            pass
