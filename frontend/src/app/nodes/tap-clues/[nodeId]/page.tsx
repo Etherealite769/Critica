@@ -11,6 +11,7 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
   fetchNodeSession, fetchLiveSocraticHint,
 } from '@/lib/nodeSession'
+import { notifyLexicalUpdated, notifyProgressionUpdated } from '@/lib/realtime-sync'
 
 // ── Palette (identical to Logic Thread) ───────────
 const C: Record<string, string> = {
@@ -581,6 +582,10 @@ export default function TapCluesPage() {
     const activeNodeId = tapNode?.node_id ?? nodeId
     try {
       await apiFetch('/lexical/log/', { method: 'POST', body: JSON.stringify({ word_data: { word, definition, contextual_usage, translation }, task_id: activeNodeId }) })
+      notifyLexicalUpdated({
+        action: 'word_logged',
+        wordData: { word, definition, contextual_usage, translation },
+      })
     } catch { console.warn('Lexical log failed silently') }
   }, [nodeId, tapNode])
 
@@ -688,6 +693,17 @@ export default function TapCluesPage() {
               next_node: finalRes.next_node,
               streak: finalRes.streak ?? 1,
             })
+            notifyProgressionUpdated({
+              action: 'node_mastered',
+              streak: finalRes.streak,
+              streak_new_day: finalRes.streak_new_day,
+              xp_awarded: finalRes.xp_awarded,
+              total_xp: finalRes.total_xp,
+              level: finalRes.level,
+              level_title: finalRes.level_title,
+              level_up: finalRes.level_up,
+              progress_pct: finalRes.progress_pct,
+            })
             setPhase('mastery')
           } catch {
             setSubmitting(false)
@@ -727,6 +743,17 @@ export default function TapCluesPage() {
           setMasteryData({
             next_node: savedNextNode || finalRes.next_node,
             streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
+          })
+          notifyProgressionUpdated({
+            action: 'node_mastered',
+            streak: finalRes.streak,
+            streak_new_day: finalRes.streak_new_day,
+            xp_awarded: finalRes.xp_awarded,
+            total_xp: finalRes.total_xp,
+            level: finalRes.level,
+            level_title: finalRes.level_title,
+            level_up: finalRes.level_up,
+            progress_pct: finalRes.progress_pct,
           })
           setPhase('mastery')
         }

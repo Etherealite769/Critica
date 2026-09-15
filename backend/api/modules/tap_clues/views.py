@@ -162,9 +162,15 @@ class MasteryView(APIView):
                     username=request.user.email,
                 )
             return Response({
-                'status':    'mastered',
-                'next_node': result['next_node'],
-                'streak':    result['streak'],
+                'status':       'mastered',
+                'next_node':    result['next_node'],
+                'streak':       result['streak'],
+                'xp_awarded':   result.get('xp_awarded', 0),
+                'total_xp':     result.get('total_xp', 0),
+                'level':        result.get('level', 1),
+                'level_title':  result.get('level_title', ''),
+                'level_up':     result.get('level_up', False),
+                'progress_pct': result.get('progress_pct', 0),
             })
 
         unlocked_word_ids = request.data.get(
@@ -197,9 +203,15 @@ class MasteryView(APIView):
                     username=request.user.email,
                 )
             return Response({
-                'status':    'mastered',
-                'next_node': result['next_node'],
-                'streak':    result['streak'],
+                'status':       'mastered',
+                'next_node':    result['next_node'],
+                'streak':       result['streak'],
+                'xp_awarded':   result.get('xp_awarded', 0),
+                'total_xp':     result.get('total_xp', 0),
+                'level':        result.get('level', 1),
+                'level_title':  result.get('level_title', ''),
+                'level_up':     result.get('level_up', False),
+                'progress_pct': result.get('progress_pct', 0),
             })
 
         return Response({

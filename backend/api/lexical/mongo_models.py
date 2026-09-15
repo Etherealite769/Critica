@@ -16,4 +16,11 @@ class LexicalReviewDocument(me.Document):
                            default=datetime.utcnow)
     last_reviewed    = me.DateTimeField()
 
-    meta = {'collection': 'lexical_review_deck'}
+    meta = {
+        'collection': 'lexical_review_deck',
+        'indexes': [
+            'student_id',
+            ('student_id', 'word'),
+            'next_review_date',
+        ]
+    }

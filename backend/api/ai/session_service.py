@@ -474,7 +474,14 @@ class SessionService:
             'node_id': session_doc.node_id,
             'next_node': prog_result.get('next_node'),
             'streak': prog_result.get('streak', 0),
+            'streak_new_day': prog_result.get('streak_new_day', False),
             'unlocked_nodes': prog_result.get('unlocked_nodes', []),
+            'xp_awarded': prog_result.get('xp_awarded', 0),
+            'total_xp': prog_result.get('total_xp', 0),
+            'level': prog_result.get('level', 1),
+            'level_title': prog_result.get('level_title', ''),
+            'level_up': prog_result.get('level_up', False),
+            'progress_pct': prog_result.get('progress_pct', 0),
         }
 
     @staticmethod

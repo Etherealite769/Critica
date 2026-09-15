@@ -1,6 +1,5 @@
-// src/lib/nodeSession.ts
-// Shared utilities for multi-question AI sessions with difficulty tiers and zero-repetition guarantees.
 import { apiFetch } from './api'
+import { notifyProgressionUpdated } from './realtime-sync'
 
 // ── Difficulty ─────────────────────────────────────────────────────────────
 
@@ -122,10 +121,24 @@ export async function fetchLiveSocraticHint(
  */
 export async function completeSessionMastery(
   sessionId: string,
-): Promise<{ status: string; next_node?: string; streak?: number; unlocked_nodes?: string[] }> {
-  return await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+): Promise<{ status: string; next_node?: string; streak?: number; unlocked_nodes?: string[]; [key: string]: any }> {
+  const res = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
     method: 'POST',
   })
+  if (res && res.status === 'mastered') {
+    notifyProgressionUpdated({
+      action: 'node_mastered',
+      streak: res.streak,
+      streak_new_day: res.streak_new_day,
+      xp_awarded: res.xp_awarded,
+      total_xp: res.total_xp,
+      level: res.level,
+      level_title: res.level_title,
+      level_up: res.level_up,
+      progress_pct: res.progress_pct,
+    })
+  }
+  return res
 }
 
 // ── Legacy / Fallback Session Queue Utilities ──────────────────────────────
