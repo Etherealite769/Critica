@@ -160,7 +160,7 @@ class StudentMetricsView(APIView):
             overall_accuracy = 100
             hint_independence = 100
         else:
-            overall_accuracy = round((correct_attempts / total_attempts) * 100) if total_attempts > 0 else 100
+            overall_accuracy = round((correct_attempts / total_attempts) * 100) if total_attempts > 0 else 0
             hint_independence = round(((total_attempts - hints_used_count) / total_attempts) * 100) if total_attempts > 0 else 100
 
         # Module breakdown
