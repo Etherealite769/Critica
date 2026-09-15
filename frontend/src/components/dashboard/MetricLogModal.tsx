@@ -89,14 +89,25 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
 
           const modStats: Record<string, ModuleStat> = {}
           const modKeys = ['logic_thread', 'snap_gap', 'tap_clues', 'fact_scanner']
+          let totAtt = 0
+          let totCor = 0
+
           modKeys.forEach(m => {
             const mStatus = dash.module_status?.[m]
             const completedInMod =
               mStatus?.nodes?.filter((n: any) => n.status === 'completed')?.length || 0
+            const backendStat = dash.module_stats?.[m]
+            const attempts = backendStat?.attempts ?? completedInMod
+            const correct = backendStat?.correct ?? completedInMod
+            const accuracy = backendStat?.accuracy ?? (attempts > 0 ? Math.round((correct / attempts) * 100) : 0)
+
+            totAtt += attempts
+            totCor += correct
+
             modStats[m] = {
-              attempts: completedInMod,
-              correct: completedInMod,
-              accuracy: completedInMod > 0 ? 100 : 0,
+              attempts,
+              correct,
+              accuracy,
               completed_nodes: completedInMod,
             }
           })
@@ -119,6 +130,8 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
               timestamp: 'Verified Case Milestone',
             }))
 
+          const computedAccuracy = dash.overall_accuracy ?? (totAtt > 0 ? Math.round((totCor / totAtt) * 100) : (compCount > 0 ? 100 : 0))
+
           setMetrics({
             student_id: dash.student_id ? String(dash.student_id) : 'Student',
             username: dash.username || (dash.first_name ? `${dash.first_name} ${dash.last_name || ''}`.trim() : 'Investigator'),
@@ -126,9 +139,9 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
             completed_count: compCount,
             rank_title: rankTitle,
             rank_level: rankLevel,
-            total_attempts: compCount,
-            correct_attempts: compCount,
-            overall_accuracy: compCount > 0 ? 100 : 100,
+            total_attempts: totAtt || compCount,
+            correct_attempts: totCor || compCount,
+            overall_accuracy: computedAccuracy,
             hint_independence: 100,
             module_stats: modStats,
             recent_activity: recentLogs,

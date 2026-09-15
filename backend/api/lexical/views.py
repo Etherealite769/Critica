@@ -41,7 +41,9 @@ class LexicalDeckLogView(APIView):
 
     def post(self, request):
         student_id = str(request.user.id)
-        word_data  = request.data.get('word_data', {})
+        word_data  = request.data.get('word_data')
+        if not word_data or not isinstance(word_data, dict):
+            word_data = request.data
         task_id    = request.data.get('task_id', '')
         doc = SpacedRepetitionService.schedule_word(
             student_id, word_data, task_id)
@@ -70,6 +72,7 @@ class LexicalDeckListView(APIView):
     def get(self, request):
         student_id = str(request.user.id)
         filter_mode = request.query_params.get('filter', '')
+        mode = request.query_params.get('mode', '') or request.query_params.get('format', '')
         now, today_start, today_end, seconds_until_refresh = SpacedRepetitionService.get_day_boundaries()
 
         words = LexicalReviewDocument.objects(
@@ -85,7 +88,7 @@ class LexicalDeckListView(APIView):
                 'seconds_until_refresh': seconds_until_refresh,
                 'is_daily_complete': False,
             }
-            if request.query_params.get('format') == 'enriched':
+            if mode == 'enriched':
                 return Response({
                     'words': STARTER_VOCABULARY,
                     'daily_words': STARTER_VOCABULARY,
@@ -132,7 +135,7 @@ class LexicalDeckListView(APIView):
         if filter_mode == 'daily':
             return Response(serialized_daily)
 
-        if request.query_params.get('format') == 'enriched':
+        if mode == 'enriched':
             return Response({
                 'words': serialized_all,
                 'daily_words': serialized_daily,
