@@ -9,7 +9,7 @@ import { apiFetch } from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
-  fetchNodeSession, fetchLiveSocraticHint,
+  fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
 
 interface ArticleSentence {
@@ -294,20 +294,28 @@ export default function FactScannerPage() {
       const sessionData = await fetchNodeSession('fact_scanner', start, forceFresh)
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
-      const firstEx = sessionData.exercises?.[0]
+
+      const resumeIdx = Math.min(
+        sessionData.current_index ?? 0,
+        Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
+      )
+      const activeEx = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
+
       setFactNode({
         node_id: sessionData.node_id,
-        title: sessionData.title,
+        title: activeEx?.topic_title || sessionData.title,
         focus: sessionData.focus,
-        craap_criterion: firstEx?.craap_criterion || 'CURRENCY',
+        craap_criterion: activeEx?.craap_criterion || 'CURRENCY',
         difficulty: sessionData.difficulty,
         micro_lesson_text: sessionData.micro_lesson_text,
-        reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+        reading_passage: activeEx?.reading_passage || sessionData.reading_passage || '',
         deep_dive_required: sessionData.deep_dive_required,
-        article_sentences: firstEx?.article_sentences || [],
+        article_sentences: activeEx?.article_sentences || [],
       })
-      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-      setQuestionIndex(0)
+      const totalQ = sessionData.exercises?.length || 5
+      const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
+      setSessionQueue(queue)
+      setQuestionIndex(resumeIdx)
       setSelected(null)
       setQuarantined([])
       setFlawReasons({})
@@ -318,7 +326,13 @@ export default function FactScannerPage() {
       setFbText('')
       setDrawer(false)
       setHintOverlay(false)
-      setPhase(forceFresh ? 'task' : 'micro_lesson')
+
+      saveSession('fact_scanner', start, {
+        sessionQueue: queue,
+        questionIndex: resumeIdx,
+      })
+
+      setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
       const saved = loadSession('fact_scanner', start)
@@ -497,6 +511,17 @@ export default function FactScannerPage() {
 
       if (isMastered) {
         const nextIdx = questionIndex + 1
+        if (sessionId) {
+          updateSessionProgress(sessionId, nextIdx).catch(() => {})
+        }
+        if (sessionStartId) {
+          saveSession('fact_scanner', sessionStartId, {
+            sessionQueue,
+            questionIndex: nextIdx,
+            next_node: savedNextNode || undefined,
+            streak: savedStreak !== null ? savedStreak : undefined,
+          })
+        }
         if (nextIdx < sessionExercises.length) {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
@@ -681,6 +706,9 @@ export default function FactScannerPage() {
         </button>
         <button
           onClick={() => {
+            if (sessionId) {
+              updateSessionProgress(sessionId, questionIndex).catch(() => {})
+            }
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('fact_scanner', sessionStartId, {
                 sessionQueue, questionIndex,

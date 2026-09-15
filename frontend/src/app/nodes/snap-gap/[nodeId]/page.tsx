@@ -9,7 +9,7 @@ import { apiFetch } from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
-  fetchNodeSession, fetchLiveSocraticHint,
+  fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
 
 // ── Types ─────────────────────────────────────────
@@ -620,20 +620,28 @@ export default function SnapInGapPage() {
       const sessionData = await fetchNodeSession('snap_gap', start, forceFresh)
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
-      const firstEx = sessionData.exercises?.[0]
+
+      const resumeIdx = Math.min(
+        sessionData.current_index ?? 0,
+        Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
+      )
+      const activeEx = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
+
       setSnapNode({
         node_id: sessionData.node_id,
-        title: sessionData.title,
+        title: activeEx?.topic_title || sessionData.title,
         focus: sessionData.focus,
         difficulty: sessionData.difficulty,
         micro_lesson_text: sessionData.micro_lesson_text,
-        reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+        reading_passage: activeEx?.reading_passage || sessionData.reading_passage || '',
         deep_dive_required: sessionData.deep_dive_required,
-        sentence_pairs: firstEx?.sentence_pairs || [],
-        transition_tile_dock: firstEx?.transition_tile_dock || [],
+        sentence_pairs: activeEx?.sentence_pairs || [],
+        transition_tile_dock: activeEx?.transition_tile_dock || [],
       })
-      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-      setQuestionIndex(0)
+      const totalQ = sessionData.exercises?.length || 5
+      const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
+      setSessionQueue(queue)
+      setQuestionIndex(resumeIdx)
       setPairIdx(0)
       setBoard({})
       setLocked([])
@@ -643,7 +651,13 @@ export default function SnapInGapPage() {
       setHintText('')
       setDrawer(false)
       setHintOverlay(false)
-      setPhase(forceFresh ? 'task' : 'micro_lesson')
+
+      saveSession('snap_gap', start, {
+        sessionQueue: queue,
+        questionIndex: resumeIdx,
+      })
+
+      setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
       const saved = loadSession('snap_gap', start)
@@ -823,7 +837,7 @@ export default function SnapInGapPage() {
     if (sessionId && sessionExercises.length > questionIndex) {
       const currentEx = sessionExercises[questionIndex]
       const correctTile = currentEx.correct_tile_map?.[pair.pair_id]
-      const isCorrect = (correctTile === tile)
+      const isCorrect = correctTile && (correctTile.trim().toLowerCase() === tile.trim().toLowerCase())
 
       if (isCorrect) {
         setTileState('correct')
@@ -878,7 +892,11 @@ export default function SnapInGapPage() {
     if (sessionId && sessionExercises.length > questionIndex) {
       const currentEx = sessionExercises[questionIndex]
       const correctTileMap = currentEx.correct_tile_map || {}
-      const isCorrect = Object.keys(correctTileMap).every(pid => board[pid] === correctTileMap[pid])
+      const isCorrect = Object.keys(correctTileMap).every(pid => {
+        const studentTile = (board[pid] || '').trim().toLowerCase()
+        const expectedTile = (correctTileMap[pid] || '').trim().toLowerCase()
+        return studentTile === expectedTile
+      })
 
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
@@ -887,6 +905,17 @@ export default function SnapInGapPage() {
 
       if (isCorrect) {
         const nextIdx = questionIndex + 1
+        if (sessionId) {
+          updateSessionProgress(sessionId, nextIdx).catch(() => {})
+        }
+        if (sessionStartId) {
+          saveSession('snap_gap', sessionStartId, {
+            sessionQueue,
+            questionIndex: nextIdx,
+            next_node: savedNextNode || undefined,
+            streak: savedStreak !== null ? savedStreak : undefined,
+          })
+        }
         if (nextIdx < sessionExercises.length) {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
@@ -1041,6 +1070,9 @@ export default function SnapInGapPage() {
         >FRESH CASE ↻</button>
         <button
           onClick={() => {
+            if (sessionId) {
+              updateSessionProgress(sessionId, questionIndex).catch(() => {})
+            }
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('snap_gap', sessionStartId, {
                 sessionQueue,
@@ -1158,6 +1190,7 @@ export default function SnapInGapPage() {
               flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
               borderRadius: 8, padding: '20px 22px',
               fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+              maxHeight: 280, overflowY: 'auto', wordBreak: 'break-word',
             }}>
               {currentPair ? currentPair.sentence_a : ''}
             </div>
@@ -1237,8 +1270,11 @@ export default function SnapInGapPage() {
               flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
               borderRadius: 8, padding: '20px 22px',
               fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+              maxHeight: 280, overflowY: 'auto', wordBreak: 'break-word',
             }}>
-              {currentPair ? currentPair.sentence_b : ''}
+              {currentPair ? (
+                currentPair.sentence_b ? (currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)) : ''
+              ) : ''}
             </div>
           </div>
 

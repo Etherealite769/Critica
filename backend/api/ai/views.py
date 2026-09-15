@@ -170,3 +170,33 @@ class SessionMasteryView(APIView):
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(result, status=status.HTTP_200_OK)
+
+
+class SessionProgressView(APIView):
+    """
+    POST /api/ai/session/<session_id>/progress/
+    Body: { current_index: int }
+    Saves and updates the student's current question progress for an active AI session.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        current_index = request.data.get('current_index')
+        if current_index is None:
+            return Response({'error': 'current_index is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            current_index = int(current_index)
+        except (ValueError, TypeError):
+            return Response({'error': 'current_index must be an integer'}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = SessionService.update_session_progress(
+            session_id=session_id,
+            current_index=current_index
+        )
+
+        if result.get('status') == 'error':
+            return Response(result, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(result, status=status.HTTP_200_OK)
+

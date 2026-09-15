@@ -9,7 +9,7 @@ import { apiFetch } from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
-  fetchNodeSession, fetchLiveSocraticHint,
+  fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
 import { notifyLexicalUpdated, notifyProgressionUpdated } from '@/lib/realtime-sync'
 
@@ -443,19 +443,27 @@ export default function TapCluesPage() {
       const sessionData = await fetchNodeSession('tap_clues', start, forceFresh)
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
-      const firstEx = sessionData.exercises?.[0]
+
+      const resumeIdx = Math.min(
+        sessionData.current_index ?? 0,
+        Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
+      )
+      const activeEx = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
+
       setTapNode({
         node_id: sessionData.node_id,
-        title: sessionData.title,
+        title: activeEx?.topic_title || sessionData.title,
         focus: sessionData.focus,
         difficulty: sessionData.difficulty,
         micro_lesson_text: sessionData.micro_lesson_text,
-        reading_passage: sessionData.reading_passage || firstEx?.reading_passage || '',
+        reading_passage: activeEx?.reading_passage || sessionData.reading_passage || '',
         deep_dive_required: sessionData.deep_dive_required,
-        locked_words: firstEx?.locked_words || [],
+        locked_words: activeEx?.locked_words || [],
       })
-      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-      setQuestionIndex(0)
+      const totalQ = sessionData.exercises?.length || 5
+      const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
+      setSessionQueue(queue)
+      setQuestionIndex(resumeIdx)
       setUnlockedWords([])
       setActiveWordId(null)
       setFoundClues({})
@@ -464,7 +472,13 @@ export default function TapCluesPage() {
       setFbText('')
       setDrawer(false)
       setHintOverlay(false)
-      setPhase(forceFresh ? 'task' : 'micro_lesson')
+
+      saveSession('tap_clues', start, {
+        sessionQueue: queue,
+        questionIndex: resumeIdx,
+      })
+
+      setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
       const saved = loadSession('tap_clues', start)
@@ -719,6 +733,17 @@ export default function TapCluesPage() {
 
       if (isMastered) {
         const nextIdx = questionIndex + 1
+        if (sessionId) {
+          updateSessionProgress(sessionId, nextIdx).catch(() => {})
+        }
+        if (sessionStartId) {
+          saveSession('tap_clues', sessionStartId, {
+            sessionQueue,
+            questionIndex: nextIdx,
+            next_node: savedNextNode || undefined,
+            streak: savedStreak !== null ? savedStreak : undefined,
+          })
+        }
         if (nextIdx < sessionExercises.length) {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
@@ -835,6 +860,9 @@ export default function TapCluesPage() {
           { label: 'Hint', action: () => fetchHint() },
           { label: 'Fresh Case ↻', action: () => startSession(true) },
           { label: 'End Session', action: () => {
+            if (sessionId) {
+              updateSessionProgress(sessionId, questionIndex).catch(() => {})
+            }
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('tap_clues', sessionStartId, {
                 sessionQueue, questionIndex,

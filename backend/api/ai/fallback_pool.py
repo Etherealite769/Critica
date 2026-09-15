@@ -934,6 +934,18 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
         {"tier": 2, "hint_text": f"Consider words like '{tpl['sentence_pairs'][0]['correct_tile']}' to link the ideas."},
         {"tier": 3, "hint_text": f"Correct transition for first pair: {tpl['sentence_pairs'][0]['correct_tile']}."},
     ]
+    explanations = {}
+    dock_tiles = tpl.get("dock", [])
+    for pair in tpl.get("sentence_pairs", []):
+        pid = pair.get("pair_id", "pair_1")
+        correct = pair.get("correct_tile", "")
+        for tile in dock_tiles:
+            if tile != correct:
+                explanations[f"{pid}__{tile}"] = (
+                    f"'{tile}' does not establish the proper relationship between these sentences. "
+                    f"Review the logical connection between sentence A and sentence B."
+                )
+
     return {
         "exercise_id": f"proc_snp_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",
@@ -941,6 +953,7 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
         "sentence_pairs": tpl["sentence_pairs"],
         "transition_tile_dock": tpl["dock"],
         "correct_tile_map": tpl["correct_tile_map"],
+        "tile_error_explanations": explanations,
         "scaffold_hints": hints,
         "difficulty": tpl["tier"],
     }

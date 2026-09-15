@@ -6,7 +6,7 @@ import { apiFetch }                          from '@/lib/api'
 import {
   buildSessionQueue, saveSession, loadSession, clearSession,
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
-  fetchNodeSession, fetchLiveSocraticHint,
+  fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
 import styles from './page.module.css'
 
@@ -24,6 +24,32 @@ interface NodeData {
 }
 type Phase       = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 type SubmitState = 'idle' | 'submitting' | 'correct' | 'incorrect'
+
+/** True Fisher-Yates array shuffle for non-predictable card scattering */
+function shuffleBlocks(arr: Block[]): Block[] {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy
+}
+
+/** Dynamic font size and line height calculation to ensure sentences fit inside card boxes without clipping */
+function getCardTypography(text: string, cardCount: number) {
+  const len = text.length
+  let fontSize = cardCount >= 5 ? 12 : 12.5
+  let lineHeight = cardCount >= 5 ? 1.45 : 1.55
+
+  if (len > 130) {
+    fontSize = 10.5
+    lineHeight = 1.32
+  } else if (len > 85) {
+    fontSize = 11.5
+    lineHeight = 1.4
+  }
+  return { fontSize, lineHeight }
+}
 
 const TEXT_STRUCTURE_TUTORIAL_KEY = 'critica_tutorial_seen_logic_thread_first_node'
 
@@ -493,7 +519,7 @@ export default function LogicThreadPage() {
           reading_passage: ex.reading_passage || prev.reading_passage,
           paragraph_blocks: ex.paragraph_blocks || prev.paragraph_blocks,
         }) : ex)
-        setBlocks([...ex.paragraph_blocks].sort(() => Math.random() - 0.5))
+        setBlocks(shuffleBlocks(ex.paragraph_blocks))
         setChain([]); setSubmitState('idle'); setWrongCount(0)
         setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
         return
@@ -501,7 +527,7 @@ export default function LogicThreadPage() {
       const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/logic-thread/${targetNodeId}/`)
       setNode(d)
-      setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5))
+      setBlocks(shuffleBlocks(d.paragraph_blocks))
       setChain([]); setSubmitState('idle'); setWrongCount(0)
       setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
     } catch (e: any) {
@@ -519,23 +545,38 @@ export default function LogicThreadPage() {
       const sessionData = await fetchNodeSession('logic_thread', start, forceFresh)
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
+      
+      const resumeIdx = Math.min(
+        sessionData.current_index ?? 0,
+        Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
+      )
+      const activeExercise = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
+
       setNode({
         node_id: sessionData.node_id,
-        title: sessionData.title,
+        title: activeExercise?.topic_title || sessionData.title,
         focus: sessionData.focus,
         difficulty: sessionData.difficulty,
         micro_lesson_text: sessionData.micro_lesson_text,
-        reading_passage: sessionData.reading_passage,
+        reading_passage: activeExercise?.reading_passage || sessionData.reading_passage,
         deep_dive_required: sessionData.deep_dive_required,
-        paragraph_blocks: sessionData.exercises?.[0]?.paragraph_blocks || [],
+        paragraph_blocks: activeExercise?.paragraph_blocks || [],
       })
-      const firstBlocks = sessionData.exercises?.[0]?.paragraph_blocks || []
-      setBlocks([...firstBlocks].sort(() => Math.random() - 0.5))
-      setSessionQueue(['q1', 'q2', 'q3', 'q4', 'q5'])
-      setQuestionIndex(0)
+      const activeBlocks = activeExercise?.paragraph_blocks || []
+      setBlocks(shuffleBlocks(activeBlocks))
+      const totalQ = sessionData.exercises?.length || 5
+      const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
+      setSessionQueue(queue)
+      setQuestionIndex(resumeIdx)
       setChain([]); setSubmitState('idle'); setWrongCount(0)
       setShowHint(false); setHintText(''); setSocraticText('')
-      setPhase(forceFresh ? 'task' : 'micro_lesson')
+      
+      saveSession('logic_thread', start, {
+        sessionQueue: queue,
+        questionIndex: resumeIdx,
+      })
+      
+      setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
       const saved = loadSession('logic_thread', start)
@@ -546,7 +587,7 @@ export default function LogicThreadPage() {
         const activeId = saved.sessionQueue[saved.questionIndex] ?? start
         apiFetch(`/nodes/logic-thread/${activeId}/`)
           .then((d: NodeData) => {
-            setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5)); setPhase('task')
+            setNode(d); setBlocks(shuffleBlocks(d.paragraph_blocks)); setPhase('task')
           })
           .catch((e: any) => {
             if (e?.status === 401)              { router.push('/auth');      return }
@@ -556,7 +597,7 @@ export default function LogicThreadPage() {
       } else {
         apiFetch(`/nodes/logic-thread/${start}/`)
           .then((d: NodeData) => {
-            setNode(d); setBlocks([...d.paragraph_blocks].sort(() => Math.random() - 0.5))
+            setNode(d); setBlocks(shuffleBlocks(d.paragraph_blocks))
             setPhase('micro_lesson')
             apiFetch('/progression/dashboard/')
               .then((prog: any) => {
@@ -657,6 +698,17 @@ export default function LogicThreadPage() {
       if (isCorrect) {
         setSubmitState('correct')
         const nextIdx = questionIndex + 1
+        if (sessionId) {
+          updateSessionProgress(sessionId, nextIdx).catch(() => {})
+        }
+        if (sessionStartId) {
+          saveSession('logic_thread', sessionStartId, {
+            sessionQueue,
+            questionIndex: nextIdx,
+            next_node: savedNextNode || undefined,
+            streak: savedStreak !== null ? savedStreak : undefined,
+          })
+        }
         setTimeout(async () => {
           try {
             if (nextIdx < sessionExercises.length) {
@@ -755,6 +807,9 @@ export default function LogicThreadPage() {
           { label: 'Hint', action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
           { label: 'Fresh Case ↻', action: () => startSession(true) },
           { label: 'End Session', action: () => {
+            if (sessionId) {
+              updateSessionProgress(sessionId, questionIndex).catch(() => {})
+            }
             if (sessionStartId && sessionQueue.length > 0) {
               saveSession('logic_thread', sessionStartId, {
                 sessionQueue, questionIndex,
@@ -876,6 +931,8 @@ export default function LogicThreadPage() {
                       submitState === 'incorrect' && inChain ? styles.cardIncorrect :
                       styles.card
 
+                    const typo = getCardTypography(block.text, blocks.length)
+
                     return (
                       <div
                         key={block.block_id}
@@ -887,29 +944,42 @@ export default function LogicThreadPage() {
                           background: bg, border, borderRadius: 10,
                           boxShadow: isLatest ? '0 4px 18px rgba(196,154,90,0.45)' : '0 3px 12px rgba(0,0,0,0.22)',
                           cursor: submitState === 'idle' ? 'pointer' : 'default',
-                          padding: '22px 14px 12px',
+                          padding: '16px 14px 10px',
                           userSelect: 'none', zIndex: 2,
-                          display: 'flex', alignItems: 'center', overflow: 'hidden',
+                          display: 'flex', flexDirection: 'column',
+                          overflow: 'hidden',
                         }}
                       >
                         {/* pin hole decoration */}
                         <div style={{
-                          position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)',
+                          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
                           width: 7, height: 7, borderRadius: '50%',
                           background: isLatest ? C.accentRed : C.cardBdrIdle,
                           boxShadow: isLatest ? `0 0 0 2px rgba(128,0,32,0.25)` : 'none',
                           transition: 'background 0.2s',
+                          zIndex: 3,
                         }} />
-                        <p style={{
-                          margin: 0,
-                          fontSize: blocks.length >= 5 ? 12 : 13,
-                          lineHeight: blocks.length >= 5 ? 1.5 : 1.7,
-                          color: C.textDark,
-                          fontFamily: FONT,
-                          fontWeight: inChain ? 600 : 400
+                        <div style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          overflowY: 'auto',
+                          wordBreak: 'break-word',
+                          scrollbarWidth: 'thin',
+                          paddingTop: 4,
                         }}>
-                          {block.text}
-                        </p>
+                          <p style={{
+                            margin: 0,
+                            fontSize: typo.fontSize,
+                            lineHeight: typo.lineHeight,
+                            color: C.textDark,
+                            fontFamily: FONT,
+                            fontWeight: inChain ? 600 : 400,
+                            width: '100%',
+                          }}>
+                            {block.text}
+                          </p>
+                        </div>
                       </div>
                     )
                   })}

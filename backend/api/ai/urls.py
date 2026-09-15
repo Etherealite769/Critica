@@ -7,6 +7,7 @@ from .views import (
     SessionEvaluateStepView,
     SessionFeedbackView,
     SessionLiveHintView,
+    SessionProgressView,
     SessionMasteryView,
 )
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('session/<str:session_id>/evaluate/<int:exercise_index>/', SessionEvaluateStepView.as_view(), name='ai_session_evaluate'),
     path('session/<str:session_id>/feedback/<int:exercise_index>/', SessionFeedbackView.as_view(), name='ai_session_feedback'),
     path('session/<str:session_id>/live-hint/<int:exercise_index>/', SessionLiveHintView.as_view(), name='ai_session_live_hint'),
+    path('session/<str:session_id>/progress/', SessionProgressView.as_view(), name='ai_session_progress'),
     path('session/<str:session_id>/mastery/', SessionMasteryView.as_view(), name='ai_session_mastery'),
     path('session/<str:module>/<str:node_id>/regenerate/', SessionRegenerateView.as_view(), name='ai_session_regenerate'),
 
