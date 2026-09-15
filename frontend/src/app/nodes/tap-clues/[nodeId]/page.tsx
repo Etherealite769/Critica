@@ -12,6 +12,8 @@ import {
   fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
 import { notifyLexicalUpdated, notifyProgressionUpdated } from '@/lib/realtime-sync'
+import styles from './page.module.css'
+
 
 // ── Palette (identical to Logic Thread) ───────────
 const C: Record<string, string> = {
@@ -112,10 +114,12 @@ function BriefingGenerationScreen({ title }: { title?: string }) {
   }, [steps.length])
 
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, padding: 24, textAlign: 'center' }}>
-      <div style={{
+    <div className={styles.loadingWrap} style={{
+      minHeight: '100vh', background: C.pageBg,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      fontFamily: FONT, padding: 24, textAlign: 'center',
+    }}>
+      <div className={styles.screenCard} style={{
         maxWidth: 500, width: '100%', background: '#F2DEC1',
         border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
         boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
@@ -125,7 +129,7 @@ function BriefingGenerationScreen({ title }: { title?: string }) {
           {title ? title.toUpperCase() : 'GENERATING TAP THE CLUES CASE FILE'}
         </h3>
         <div style={{
-          background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: 6,
+          background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6,
           padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
@@ -133,10 +137,10 @@ function BriefingGenerationScreen({ title }: { title?: string }) {
             {steps[stepIndex]}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textLight }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.btnGold }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textMid }} />
+        <div className={styles.loadingDots} style={{ justifyContent: 'center' }}>
+          <div className={styles.dot} />
+          <div className={styles.dot} />
+          <div className={styles.dot} />
         </div>
       </div>
     </div>
@@ -155,11 +159,11 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
 function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () => void }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 640, width: '100%', background: '#F2DEC1', border: `1px solid ${C.cardBdr}`, borderRadius: 8, padding: 48 }}>
+      <div className={styles.screenCard} style={{ maxWidth: 640, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={stamp}>MICRO-LESSON</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: FONT }}>{node.title}</h2>
-        <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px', fontFamily: FONT }}>{node.focus}</p>
-        <hr style={{ border: 'none', borderTop: `1px solid ${C.cardBdr}`, margin: '16px 0' }} />
+        <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: FONT }}>{node.focus}</p>
+        <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
         <p style={{ fontSize: 14, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT }}>{node.micro_lesson_text}</p>
         <button onClick={onContinue} style={btnPrimary}>Continue →</button>
       </div>
@@ -170,10 +174,10 @@ function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () 
 function DeepDiveScreen({ node, onContinue }: { node: TapNodeData; onContinue: () => void }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 700, width: '100%', background: '#2A1200', border: `1px solid ${C.cardBdr}`, borderRadius: 8, padding: 48 }}>
+      <div className={styles.screenCard} style={{ maxWidth: 700, width: '100%', background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={stamp}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>Read the full passage carefully before the task unlocks.</p>
-        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.cardBdr}`, borderRadius: 6, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
+        <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>Read the full passage carefully before the task unlocks.</p>
+        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
           {node.reading_passage}
         </p>
         <button onClick={onContinue} style={btnPrimary}>I have finished reading →</button>
@@ -187,10 +191,10 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }: {
 }) {
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: `2px solid ${C.green}`, borderRadius: 8, padding: 48, textAlign: 'center' }}>
+      <div className={styles.screenCard} style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: `2px solid ${C.green}`, borderRadius: 8, padding: 48, textAlign: 'center' }}>
         <div style={{ ...stamp, color: C.green, borderColor: C.green, fontSize: 16, padding: '8px 24px' }}>✓ NODE MASTERED</div>
         <h2 style={{ fontSize: 20, color: C.green, margin: '8px 0 16px', fontFamily: FONT }}>{node.title}</h2>
-        <p style={{ fontSize: 13, color: C.textLight, margin: '0 0 28px', fontFamily: FONT }}>Streak: {data?.streak ?? 0} days</p>
+        <p style={{ fontSize: 12, color: C.textLight, margin: '0 0 28px', fontFamily: FONT }}>Streak: {data?.streak ?? 0} days</p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           {data?.next_node && <button onClick={onNext} style={btnPrimary}>NEXT NODE →</button>}
           {onReplay && (
@@ -269,8 +273,8 @@ function TapCluesTutorialPopup({ open, step, onBack, onNext, onClose, onStart }:
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
-      <div style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 18px 44px rgba(0,0,0,0.55)' }}>
+    <div className={styles.tutorialOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
+      <div className={styles.tutorialModal} style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 18px 44px rgba(0,0,0,0.55)' }}>
         <div style={{ background: C.pageBg, padding: '14px 28px', display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: C.canvas }}>CRITICA — FIELD BRIEFING</span>
           <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: C.canvas }}>{current.code}</span>
@@ -279,7 +283,7 @@ function TapCluesTutorialPopup({ open, step, onBack, onNext, onClose, onStart }:
           {/* step nav */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
             {TUTORIAL_STEPS.map((s, i) => (
-              <div key={s.label} style={{
+              <div key={s.label} className={styles.tutorialNavItem} style={{
                 flex: 1, padding: '8px 4px', textAlign: 'center',
                 background: i < step ? '#b9dfbf' : i === step ? C.cardPaper : C.board,
                 border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3,
@@ -321,10 +325,10 @@ function TapCluesTutorialPopup({ open, step, onBack, onNext, onClose, onStart }:
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
+            <button onClick={isFirst ? onClose : onBack} className={styles.tutorialSecondaryBtn} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
               {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
             </button>
-            <button onClick={isLast ? onStart : onNext} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
+            <button onClick={isLast ? onStart : onNext} className={styles.tutorialPrimaryBtn} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
               {isLast ? 'START TRAINING →' : 'NEXT →'}
             </button>
           </div>
@@ -385,6 +389,8 @@ export default function TapCluesPage() {
   const [hintOverlay,     setHintOverlay]     = useState(false)
   const [hintOverlayText, setHintOverlayText] = useState('')
   const [hintOverlayTier, setHintOverlayTier] = useState(0)
+  const [socraticText,    setSocraticText]    = useState('')
+  const [socraticLoading, setSocraticLoading] = useState(false)
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
@@ -565,15 +571,15 @@ export default function TapCluesPage() {
     }
   }, [nodeId, tapNode, sessionId, sessionExercises, questionIndex])
 
-  const fetchHint = useCallback(async (isInactivity = false) => {
+  const fetchHint = useCallback(async (tier = 1) => {
     if (sessionId && sessionExercises.length > questionIndex) {
       try {
         const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
           method: 'POST',
-          body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier: 2 }),
+          body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier }),
         })
         setHintOverlayText(res.hint || res.explanation || 'Look for words near the locked word that hint at its meaning.')
-        setHintOverlayTier(res.hint_tier ?? 2); setHintOverlay(true)
+        setHintOverlayTier(res.hint_tier ?? tier); setHintOverlay(true)
         return
       } catch {
         setHintOverlayText('Look for words near the locked word that hint at its meaning.'); setHintOverlay(true)
@@ -588,18 +594,36 @@ export default function TapCluesPage() {
         body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', inactivity_seconds: 61 }),
       })
       setHintOverlayText(res.hint || res.explanation || 'Look for words near the locked word that hint at its meaning.')
-      setHintOverlayTier(res.hint_tier ?? 0); setHintOverlay(true)
+      setHintOverlayTier(res.hint_tier ?? tier); setHintOverlay(true)
     } catch {
       setHintOverlayText('Look for words near the locked word that hint at its meaning.'); setHintOverlay(true)
     }
   }, [nodeId, activeWordId, tapNode, sessionId, sessionExercises, questionIndex])
+
+  const handleAskSocraticAdvice = useCallback(async () => {
+    if (!sessionId) return
+    setSocraticLoading(true)
+    try {
+      const res = await fetchLiveSocraticHint(
+        sessionId,
+        questionIndex,
+        { word_id: activeWordId, found_clues: activeWordId ? (foundClues[activeWordId] ?? []) : [] },
+        wrongs + 1,
+      )
+      setSocraticText(res.socratic_hint || '')
+    } catch {
+      setSocraticText('Focus on words in the sentence that provide direct context or cause-and-effect signals.')
+    } finally {
+      setSocraticLoading(false)
+    }
+  }, [sessionId, questionIndex, activeWordId, foundClues, wrongs])
 
   const resetTimer = useCallback(() => {
     inactiveRef.current = 0
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = setInterval(() => {
       inactiveRef.current += 1
-      if (inactiveRef.current >= 60) { clearInterval(timerRef.current!); fetchHint(true) }
+      if (inactiveRef.current >= 60) { clearInterval(timerRef.current!); fetchHint(1) }
     }, 1000)
   }, [fetchHint])
 
@@ -881,7 +905,7 @@ export default function TapCluesPage() {
       {/* ── Fixed folder tabs (same as Logic Thread) ── */}
       <div style={{ position: 'fixed', left: 0, top: '20%', transform: 'translateY(-20%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, zIndex: 100 }}>
         {[
-          { label: 'Hint', action: () => fetchHint() },
+          { label: 'Hint', action: () => fetchHint(Math.min(wrongs + 1, 3)) },
           { label: 'Fresh Case ↻', action: () => startSession(true) },
           { label: 'End Session', action: () => {
             if (sessionId) {
@@ -897,7 +921,7 @@ export default function TapCluesPage() {
             router.push('/dashboard')
           }},
         ].map(({ label, action }) => (
-          <button key={label} onClick={action} style={{
+          <button key={label} onClick={action} className={styles.folderTab} style={{
             writingMode: 'vertical-lr',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
             color: C.textDark, background: C.btnGold,
@@ -905,10 +929,9 @@ export default function TapCluesPage() {
             borderRadius: '0 6px 6px 0',
             cursor: 'pointer', padding: '14px 8px',
             fontFamily: FONT, whiteSpace: 'nowrap',
-            transition: 'background 0.15s',
             boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.board }}
+            onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
             onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
           >
             {label}
@@ -917,17 +940,17 @@ export default function TapCluesPage() {
       </div>
 
       {/* ── Main shell ── */}
-      <div style={{
+      <div className={styles.boardEnter} style={{
         display: 'flex', flexDirection: 'column',
         boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
         borderRadius: 8, overflow: 'hidden',
         width: '100%', maxWidth: 1020, minHeight: 600,
       }}>
 
-        {/* ── HEADER: two rows matching Logic Thread ── */}
+        {/* ── HEADER: matching Logic Thread ── */}
         <div style={{ background: C.board, display: 'flex', flexDirection: 'column', borderBottom: `2px solid ${C.btnGoldBdr}` }}>
           {/* row 1: objective */}
-          <div style={{ padding: '14px 24px 10px', textAlign: 'center', borderBottom: `1px solid rgba(0,0,0,0.12)` }}>
+          <div style={{ padding: '12px 24px 10px', textAlign: 'center', borderBottom: `1px solid rgba(0,0,0,0.12)` }}>
             <div style={{
               display: 'inline-block', border: `1.5px solid ${C.accentRed}`,
               padding: '7px 28px', fontSize: 13, fontWeight: 700,
@@ -942,18 +965,19 @@ export default function TapCluesPage() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.12)', borderRadius: 20, padding: '5px 14px' }}>
               <div style={{ width: 9, height: 9, borderRadius: '50%', background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: FONT }}>
-                LVL {tapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[tapNode!.difficulty ?? nodeDifficulty(nodeId)]}
+                LVL {tapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[tapNode!.difficulty ?? nodeDifficulty(nodeId)]} ({tapNode!.locked_words.length} WORDS)
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               {sessionQueue.length > 0 && (
                 <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, background: 'rgba(0,0,0,0.1)', borderRadius: 20, padding: '5px 14px' }}>
-                  Q {questionIndex + 1} / {sessionQueue.length}
+                  CASE {questionIndex + 1} / {sessionQueue.length}
                 </span>
               )}
               <button
                 onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
-                style={{ padding: '7px 18px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 8, color: C.textDark, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
+                className={styles.tutorialBtn}
+                style={{ padding: '7px 18px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 8, color: C.textDark, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}
               >
                 TUTORIAL
               </button>
@@ -962,15 +986,20 @@ export default function TapCluesPage() {
           {/* progress bar */}
           {sessionQueue.length > 0 && (
             <div style={{ padding: '0 24px 10px' }}>
-              <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${(questionIndex / sessionQueue.length) * 100}%`, background: 'rgba(0,0,0,0.35)', borderRadius: 4, transition: 'width 0.3s' }} />
+              <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${((questionIndex + 1) / sessionQueue.length) * 100}%`,
+                  height: '100%',
+                  background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)] ?? '#4ddd94',
+                  transition: 'width 0.4s ease',
+                }} />
               </div>
             </div>
           )}
         </div>
 
         {/* ── CANVAS ── */}
-        <div style={{ background: C.canvas, display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ background: C.canvas, display: 'flex', flexDirection: 'column', flex: 1, position: 'relative' }}>
 
           {/* word unlock dots */}
           <div style={{ padding: '12px 24px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1200,30 +1229,94 @@ export default function TapCluesPage() {
               </div>
             </div>
           </div>
+
+          {/* Hint & Live Socratic overlay positioned on canvas */}
+          {hintOverlay && (
+            <div className={styles.hintOverlay} style={{
+              position: 'absolute', inset: 0,
+              background: 'rgba(0,0,0,0.52)', zIndex: 30,
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 18,
+            }}>
+              <div className={styles.hintCard} style={{
+                background: C.cardPaper, border: `2px solid ${C.cardBdr}`,
+                borderRadius: 6, padding: '18px 20px 16px',
+                maxWidth: 320, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
+                  AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
+                </div>
+                <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: FONT }}>
+                  {hintOverlayText}
+                </p>
+
+                {socraticText && (
+                  <div style={{ background: '#FFF2D6', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '10px 12px', margin: '0 0 14px' }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: C.textMid, marginBottom: 4, fontFamily: FONT }}>SOCRATIC GUIDANCE</div>
+                    <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: C.textDark, fontFamily: FONT }}>{socraticText}</p>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button
+                    onClick={handleAskSocraticAdvice}
+                    disabled={socraticLoading}
+                    style={{
+                      fontSize: 10, fontWeight: 700, color: C.textDark,
+                      background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
+                      padding: '6px 12px', cursor: 'pointer',
+                      fontFamily: FONT, letterSpacing: '0.04em', borderRadius: 4,
+                    }}
+                  >
+                    {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
+                  </button>
+                  <button
+                    onClick={() => { setHintOverlay(false); setSocraticText('') }}
+                    style={{
+                      fontSize: 10, fontWeight: 700, color: C.textMid,
+                      background: 'transparent', border: `1px solid ${C.textMid}`,
+                      padding: '6px 12px', cursor: 'pointer',
+                      fontFamily: FONT, borderRadius: 4,
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── SUBMIT BAR ── */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 28px 18px', background: C.board,
+          padding: '12px 24px 16px', background: C.board,
           borderTop: `2px solid ${C.btnGoldBdr}`,
         }}>
           <span style={{ fontSize: 12, color: C.textMid, fontWeight: 700, letterSpacing: '0.08em', fontFamily: FONT }}>
-            {wrongs > 0 && <span style={{ color: C.accentRed }}>WRONG ATTEMPTS: {wrongs}</span>}
+            {unlockedWords.length} / {tapNode!.locked_words.length} WORDS UNLOCKED
+            {wrongs > 0 && (
+              <span style={{ marginLeft: 14, color: C.accentRed }}>
+                ATTEMPTS: {wrongs}{wrongs >= 2 && ' — HINT READY'}
+              </span>
+            )}
           </span>
           <button
             disabled={!allUnlocked || submitting}
             onClick={handleSubmitMastery}
+            className={`${styles.submitBtn} ${allUnlocked && !submitting ? styles.submitBtnReady : ''}`}
             style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              background: submitting ? C.textMuted : allUnlocked ? C.btnDark : 'rgba(67,40,24,0.3)',
-              color: allUnlocked ? C.btnGold : C.textMuted,
+              display: 'flex', alignItems: 'center', gap: 14,
+              background:
+                submitting ? C.textMuted :
+                allUnlocked ? C.btnDark : 'rgba(67,40,24,0.35)',
+              color:
+                submitting ? '#fff' :
+                allUnlocked ? C.btnGold : C.textMuted,
               border: `1.5px solid ${allUnlocked ? C.btnGoldBdr : 'transparent'}`,
-              borderRadius: 8, padding: '13px 32px',
+              borderRadius: 8, padding: '12px 28px',
               fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
               cursor: allUnlocked && !submitting ? 'pointer' : 'not-allowed',
-              fontFamily: FONT, transition: 'background 0.2s',
-              boxShadow: allUnlocked && !submitting ? '0 3px 10px rgba(0,0,0,0.25)' : 'none',
+              fontFamily: FONT,
             }}
           >
             {submitting ? 'CHECKING...' : <><span>SUBMIT</span><span style={{ fontSize: 20, lineHeight: 1 }}>→</span></>}
@@ -1266,19 +1359,6 @@ export default function TapCluesPage() {
             >
               Got it — Continue
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Hint overlay ── */}
-      {hintOverlay && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.52)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 28, pointerEvents: 'none' }}>
-          <div style={{ background: C.cardPaper, border: `2px solid ${C.cardBdr}`, borderRadius: 8, padding: '18px 20px 16px', maxWidth: 280, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', pointerEvents: 'all' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
-              SCAFFOLD HINT{hintOverlayTier > 0 ? ` — TIER ${hintOverlayTier}` : ''}
-            </div>
-            <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7, margin: '0 0 16px', fontFamily: FONT }}>{hintOverlayText}</p>
-            <button onClick={() => setHintOverlay(false)} style={{ fontSize: 12, fontWeight: 700, color: C.textDark, background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`, padding: '7px 18px', cursor: 'pointer', fontFamily: FONT, letterSpacing: '0.06em', borderRadius: 6 }}>Close</button>
           </div>
         </div>
       )}

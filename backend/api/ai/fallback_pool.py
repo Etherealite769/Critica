@@ -929,14 +929,25 @@ def _format_logic_thread(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
 
 
 def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
-    hints = [
-        {"tier": 1, "hint_text": "Examine the logical connection between the two sentences."},
-        {"tier": 2, "hint_text": f"Consider words like '{tpl['sentence_pairs'][0]['correct_tile']}' to link the ideas."},
-        {"tier": 3, "hint_text": f"Correct transition for first pair: {tpl['sentence_pairs'][0]['correct_tile']}."},
-    ]
+    tier = tpl.get("tier", 1)
+    pair_count = 1 if tier == 1 else (2 if tier <= 3 else 3)
+    raw_pairs = tpl.get("sentence_pairs", [])
+    sentence_pairs = raw_pairs[:pair_count]
+
+    correct_map = {
+        p["pair_id"]: p["correct_tile"]
+        for p in sentence_pairs
+        if "pair_id" in p and "correct_tile" in p
+    }
+
+    dock_tiles = list(tpl.get("dock", []))
+    for p in sentence_pairs:
+        ct = p.get("correct_tile")
+        if ct and ct not in dock_tiles:
+            dock_tiles.append(ct)
+
     explanations = {}
-    dock_tiles = tpl.get("dock", [])
-    for pair in tpl.get("sentence_pairs", []):
+    for pair in sentence_pairs:
         pid = pair.get("pair_id", "pair_1")
         correct = pair.get("correct_tile", "")
         for tile in dock_tiles:
@@ -946,16 +957,22 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
                     f"Review the logical connection between sentence A and sentence B."
                 )
 
+    hints = [
+        {"tier": 1, "hint_text": "Examine the logical connection between the two sentences."},
+        {"tier": 2, "hint_text": f"Consider words like '{sentence_pairs[0]['correct_tile']}' to link the ideas."},
+        {"tier": 3, "hint_text": f"Correct transition for first pair: {sentence_pairs[0]['correct_tile']}."},
+    ]
+
     return {
         "exercise_id": f"proc_snp_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",
         "reading_passage": tpl["reading_passage"],
-        "sentence_pairs": tpl["sentence_pairs"],
-        "transition_tile_dock": tpl["dock"],
-        "correct_tile_map": tpl["correct_tile_map"],
+        "sentence_pairs": sentence_pairs,
+        "transition_tile_dock": dock_tiles,
+        "correct_tile_map": correct_map,
         "tile_error_explanations": explanations,
         "scaffold_hints": hints,
-        "difficulty": tpl["tier"],
+        "difficulty": tier,
     }
 
 

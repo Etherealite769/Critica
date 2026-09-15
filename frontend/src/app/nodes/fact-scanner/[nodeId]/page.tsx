@@ -11,6 +11,7 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
   fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
+import styles from './page.module.css'
 
 interface ArticleSentence {
   sentence_id: string
@@ -87,7 +88,7 @@ const stampS: React.CSSProperties = {
   marginBottom: 12, fontFamily: FONT,
 }
 
-// ── Tutorial ─────────────────────────────────────────────────
+// ── Tutorial Popup ───────────────────────────────────────────
 function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
   open: boolean; step: number
   onBack: () => void; onNext: () => void
@@ -100,7 +101,7 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
-      <div style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, boxShadow: '0 18px 44px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+      <div className={styles.tutorialModal} style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, boxShadow: '0 18px 44px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
         {/* header */}
         <div style={{ background: C.pageBg, padding: '12px 24px', display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: C.canvas }}>CRITICA — FIELD BRIEFING</span>
@@ -111,7 +112,7 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
           {/* step nav */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
             {TUTORIAL_STEPS.map((s, i) => (
-              <div key={s.label} style={{
+              <div key={s.label} className={styles.tutorialNavItem} style={{
                 flex: 1, padding: '8px 4px', textAlign: 'center',
                 background: i < step ? '#b9dfbf' : i === step ? C.cardPaper : C.board,
                 border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3,
@@ -149,10 +150,10 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button onClick={isFirst ? onClose : onBack} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
+            <button onClick={isFirst ? onClose : onBack} className={styles.tutorialSecondaryBtn} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
               {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
             </button>
-            <button onClick={isLast ? onStart : onNext} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
+            <button onClick={isLast ? onStart : onNext} className={styles.tutorialPrimaryBtn} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
               {isLast ? 'START TRAINING →' : 'NEXT →'}
             </button>
           </div>
@@ -182,7 +183,7 @@ function BriefingGenerationScreen({ title }: { title?: string }) {
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: FONT, padding: 24, textAlign: 'center' }}>
-      <div style={{
+      <div className={styles.screenCard} style={{
         maxWidth: 500, width: '100%', background: '#F2DEC1',
         border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
         boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
@@ -200,10 +201,10 @@ function BriefingGenerationScreen({ title }: { title?: string }) {
             {steps[stepIndex]}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', alignItems: 'center' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textLight }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.btnGold }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.textMid }} />
+        <div className={styles.loadingDots}>
+          <div className={styles.dot} />
+          <div className={styles.dot} />
+          <div className={styles.dot} />
         </div>
       </div>
     </div>
@@ -246,6 +247,9 @@ export default function FactScannerPage() {
   const [hintOverlayText, setHintOverlayText] = useState('')
   const [hintOverlayTier, setHintOverlayTier] = useState(0)
 
+  const [socraticAdvice,  setSocraticAdvice]  = useState<string | null>(null)
+  const [socraticLoading, setSocraticLoading] = useState(false)
+
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
 
@@ -266,7 +270,7 @@ export default function FactScannerPage() {
         }) : ex)
         setSelected(null); setQuarantined([]); setFlawReasons({})
         setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
-        setFbText(''); setDrawer(false); setHintOverlay(false)
+        setFbText(''); setDrawer(false); setHintOverlay(false); setSocraticAdvice(null)
         setPhase('task')
         return
       }
@@ -276,7 +280,7 @@ export default function FactScannerPage() {
       setFactNode(d)
       setSelected(null); setQuarantined([]); setFlawReasons({})
       setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
-      setFbText(''); setDrawer(false); setHintOverlay(false)
+      setFbText(''); setDrawer(false); setHintOverlay(false); setSocraticAdvice(null)
       setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
@@ -326,6 +330,7 @@ export default function FactScannerPage() {
       setFbText('')
       setDrawer(false)
       setHintOverlay(false)
+      setSocraticAdvice(null)
 
       saveSession('fact_scanner', start, {
         sessionQueue: queue,
@@ -415,6 +420,30 @@ export default function FactScannerPage() {
       setHintOverlay(true)
     }
   }, [nodeId, factNode, sessionId, sessionExercises, questionIndex])
+
+  // ── Ask Socratic Guidance ──────────────────────────────────
+  const handleAskSocraticAdvice = async () => {
+    if (!sessionId) return
+    setSocraticLoading(true)
+    try {
+      const res = await fetchLiveSocraticHint(
+        sessionId,
+        questionIndex,
+        {
+          quarantined_ids: quarantined,
+          selected_id: selected,
+          attempts,
+          flaws_found: flawsFound,
+        },
+        attempts + 1,
+      )
+      setSocraticAdvice(res.socratic_hint || 'Consider applying the CRAAP criterion strictly to each claim.')
+    } catch {
+      setSocraticAdvice('Re-read the target criterion question and check if the claim has proper backing evidence.')
+    } finally {
+      setSocraticLoading(false)
+    }
+  }
 
   // ── Timer ────────────────────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -600,7 +629,7 @@ export default function FactScannerPage() {
   // ── Micro lesson ──────────────────────────────────────────
   if (phase === 'micro_lesson') return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 660, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
+      <div className={styles.screenCard} style={{ maxWidth: 660, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
         <div style={stampS}>FACT SCANNER — MICRO-LESSON</div>
         <div style={{ display: 'inline-block', background: C.btnGold, color: C.textDark, fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', padding: '4px 14px', borderRadius: 3, marginBottom: 16 }}>
           CRAAP — {factNode!.craap_criterion}
@@ -617,10 +646,10 @@ export default function FactScannerPage() {
   // ── Deep dive ─────────────────────────────────────────────
   if (phase === 'deep_dive') return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div style={{ maxWidth: 720, width: '100%', background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 48 }}>
+      <div className={styles.screenCard} style={{ maxWidth: 720, width: '100%', background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
         <div style={stampS}>DEEP DIVE READING</div>
         <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>Read the full article carefully before the task unlocks.</p>
-        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
+        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
           {factNode!.reading_passage}
         </p>
         <button onClick={() => setPhase('task')} style={btnPrimary}>I HAVE FINISHED READING →</button>
@@ -631,7 +660,7 @@ export default function FactScannerPage() {
   // ── Mastery ───────────────────────────────────────────────
   if (phase === 'mastery') return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 4, padding: 48, textAlign: 'center' }}>
+      <div className={styles.screenCard} style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 8, padding: 48, textAlign: 'center', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
         <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94', fontSize: 16, padding: '8px 24px' }}>
           ✓ REPORT FILED
         </div>
@@ -661,7 +690,7 @@ export default function FactScannerPage() {
       fontFamily: FONT, padding: '20px 12px',
     }}>
 
-      {/* ── Fixed folder tabs (same as Logic Thread) ── */}
+      {/* ── Fixed folder tabs ── */}
       <div style={{
         position: 'fixed', left: 0, top: '20%',
         transform: 'translateY(-20%)',
@@ -670,6 +699,7 @@ export default function FactScannerPage() {
       }}>
         <button
           onClick={() => fetchHint()}
+          className={styles.folderTab}
           style={{
             writingMode: 'vertical-lr',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
@@ -678,16 +708,14 @@ export default function FactScannerPage() {
             borderRadius: '0 6px 6px 0',
             cursor: 'pointer', padding: '14px 8px',
             fontFamily: FONT, whiteSpace: 'nowrap',
-            transition: 'background 0.15s',
             boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
         >
           Hint
         </button>
         <button
           onClick={() => startSession(true)}
+          className={styles.folderTab}
           style={{
             writingMode: 'vertical-lr',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
@@ -696,11 +724,8 @@ export default function FactScannerPage() {
             borderRadius: '0 6px 6px 0',
             cursor: 'pointer', padding: '14px 8px',
             fontFamily: FONT, whiteSpace: 'nowrap',
-            transition: 'background 0.15s',
             boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
         >
           Fresh Case ↻
         </button>
@@ -718,6 +743,7 @@ export default function FactScannerPage() {
             }
             router.push('/dashboard')
           }}
+          className={styles.folderTab}
           style={{
             writingMode: 'vertical-lr',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
@@ -726,18 +752,15 @@ export default function FactScannerPage() {
             borderRadius: '0 6px 6px 0',
             cursor: 'pointer', padding: '14px 8px',
             fontFamily: FONT, whiteSpace: 'nowrap',
-            transition: 'background 0.15s',
             boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-          onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
         >
           End Session
         </button>
       </div>
 
       {/* ── Main shell ── */}
-      <div style={{
+      <div className={styles.boardEnter} style={{
         display: 'flex', alignItems: 'stretch',
         boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
         borderRadius: 6, overflow: 'hidden',
@@ -749,108 +772,151 @@ export default function FactScannerPage() {
           flex: 1, background: C.canvas,
           display: 'flex', flexDirection: 'column',
           borderRight: `2px solid ${C.cardBdrIdle}`,
+          position: 'relative',
         }}>
-          {/* top strip */}
-<div style={{
-  background: C.board,
-  borderBottom: `2px solid ${C.btnGoldBdr}`,
-  padding: '0',
-  display: 'flex',
-  flexDirection: 'column',
-}}>
-  {/* row 1: objective full width */}
-  <div style={{
-    padding: '12px 20px 10px',
-    borderBottom: `1px solid rgba(0,0,0,0.12)`,
-    textAlign: 'center',
-  }}>
-    <div style={{
-      display: 'inline-block',
-      border: `1.5px solid ${C.accentRed}`,
-      padding: '7px 24px',
-      fontSize: 13, fontWeight: 700,
-      letterSpacing: '0.12em',
-      background: 'rgba(255,255,255,0.35)',
-      fontFamily: FONT,
-    }}>
-      <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-      <span style={{ color: C.accentRed }}>
-        IDENTIFY AND QUARANTINE THE FLAWED SENTENCE
-      </span>
-    </div>
-  </div>
+          {/* top strip header */}
+          <div style={{
+            background: C.board,
+            borderBottom: `2px solid ${C.btnGoldBdr}`,
+            padding: '0',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            {/* row 1: objective full width */}
+            <div style={{
+              padding: '12px 20px 10px',
+              borderBottom: `1px solid rgba(0,0,0,0.12)`,
+              textAlign: 'center',
+            }}>
+              <div style={{
+                display: 'inline-block',
+                border: `1.5px solid ${C.accentRed}`,
+                padding: '7px 24px',
+                fontSize: 13, fontWeight: 700,
+                letterSpacing: '0.12em',
+                background: 'rgba(255,255,255,0.35)',
+                fontFamily: FONT,
+              }}>
+                <span style={{ color: C.textMid }}>OBJECTIVE: </span>
+                <span style={{ color: C.accentRed }}>
+                  IDENTIFY AND QUARANTINE THE FLAWED SENTENCE
+                </span>
+              </div>
+            </div>
 
-  {/* row 2: meta controls */}
-  <div style={{
-    padding: '8px 20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  }}>
-    {/* difficulty pill */}
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 7,
-      background: 'rgba(0,0,0,0.12)',
-      borderRadius: 20, padding: '5px 14px',
-    }}>
-      <div style={{
-        width: 9, height: 9, borderRadius: '50%',
-        background: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
-        flexShrink: 0,
-      }} />
-      <span style={{
-        fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-        color: C.btnDark, fontFamily: FONT,
-      }}>
-        LVL {factNode!.difficulty ?? nodeDifficulty(nodeId)} —{' '}
-        {DIFFICULTY_LABELS[factNode!.difficulty ?? nodeDifficulty(nodeId)]}
-      </span>
-    </div>
+            {/* row 2: meta controls */}
+            <div style={{
+              padding: '8px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              {/* difficulty pill */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                background: 'rgba(0,0,0,0.12)',
+                borderRadius: 20, padding: '5px 14px',
+              }}>
+                <div style={{
+                  width: 9, height: 9, borderRadius: '50%',
+                  background: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
+                  color: C.btnDark, fontFamily: FONT,
+                }}>
+                  LVL {factNode!.difficulty ?? nodeDifficulty(nodeId)} —{' '}
+                  {DIFFICULTY_LABELS[factNode!.difficulty ?? nodeDifficulty(nodeId)]}
+                </span>
+              </div>
 
-    {/* right side: Q counter + tutorial */}
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      {sessionQueue.length > 0 && (
-        <span style={{
-          fontFamily: FONT, fontSize: 12, fontWeight: 700,
-          letterSpacing: '0.1em', color: C.btnDark,
-          background: 'rgba(0,0,0,0.1)',
-          borderRadius: 20, padding: '5px 14px',
-        }}>
-          Q {questionIndex + 1} / {sessionQueue.length}
-        </span>
-      )}
-      <button
-        onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
-        style={{
-          padding: '7px 18px',
-          background: C.btnGold,
-          border: `1.5px solid ${C.btnGoldBdr}`,
-          borderRadius: 8,
-          color: C.textDark, fontFamily: FONT,
-          fontSize: 11, fontWeight: 700,
-          letterSpacing: '0.08em', cursor: 'pointer',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-        }}
-      >
-        TUTORIAL
-      </button>
-    </div>
-  </div>
+              {/* right side: Q counter + tutorial */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                {sessionQueue.length > 0 && (
+                  <span style={{
+                    fontFamily: FONT, fontSize: 12, fontWeight: 700,
+                    letterSpacing: '0.1em', color: C.btnDark,
+                    background: 'rgba(0,0,0,0.1)',
+                    borderRadius: 20, padding: '5px 14px',
+                  }}>
+                    CASE {questionIndex + 1} / {sessionQueue.length}
+                  </span>
+                )}
+                <button
+                  onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
+                  style={{
+                    padding: '7px 18px',
+                    background: C.btnGold,
+                    border: `1.5px solid ${C.btnGoldBdr}`,
+                    borderRadius: 8,
+                    color: C.textDark, fontFamily: FONT,
+                    fontSize: 11, fontWeight: 700,
+                    letterSpacing: '0.08em', cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  TUTORIAL
+                </button>
+              </div>
+            </div>
 
-  {/* progress bar */}
-  {sessionQueue.length > 0 && (
-    <div style={{ padding: '0 20px 10px' }}>
-      <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${(questionIndex / sessionQueue.length) * 100}%`,
-          background: 'rgba(0,0,0,0.35)',
-          borderRadius: 4, transition: 'width 0.3s',
-        }} />
-      </div>
-    </div>
-  )}
-</div>
+            {/* progress bar */}
+            {sessionQueue.length > 0 && (
+              <div style={{ padding: '0 20px 10px' }}>
+                <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${(questionIndex / sessionQueue.length) * 100}%`,
+                    background: 'rgba(0,0,0,0.35)',
+                    borderRadius: 4, transition: 'width 0.3s',
+                  }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── Scaffold Hint Overlay Card inside Canvas ── */}
+          {hintOverlay && (
+            <div className={styles.hintOverlay} style={{
+              position: 'absolute', top: 70, left: 16, right: 16, zIndex: 30,
+              background: C.cardPaper, border: `2px solid ${C.accentRed}`,
+              borderRadius: 8, padding: '18px 20px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45)', fontFamily: FONT,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed }}>
+                  AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
+                </div>
+                <button onClick={() => { setHintOverlay(false); setSocraticAdvice(null) }} style={{ background: 'none', border: 'none', color: C.textMid, fontSize: 16, cursor: 'pointer', fontFamily: FONT }}>✕</button>
+              </div>
+              <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.65, margin: '0 0 14px' }}>{hintOverlayText}</p>
+              
+              {socraticAdvice && (
+                <div style={{ background: '#FFF0E8', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: '10px 14px', marginBottom: 14 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, marginBottom: 4 }}>SOCRATIC GUIDANCE</div>
+                  <p style={{ fontSize: 12, color: C.textDark, lineHeight: 1.6, margin: 0 }}>{socraticAdvice}</p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={handleAskSocraticAdvice}
+                  disabled={socraticLoading}
+                  style={{ ...btnPrimary, fontSize: 11, padding: '6px 14px', background: C.btnDark, color: C.btnGold, borderColor: C.btnGoldBdr }}
+                >
+                  {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
+                </button>
+                <button
+                  onClick={() => { setHintOverlay(false); setSocraticAdvice(null) }}
+                  style={{ ...btnSm, fontSize: 11, padding: '6px 14px', color: C.textDark, borderColor: C.btnGoldBdr }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* sentence cards */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {factNode!.article_sentences.map((sentence, idx) => {
@@ -1054,6 +1120,7 @@ export default function FactScannerPage() {
             <button
               disabled={!canSubmit || submitting}
               onClick={handleSubmitMastery}
+              className={`${styles.submitBtn} ${canSubmit ? styles.submitBtnReady : ''}`}
               style={{
                 width: '100%', padding: '13px 0',
                 background: canSubmit && !submitting ? C.btnDark : C.textMuted,
@@ -1101,26 +1168,6 @@ export default function FactScannerPage() {
           })}
         </div>
       </div>
-
-      {/* ── Hint overlay ── */}
-      {hintOverlay && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.52)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 28, pointerEvents: 'none' }}>
-          <div style={{ background: C.cardPaper, border: `2px solid ${C.cardBdrIdle}`, borderRadius: 6, padding: '18px 20px 16px', maxWidth: 280, boxShadow: '0 8px 28px rgba(0,0,0,0.4)', pointerEvents: 'all' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
-              SCAFFOLD HINT{hintOverlayTier > 0 ? ` — TIER ${hintOverlayTier}` : ''}
-            </div>
-            <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.7, margin: '0 0 16px', fontFamily: FONT }}>
-              {hintOverlayText}
-            </p>
-            <button
-              onClick={() => setHintOverlay(false)}
-              style={{ fontSize: 12, fontWeight: 700, color: C.textDark, background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`, padding: '7px 18px', cursor: 'pointer', fontFamily: FONT, letterSpacing: '0.06em', borderRadius: 3 }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Feedback drawer ── */}
       {drawer && (
