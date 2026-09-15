@@ -12,7 +12,6 @@ import {
   subscribeToLexicalUpdates,
 } from '@/lib/realtime-sync'
 
-// ── Types ───────────────────────────────────────
 interface NodeStatus {
   node_id: string
   status:  'locked' | 'unlocked' | 'completed'
@@ -564,25 +563,25 @@ export default function StudentDashboard() {
 
   // ── Loading state ─────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#1a0000]
+    <div className="min-h-screen bg-[#1F2E23]
       flex items-center justify-center
-      font-mono text-[#C4A882] text-sm">
+      font-mono text-[#C9BC9C] text-sm">
       Loading...
     </div>
   )
 
   // ── Error state ───────────────────────────
   if (error) return (
-    <div className="min-h-screen bg-[#1a0000]
+    <div className="min-h-screen bg-[#1F2E23]
       flex items-center justify-center
-      font-mono text-red-400 text-sm
+      font-mono text-[#D98B65] text-sm
       flex-col gap-4">
       <p>{error}</p>
       <button
         onClick={() => router.push('/auth')}
-        className="border border-[#555] px-4 py-2
-          text-xs text-[#aaa] hover:text-white
-          hover:border-white transition-colors">
+        className="border border-[#5C6B5C] px-4 py-2
+          text-xs text-[#C9BC9C] hover:text-[#FBF6E8]
+          hover:border-[#D3A63C] transition-colors">
         Go to Login
       </button>
     </div>
@@ -592,14 +591,8 @@ export default function StudentDashboard() {
 
   return (
     <div
-      className="min-h-screen text-[#F4E6CC] font-serif"
-      style={{ background: `
-        radial-gradient(ellipse 35% 80% at 0% 70%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 35% 80% at 100% 70%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 100% 35% at 50% 100%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 60% 60% at 50% 50%, #5a1010 0%, transparent 70%),
-        #1a0000
-      `.replace(/\s+/g, ' ') }}>
+      className="min-h-screen text-[#F2E9D3] font-serif"
+     style={{ background: '#4E6E52' }}>
 
       {/* ── TOPBAR ── */}
       <header className="h-[52px] bg-transparent
@@ -608,7 +601,7 @@ export default function StudentDashboard() {
         {/* ── REALTIME STREAK ── */}
         <div
           className={`flex items-center gap-2 font-mono text-xs transition-all duration-300 ${
-            streakPulse ? 'scale-110 text-amber-300 font-bold' : 'text-[#D4B896]'
+            streakPulse ? 'scale-110 text-amber-300 font-bold' : 'text-[#C9BC9C]'
           }`}
           title="Daily Active Streak (Updated in Realtime)">
           <span className={streakPulse ? 'animate-bounce' : ''}>🔥</span>
@@ -618,7 +611,7 @@ export default function StudentDashboard() {
 
         {/* ── NODES COMPLETED ── */}
         <div className="flex items-center gap-2
-          font-mono text-xs text-[#D4B896]">
+          font-mono text-xs text-[#C9BC9C]">
           <span>⭐</span>
           <strong>Nodes:</strong>
           &nbsp;{dashboard?.completed_count ?? 0}
@@ -628,17 +621,17 @@ export default function StudentDashboard() {
         {/* ── REALTIME EXP & LEVEL PILL ── */}
         <button
           onClick={() => setShowMetricLogModal(true)}
-          className="flex items-center gap-2 font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#C49A5A]
-            px-2.5 py-1 rounded border border-[#8C5A3C]
-            bg-[#2D0909]/60 cursor-pointer transition-all"
+          className="flex items-center gap-2 font-mono text-xs text-[#C9BC9C]
+            hover:text-[#FBF6E8] hover:border-[#D3A63C]
+            px-2.5 py-1 rounded border border-[#5C4526]
+            bg-[#20301F]/60 cursor-pointer transition-all"
           title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
           <span className="text-amber-400">⚡</span>
           <span>
             <strong>LVL {dashboard?.level ?? 1}</strong>
             &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
           </span>
-          <div className="w-12 h-1.5 bg-[#432818] rounded-full overflow-hidden border border-[#8C5A3C]/60 ml-0.5">
+          <div className="w-12 h-1.5 bg-[#3B2E20] rounded-full overflow-hidden border border-[#5C4526]/60 ml-0.5">
             <div
               className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
               style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
@@ -650,10 +643,10 @@ export default function StudentDashboard() {
         <button
           onClick={() => setShowOnboardingGuide(true)}
           className="flex items-center gap-1.5
-            font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#C49A5A]
-            px-2.5 py-1 rounded border border-[#8C5A3C]
-            bg-[#2D0909]/60 cursor-pointer transition-all"
+            font-mono text-xs text-[#C9BC9C]
+            hover:text-[#FBF6E8] hover:border-[#D3A63C]
+            px-2.5 py-1 rounded border border-[#5C4526]
+            bg-[#20301F]/60 cursor-pointer transition-all"
           title="Open the Field Manual & Interactive Demo">
           <span>📖</span>
           <span className="font-bold">FIELD GUIDE</span>
@@ -663,8 +656,8 @@ export default function StudentDashboard() {
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="flex items-center gap-2
-              font-mono text-xs text-[#D4B896]
-              hover:text-[#F4E6CC] cursor-pointer
+              font-mono text-xs text-[#C9BC9C]
+              hover:text-[#F2E9D3] cursor-pointer
               transition-colors">
             <span>👤</span>
             {dashboard?.first_name && dashboard?.last_name
@@ -673,8 +666,8 @@ export default function StudentDashboard() {
           </button>
           {showMenu && (
             <div className="absolute top-full
-              right-0 mt-2 bg-[#2a0a00]
-              border border-[#5a2010] rounded-sm
+              right-0 mt-2 bg-[#1F2E23]
+              border border-[#3E4F3D] rounded-sm
               shadow-lg z-50 min-w-[170px]">
               <button
                 onClick={() => {
@@ -682,18 +675,18 @@ export default function StudentDashboard() {
                   setShowOnboardingGuide(true)
                 }}
                 className="w-full text-left px-4
-                  py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#3a1010]
-                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
+                  py-2 text-xs font-mono text-[#C9BC9C]
+                  hover:bg-[#2C3D2C]
+                  hover:text-[#F2E9D3] transition-colors flex items-center gap-2">
                 <span>📖</span> Field Manual & Demo
               </button>
-              <div className="h-px bg-[#5a2010]" />
+              <div className="h-px bg-[#3E4F3D]" />
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4
-                  py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#3a1010]
-                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
+                  py-2 text-xs font-mono text-[#C9BC9C]
+                  hover:bg-[#2C3D2C]
+                  hover:text-[#F2E9D3] transition-colors flex items-center gap-2">
                 <span>🚪</span> Logout
               </button>
             </div>
@@ -733,8 +726,8 @@ export default function StudentDashboard() {
                     whitespace-pre-wrap text-center
                     transition-all cursor-pointer
                     ${isActive
-                      ? 'bg-[#F2DEC1] text-[#432818] h-[64px] rounded-t-lg'
-                      : 'bg-[#C49A5A] text-[#432818] hover:bg-[#B8905A] hover:text-[#1a0000] h-[52px] rounded-t-lg'
+                      ? 'bg-[#F2E9D3] text-[#3B2E20] h-[64px] rounded-t-lg'
+                      : 'bg-[#C6A868] text-[#3B2E20] hover:bg-[#B08F52] hover:text-[#1F2E23] h-[52px] rounded-t-lg'
                     }`}>
                   {tab.label}
                 </button>
@@ -743,7 +736,7 @@ export default function StudentDashboard() {
           </div>
 
           {/* ── CONTENT PANEL ── */}
-          <div className="flex-1 bg-[#F2DEC1]
+          <div className="flex-1 bg-[#F2E9D3]
             rounded-tr-xl
             overflow-hidden flex">
             <div
@@ -762,32 +755,32 @@ export default function StudentDashboard() {
               <div className="mb-6">
                 {/* Outlined header box — centered */}
                 <div className="flex justify-center mb-3">
-                  <div className="border-[1.5px] border-[#6A381F]
+                  <div className="border-[1.5px] border-[#5C4526]
                     px-8 py-[5px] font-mono text-[10px]
-                    tracking-widest text-[#432818]
+                    tracking-widest text-[#3B2E20]
                     bg-transparent whitespace-nowrap">
                     OFFICIAL STUDENT DASHBOARD DOCUMENT
                   </div>
                 </div>
                 {/* Stamp row: line / stamp / line */}
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 h-[1.5px] bg-[#C49A5A] opacity-80" />
+                  <div className="flex-1 h-[1.5px] bg-[#C6A868] opacity-80" />
                   <div
-                    className="border-[2.5px] border-[#6A381F]
+                    className="border-[2.5px] border-[#5C4526]
                       px-4 py-[5px] font-mono text-xs font-bold
-                      uppercase tracking-widest text-[#432818]
+                      uppercase tracking-widest text-[#3B2E20]
                       bg-transparent whitespace-nowrap"
                     style={{ transform: 'rotate(-1.5deg)' }}>
                     {activeTabCfg.header}
                   </div>
-                  <div className="flex-1 h-[1.5px] bg-[#C49A5A] opacity-80" />
+                  <div className="flex-1 h-[1.5px] bg-[#C6A868] opacity-80" />
                 </div>
               </div>
 
               {/* Empty state */}
               {activeNodes.length === 0 && (
                 <div className="font-mono text-xs
-                  text-[#8C6A4A] text-center py-10">
+                  text-[#6B5233] text-center py-10">
                   No nodes available for this module.
                 </div>
               )}
@@ -811,22 +804,22 @@ export default function StudentDashboard() {
 
                       {/* Card */}
                       <div className={`flex-1
-                        border border-[#C4A882]/50
+                        border border-[#C6A868]/50
                         rounded-lg pl-10 pr-4 py-4
-                        text-[#432818]
+                        text-[#3B2E20]
                         relative min-w-0
                         ${isDone
-                          ? 'bg-[#EDE0C4]'
+                          ? 'bg-[#E6DCC0]'
                           : isLocked
-                          ? 'bg-[#EDE0C4] opacity-60'
-                          : 'bg-[#FFF8ED]'
+                          ? 'bg-[#E6DCC0] opacity-60'
+                          : 'bg-[#FBF6E8]'
                         }`}>
 
                         {/* Binder punch holes — inside left edge */}
                         <div className="absolute left-3 top-0 h-full flex flex-col justify-evenly items-center pointer-events-none z-10">
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C4A882]/60" style={{background:'rgba(196,168,130,0.15)'}} />
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C4A882]/60" style={{background:'rgba(196,168,130,0.15)'}} />
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C4A882]/60" style={{background:'rgba(196,168,130,0.15)'}} />
+                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
+                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
+                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
                         </div>
 
 
@@ -837,10 +830,10 @@ export default function StudentDashboard() {
                           <div className="flex
                             items-center gap-2">
                             <div className="w-6 h-6
-                              bg-[#432818] rounded-sm
+                              bg-[#3B2E20] rounded-sm
                               flex items-center
                               justify-center
-                              text-[#F4E6CC] text-xs
+                              text-[#F2E9D3] text-xs
                               flex-shrink-0">
                               {isLocked
                                 ? '🔒'
@@ -849,7 +842,7 @@ export default function StudentDashboard() {
                             <div className="font-mono
                               text-xs font-bold
                               uppercase tracking-wider
-                              text-[#432818]">
+                              text-[#3B2E20]">
                               {meta.title}
                             </div>
                           </div>
@@ -861,10 +854,10 @@ export default function StudentDashboard() {
                             border uppercase
                             flex-shrink-0
                             ${isDone
-                              ? 'text-[#16a34a] border-[#16a34a]'
+                              ? 'text-[#3F7D4A] border-[#3F7D4A]'
                               : isReady
-                              ? 'text-[#0891b2] border-[#0891b2]'
-                              : 'text-[#A08868] border-[#A08868]'
+                              ? 'text-[#3D7A66] border-[#3D7A66]'
+                              : 'text-[#8A7857] border-[#8A7857]'
                             }`}>
                             {isDone
                               ? 'COMPLETED / DONE'
@@ -875,25 +868,25 @@ export default function StudentDashboard() {
                         </div>
 
                         {/* Divider under title row */}
-                        <div className="h-px bg-[#C4A882] mb-3 opacity-60" />
+                        <div className="h-px bg-[#C6A868] mb-3 opacity-60" />
 
                         {/* Focus description */}
                         <p className="text-xs
                           leading-relaxed
-                          text-[#6A381F] mb-4">
+                          text-[#6B5233] mb-4">
                           {meta.focus}
                         </p>
 
                         {/* Progress bar — full width, no bullet */}
                         <div
                           className="h-[8px] rounded-none mb-3 overflow-hidden"
-                          style={{ background: isDone ? 'rgba(0,0,0,0.25)' : 'black' }}>
+                          style={{ background: isDone ? 'rgba(59,46,32,0.30)' : '#2B3B2C' }}>
                           <div
                             className="h-full rounded-none transition-all"
                             style={{
                               width: `${100 - getNodeProgress(node.node_id)}%`,
                               marginLeft: 'auto',
-                              background: isDone ? 'rgba(212,196,160,0.45)' : '#D4C4A0',
+                              background: isDone ? 'rgba(214,199,154,0.45)' : '#D6C79A',
                             }} />
                         </div>
 
@@ -901,7 +894,7 @@ export default function StudentDashboard() {
                         <div className="flex
                           justify-between items-end">
                           <div className="font-mono
-                            text-[10px] text-[#6A381F]
+                            text-[10px] text-[#6B5233]
                             leading-5">
                             PROGRESS —{' '}
                             {getNodeProgress(node.node_id)}%
@@ -913,7 +906,7 @@ export default function StudentDashboard() {
                             {!isDone && getNodeProgress(node.node_id) > 0 && (
                               <button
                                 onClick={() => handleResetNode(node.node_id)}
-                                className="font-mono text-xs font-bold uppercase tracking-wide text-center leading-snug flex-shrink-0 whitespace-nowrap px-4 py-2.5 rounded-lg border border-red-800/40 bg-transparent text-red-800 hover:bg-red-800 hover:text-[#FFF8EC] hover:border-red-800 transition-all cursor-pointer"
+                                className="font-mono text-xs font-bold uppercase tracking-wide text-center leading-snug flex-shrink-0 whitespace-nowrap px-4 py-2.5 rounded-lg border border-[#A2492D]/40 bg-transparent text-[#A2492D] hover:bg-[#A2492D] hover:text-[#FBF6E8] hover:border-[#A2492D] transition-all cursor-pointer"
                               >
                                 RESET
                               </button>
@@ -939,13 +932,13 @@ export default function StudentDashboard() {
                                 whitespace-nowrap
                                 px-4 py-2.5
                                 rounded-lg
-                                border border-[#D4C0A0]/40
+                                border border-[#C6A868]/40
                                 transition-all
                                 ${isLocked
-                                  ? 'bg-[#EDE5D5] text-[#A08868] cursor-not-allowed'
+                                  ? 'bg-[#E3DAC4] text-[#8A7857] cursor-not-allowed'
                                   : isDone
-                                  ? 'bg-[#FFF8EC] text-[#432818] cursor-pointer hover:bg-[#DDD0B8]'
-                                  : 'bg-[#FFF8EC] text-[#432818] cursor-pointer hover:bg-[#EDE0C4]'
+                                  ? 'bg-[#FBF6E8] text-[#3B2E20] cursor-pointer hover:bg-[#DCCFA8]'
+                                  : 'bg-[#FBF6E8] text-[#3B2E20] cursor-pointer hover:bg-[#E6DCC0]'
                                 }`}
                             >
                                {isDone
@@ -968,8 +961,8 @@ export default function StudentDashboard() {
                             -rotate-12
                             pointer-events-none">
                             <div className="font-mono
-                              text-4xl text-[#4a7a2e]
-                              border-4 border-[#4a7a2e]
+                              text-4xl text-[#3F7D4A]
+                              border-4 border-[#3F7D4A]
                               px-3 opacity-[0.72]
                               whitespace-nowrap
                               tracking-wider">
@@ -1035,19 +1028,19 @@ export default function StudentDashboard() {
             <div
               key={idx}
               onClick={item.onClick}
-              className="flex-1 bg-[#E8D8B8]
+              className="flex-1 bg-[#E6DCC0]
                 rounded flex flex-row
                 items-start gap-3 px-4 py-4
                 cursor-pointer min-h-[110px]
-                transition-all hover:bg-[#F0E4C4]
-                border border-[#C49A5A]">
-              <div className="text-xl text-[#432818]
+                transition-all hover:bg-[#F0E4C8]
+                border border-[#C6A868]">
+              <div className="text-xl text-[#3B2E20]
                 flex-shrink-0 mt-0.5">
                 {item.icon}
               </div>
               <div className="font-mono text-xs
                 font-bold uppercase tracking-wider
-                text-[#432818] leading-relaxed
+                text-[#3B2E20] leading-relaxed
                 text-left whitespace-pre-line">
                 {item.label}
               </div>
