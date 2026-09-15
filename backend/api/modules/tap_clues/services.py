@@ -47,9 +47,10 @@ class ContentManagementService:
             # definition to the frontend
             'locked_words': [
                 {
-                    'word_id':        w.word_id,
-                    'word':           w.word,
-                    'position_index': w.position_index,
+                    'word_id':            w.word_id,
+                    'word':               w.word,
+                    'position_index':     w.position_index,
+                    'target_clues_count': len(w.correct_clue_ids or []),
                 }
                 for w in node.locked_words
             ],

@@ -62,9 +62,19 @@ class EvaluateClueView(APIView):
                 {'error': 'Word not found.'},
                 status=status.HTTP_404_NOT_FOUND)
 
-        is_correct = (
-            clue_word in locked_word.correct_clue_ids
-        )
+        # Clean input
+        clean_clue = (clue_word or '').strip().lower().strip('.,!?;:"\'')
+        correct_clues_raw = locked_word.correct_clue_ids or []
+        correct_clues_clean = [c.strip().lower().strip('.,!?;:"\'') for c in correct_clues_raw]
+
+        # Check match against any correct clue phrase or component word
+        matched_target = None
+        for orig, clean in zip(correct_clues_raw, correct_clues_clean):
+            if clean_clue == clean or clean_clue in clean.split() or clean in clean_clue:
+                matched_target = orig
+                break
+
+        is_correct = matched_target is not None
 
         ScaffoldEngineService.log_attempt(
             student_id=student_id,
@@ -78,32 +88,41 @@ class EvaluateClueView(APIView):
         if not is_correct:
             return Response({'result': 'incorrect'})
 
-        # Add to found clues
-        updated_found = list(set(
-            found_clues + [clue_word]))
+        # Add to found clues (preserve order and uniqueness)
+        resolved_clue = matched_target or clue_word
+        updated_found = list(dict.fromkeys(found_clues + [resolved_clue]))
 
         # Check if all clues are found
         remaining = [
-            c for c in locked_word.correct_clue_ids
-            if c not in updated_found
+            c for c in correct_clues_raw
+            if not any(
+                f.strip().lower().strip('.,!?;:"\'') == c.strip().lower().strip('.,!?;:"\'')
+                or f.strip().lower().strip('.,!?;:"\'') in c.strip().lower().split()
+                or c.strip().lower().strip('.,!?;:"\'') in f.strip().lower()
+                for f in updated_found
+            )
         ]
 
-        if remaining:
+        target_count = len(correct_clues_raw)
+
+        if remaining and len(updated_found) < target_count:
             return Response({
-                'result':      'correct',
-                'found_clues': updated_found,
+                'result':             'correct',
+                'found_clues':        updated_found,
+                'target_clues_count': target_count,
+                'remaining_count':    len(remaining),
             })
 
         # All clues found — unlock the word
         return Response({
-            'result':          'correct',
-            'all_clues_found': True,
-            'found_clues':     updated_found,
-            'definition':      locked_word.definition,
-            'contextual_usage':
-                locked_word.contextual_usage,
-            'translation':     locked_word.translation,
-            'word':            locked_word.word,
+            'result':             'correct',
+            'all_clues_found':    True,
+            'found_clues':        updated_found,
+            'target_clues_count': target_count,
+            'definition':         locked_word.definition,
+            'contextual_usage':   locked_word.contextual_usage,
+            'translation':        locked_word.translation,
+            'word':               locked_word.word,
         })
 
 

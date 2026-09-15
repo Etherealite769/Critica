@@ -56,9 +56,15 @@ const btnSm: React.CSSProperties = {
 
 // ── Types ──────────────────────────────────────────
 interface LockedWordMeta {
-  word_id:        string
-  word:           string
-  position_index: number
+  word_id:             string
+  word:                string
+  position_index:      number
+  target_clues_count?: number
+  correct_clue_ids?:   string[]
+  context_clues?:      string[]
+  definition?:         string
+  contextual_usage?:   string
+  translation?:        string
 }
 interface TapNodeData {
   node_id:            string
@@ -84,7 +90,7 @@ const TAP_CLUES_TUTORIAL_KEY = 'critica_tutorial_seen_tap_clues_first_node'
 const TUTORIAL_STEPS = [
   { label: 'Overview',    code: 'TUT-TTC-001', text: 'In Tap the Clues, a target word in the passage is locked. Its meaning is hidden. Your job is to find surrounding words that implicitly reveal its definition, then tap them to fill the Found Clues Tracker.', board: 'target',     notes: ['Gold underline = target word', 'Teal highlight = your clue', 'Locked stamp = not yet solved'] },
   { label: 'Find clues',  code: 'TUT-TTC-002', text: 'Look for words that indirectly describe the target word. Think about synonyms, cause-effect, or tone clues. Words like command, dismissing, and imperious all hint at meaning even if they are not direct definitions.', board: 'strongWeak', notes: ['Strong clues match the meaning', 'Weak clues are too general', 'Need 3-4 strong clues'] },
-  { label: 'Tap words',   code: 'TUT-TTC-003', text: 'Click any word in the passage to add it as a clue. It highlights and fills a slot in the Found Clues Tracker on the right. Fill all slots before you can submit. You cannot tap the target word itself.', board: 'tracker',    notes: ['Slot fills on each tap', 'Tap filled slot to remove', '4 slots total to fill'] },
+  { label: 'Tap words',   code: 'TUT-TTC-003', text: 'Click any word in the passage to add it as a clue. It highlights and fills a slot in the Found Clues Tracker on the right. Fill all slots before you can submit. You cannot tap the target word itself.', board: 'tracker',    notes: ['Slot fills on each tap', 'Tap filled slot or ✕ to remove', 'Fill all required clue slots'] },
   { label: 'Unlock word', code: 'TUT-TTC-004', text: 'With all clue slots filled, hit Submit Clues. If your clues are strong enough, the LOCKED stamp becomes UNLOCKED and the definition is revealed. Weak clues trigger a retry with a hint about what to look for.', board: 'unlock',     notes: ['Stamp flips to OPEN', 'Weak clues = retry + hint', 'Definition revealed on unlock'] },
 ] as const
 
@@ -500,6 +506,16 @@ export default function TapCluesPage() {
     startSession(false)
   }, [startSession])
 
+  // Auto-select first locked word if none active
+  useEffect(() => {
+    if (tapNode && tapNode.locked_words && tapNode.locked_words.length > 0) {
+      if (!activeWordId) {
+        const firstUnsolved = tapNode.locked_words.find(lw => !unlockedWords.includes(lw.word_id)) || tapNode.locked_words[0]
+        if (firstUnsolved) setActiveWordId(firstUnsolved.word_id)
+      }
+    }
+  }, [tapNode, unlockedWords, activeWordId])
+
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'tap_node_01') return
     const seen = localStorage.getItem(TAP_CLUES_TUTORIAL_KEY)
@@ -589,75 +605,97 @@ export default function TapCluesPage() {
     } catch { console.warn('Lexical log failed silently') }
   }, [nodeId, tapNode])
 
+  const handleRemoveClue = (clueToRemove: string) => {
+    if (!activeWordId) return
+    const current = foundClues[activeWordId] ?? []
+    const updated = current.filter(c => c.toLowerCase() !== clueToRemove.toLowerCase())
+    setFoundClues(prev => ({ ...prev, [activeWordId]: updated }))
+  }
+
   const handleWordTap = async (word: string, token: { text: string; isLocked: boolean; word_id?: string; idx: number }) => {
     if (!tapNode) return
     resetTimer()
-    if (!activeWordId) {
-      if (token.isLocked && token.word_id && !unlockedWords.includes(token.word_id)) setActiveWordId(token.word_id)
+
+    // 1. Tapping a locked word directly selects it
+    if (token.isLocked && token.word_id) {
+      setActiveWordId(token.word_id)
       return
     }
-    if (token.isLocked && token.word_id && token.word_id !== activeWordId && !unlockedWords.includes(token.word_id)) { setActiveWordId(token.word_id); return }
-    if (token.isLocked && token.word_id === activeWordId) { setActiveWordId(null); return }
+
+    // 2. Resolve target word ID (use active or first unsolved)
+    const targetWordId = activeWordId || tapNode.locked_words.find(lw => !unlockedWords.includes(lw.word_id))?.word_id || tapNode.locked_words[0]?.word_id
+    if (!targetWordId) return
+    if (!activeWordId) setActiveWordId(targetWordId)
+
     if (!token.isLocked) {
-      const cleanWord = word.replace(/[^a-zA-Z']/g, '').toLowerCase()
+      const cleanWord = word.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
       if (!cleanWord) return
-      const currentFound = foundClues[activeWordId] ?? []
+      const currentFound = foundClues[targetWordId] ?? []
+
+      // If clue already found, tapping it removes it
+      if (currentFound.some(c => c.toLowerCase() === cleanWord || cleanWord.includes(c.toLowerCase()) || c.toLowerCase().includes(cleanWord))) {
+        handleRemoveClue(cleanWord)
+        return
+      }
 
       // AI Dynamic Exercise Clue Check
       if (sessionId && sessionExercises.length > questionIndex) {
         const currentEx = sessionExercises[questionIndex]
-        const targetLockedWord = currentEx.locked_words?.find((lw: any) => lw.word_id === activeWordId)
-        const correctClues = (targetLockedWord?.correct_clue_ids || []).map((c: string) => c.toLowerCase())
-        const isClueCorrect = correctClues.some((c: string) => c.includes(cleanWord) || cleanWord.includes(c))
+        const targetLockedWord = currentEx.locked_words?.find((lw: any) => lw.word_id === targetWordId)
+        const rawClues = targetLockedWord?.correct_clue_ids || targetLockedWord?.context_clues || []
+        const correctClues = rawClues.map((c: string) => c.toLowerCase().trim())
+        const isClueCorrect = correctClues.some((c: string) => c === cleanWord || c.split(/\s+/).includes(cleanWord) || cleanWord.includes(c) || c.includes(cleanWord))
 
         if (isClueCorrect) {
-          setPulseClue(cleanWord); setTimeout(() => setPulseClue(null), 600)
+          setPulseClue(cleanWord)
+          setTimeout(() => setPulseClue(null), 600)
           const updatedFound = Array.from(new Set([...currentFound, cleanWord]))
-          const allFound = correctClues.every((c: string) => updatedFound.some((f: string) => c.includes(f) || f.includes(c))) || updatedFound.length >= 1
+          const requiredCount = targetLockedWord?.target_clues_count || correctClues.length || 2
+          const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => c === f || c.includes(f) || f.includes(c))))
+
+          setFoundClues(prev => ({ ...prev, [targetWordId]: updatedFound }))
 
           if (allFound) {
-            setUnlockedWords(prev => [...prev, activeWordId])
+            setUnlockedWords(prev => Array.from(new Set([...prev, targetWordId])))
             setDefPanel({
-              word_id: activeWordId,
+              word_id: targetWordId,
               word: targetLockedWord?.word || cleanWord,
               definition: targetLockedWord?.definition || 'Target academic vocabulary unlocked.',
               contextual_usage: targetLockedWord?.contextual_usage || '',
               translation: targetLockedWord?.translation || '',
             })
-            setFoundClues(prev => ({ ...prev, [activeWordId]: updatedFound }))
-            setActiveWordId(null)
             await logWordToLexical(targetLockedWord?.word, targetLockedWord?.definition, targetLockedWord?.contextual_usage, targetLockedWord?.translation)
-          } else {
-            setFoundClues(prev => ({ ...prev, [activeWordId]: updatedFound }))
           }
         } else {
-          const nextWrongs = wrongs + 1; setWrongs(nextWrongs)
-          await callFeedback(activeWordId, cleanWord, false)
+          const nextWrongs = wrongs + 1
+          setWrongs(nextWrongs)
+          await callFeedback(targetWordId, cleanWord, false)
           if (nextWrongs >= 3) fetchHint()
         }
         return
       }
 
-      // Legacy Clue Check
+      // Legacy / Static Node Clue Check
       try {
         const res = await apiFetch(`/nodes/tap-clues/${tapNode.node_id}/evaluate-clue/`, {
           method: 'POST',
-          body: JSON.stringify({ word_id: activeWordId, clue_word: cleanWord, found_clues: currentFound }),
+          body: JSON.stringify({ word_id: targetWordId, clue_word: cleanWord, found_clues: currentFound }),
         })
         if (res.result === 'correct') {
-          setPulseClue(cleanWord); setTimeout(() => setPulseClue(null), 600)
+          setPulseClue(cleanWord)
+          setTimeout(() => setPulseClue(null), 600)
+          const newFound = res.found_clues || [...currentFound, cleanWord]
+          setFoundClues(prev => ({ ...prev, [targetWordId]: newFound }))
+
           if (res.all_clues_found) {
-            setUnlockedWords(prev => [...prev, activeWordId])
-            setDefPanel({ word_id: activeWordId, word: res.word, definition: res.definition, contextual_usage: res.contextual_usage, translation: res.translation })
-            setFoundClues(prev => ({ ...prev, [activeWordId]: res.found_clues }))
-            setActiveWordId(null)
+            setUnlockedWords(prev => Array.from(new Set([...prev, targetWordId])))
+            setDefPanel({ word_id: targetWordId, word: res.word, definition: res.definition, contextual_usage: res.contextual_usage, translation: res.translation })
             await logWordToLexical(res.word, res.definition, res.contextual_usage, res.translation)
-          } else {
-            setFoundClues(prev => ({ ...prev, [activeWordId]: res.found_clues }))
           }
         } else {
-          const nextWrongs = wrongs + 1; setWrongs(nextWrongs)
-          await callFeedback(activeWordId, cleanWord, false)
+          const nextWrongs = wrongs + 1
+          setWrongs(nextWrongs)
+          await callFeedback(targetWordId, cleanWord, false)
           if (nextWrongs >= 3) fetchHint()
         }
       } catch { setErrorMsg('Evaluation failed.') }
@@ -782,7 +820,11 @@ export default function TapCluesPage() {
   const allUnlocked    = unlockedWords.length === tapNode!.locked_words.length
   const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
   const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
-  const MAX_CLUES      = 4
+  const requiredCluesCount = activeWordMeta?.target_clues_count
+    || (activeWordMeta as any)?.correct_clue_ids?.length
+    || (activeWordMeta as any)?.context_clues?.length
+    || 2
+  const totalSlots     = Math.max(requiredCluesCount, activeClues.length, 1)
 
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '20px 12px' }}>
@@ -924,8 +966,12 @@ export default function TapCluesPage() {
                 const wordId     = token.word_id
                 const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
                 const isActive   = wordId ? activeWordId === wordId : false
-                const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase()
+                const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
                 const isPulse    = pulseClue === cleanWord
+                const isFoundClue = activeClues.some((c: string) => {
+                  const cClean = c.toLowerCase().trim().replace(/[^a-zA-Z']/g, '')
+                  return cClean === cleanWord || cleanWord.includes(cClean) || cClean.includes(cleanWord)
+                })
 
                 let color  = C.textDark, bg = 'transparent', border = 'none'
                 let fw     = 400, cursor = 'pointer', td = 'none'
@@ -933,15 +979,22 @@ export default function TapCluesPage() {
                 if (isLocked && isUnlocked)  { color = C.green;      fw = 700; td = 'underline' }
                 else if (isLocked && isActive){ color = C.btnGoldBdr; fw = 700; bg = 'rgba(196,154,90,0.2)'; border = `1.5px solid ${C.btnGold}` }
                 else if (isLocked)            { color = C.btnGoldBdr; fw = 700; td = 'underline' }
-                else if (activeWordId && !isLocked && isPulse) { bg = 'rgba(34,170,85,0.2)'; border = `1.5px solid ${C.green}`; color = C.greenDark }
+                else if (isFoundClue)         { color = '#1E522B'; bg = 'rgba(46, 107, 58, 0.2)'; border = `1.5px solid ${C.green}`; fw = 700 }
+                else if (activeWordId && !isLocked && isPulse) { bg = 'rgba(34,170,85,0.35)'; border = `2px solid ${C.green}`; color = C.greenDark; fw = 700 }
 
                 return (
-                  <span key={i} onClick={() => handleWordTap(token.text, token)} style={{
-                    color, background: bg, border, borderRadius: border !== 'none' ? 3 : 0,
-                    fontWeight: fw, cursor, textDecoration: td,
-                    padding: border !== 'none' ? '0 3px' : '0',
-                    transition: 'all 0.2s', display: 'inline',
-                  }}>
+                  <span
+                    key={i}
+                    onClick={() => handleWordTap(token.text, token)}
+                    title={isFoundClue ? 'Found context clue (click to remove)' : undefined}
+                    style={{
+                      color, background: bg, border, borderRadius: border !== 'none' ? 4 : 0,
+                      fontWeight: fw, cursor, textDecoration: td,
+                      padding: border !== 'none' ? '1px 5px' : '0',
+                      margin: border !== 'none' ? '0 1px' : '0',
+                      transition: 'all 0.2s', display: 'inline',
+                    }}
+                  >
                     {token.text}
                   </span>
                 )
@@ -981,29 +1034,114 @@ export default function TapCluesPage() {
               </div>
 
               {/* found clues tracker */}
-              <div style={{ background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`, borderRadius: 10, padding: '16px 18px', boxShadow: '0 3px 10px rgba(0,0,0,0.1)', flex: 1 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, fontFamily: FONT, marginBottom: 14 }}>FOUND CLUES TRACKER</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {Array.from({ length: MAX_CLUES }).map((_, i) => {
+              <div style={{ background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`, borderRadius: 10, padding: '16px 18px', boxShadow: '0 3px 10px rgba(0,0,0,0.1)', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, fontFamily: FONT }}>
+                    FOUND CLUES TRACKER ({activeClues.length}/{totalSlots})
+                  </div>
+                  {activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.greenDark, background: '#E8F5E9', border: `1px solid ${C.green}`, borderRadius: 4, padding: '2px 6px' }}>
+                      ✓ UNLOCKED
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {Array.from({ length: totalSlots }).map((_, i) => {
                     const clue = activeClues[i]
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: clue ? C.green : C.cardBdr, fontFamily: FONT, flexShrink: 0, minWidth: 26 }}>[{i + 1}]</span>
-                        <div style={{ flex: 1, borderBottom: `1.5px solid ${clue ? C.green : C.cardBdr}`, paddingBottom: 3, fontSize: 12, color: clue ? C.textDark : C.cardBdr, fontFamily: FONT, minHeight: 20, fontStyle: clue ? 'normal' : 'italic', fontWeight: clue ? 700 : 400 }}>
-                          {clue ?? ''}
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          background: clue ? 'rgba(46, 107, 58, 0.08)' : 'transparent',
+                          borderRadius: 6,
+                          padding: '6px 10px',
+                          border: clue ? `1.5px solid ${C.green}` : `1px dashed ${C.cardBdr}`,
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 700, color: clue ? C.green : C.cardBdr, fontFamily: FONT, flexShrink: 0, minWidth: 24 }}>
+                          [{i + 1}]
+                        </span>
+                        <div style={{ flex: 1, fontSize: 12, color: clue ? '#1E522B' : C.textMuted, fontFamily: FONT, fontWeight: clue ? 700 : 400, fontStyle: clue ? 'normal' : 'italic', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span>{clue || '— tap clue in passage —'}</span>
+                          {clue && <span style={{ color: C.green, fontSize: 11, marginLeft: 4 }}>✓</span>}
                         </div>
+                        {clue && !unlockedWords.includes(activeWordId ?? '') && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRemoveClue(clue) }}
+                            title="Remove clue"
+                            style={{ background: 'none', border: 'none', color: '#8C5A3C', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     )
                   })}
                 </div>
 
+                {/* Status banner when word is unlocked */}
+                {activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
+                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${C.cardBdr}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ fontSize: 11, color: C.greenDark, fontWeight: 700, fontFamily: FONT }}>
+                      ✓ All clues verified for this term!
+                    </div>
+                    <button
+                      onClick={() => setDefPanel({
+                        word_id: activeWordMeta.word_id,
+                        word: activeWordMeta.word,
+                        definition: (activeWordMeta as any).definition || 'Target academic vocabulary unlocked.',
+                        contextual_usage: (activeWordMeta as any).contextual_usage || '',
+                        translation: (activeWordMeta as any).translation || '',
+                      })}
+                      style={{
+                        padding: '7px 12px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`,
+                        borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: FONT, color: C.textDark, cursor: 'pointer'
+                      }}
+                    >
+                      📖 View Definition Card
+                    </button>
+                  </div>
+                )}
+
+                {/* Other unlocked words */}
                 {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).length > 0 && (
                   <div style={{ marginTop: 16, borderTop: `1px solid ${C.cardBdr}`, paddingTop: 12 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.green, fontFamily: FONT, marginBottom: 8 }}>COMPLETED</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.green, fontFamily: FONT, marginBottom: 8 }}>COMPLETED WORDS</div>
                     {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).map(lw => (
-                      <div key={lw.word_id} style={{ fontSize: 12, color: C.green, fontFamily: FONT, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 700 }}>
-                        <span style={{ fontSize: 10 }}>✓</span>{lw.word}
+                      <div
+                        key={lw.word_id}
+                        onClick={() => setActiveWordId(lw.word_id)}
+                        style={{ fontSize: 11, color: C.greenDark, fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, fontWeight: 700, cursor: 'pointer', padding: '4px 6px', borderRadius: 4, background: 'rgba(46, 107, 58, 0.06)' }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 10 }}>✓</span>{lw.word}
+                        </span>
+                        <span style={{ fontSize: 10, color: C.textMuted }}>view clues →</span>
                       </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Other unsolved words prompt */}
+                {tapNode!.locked_words.filter(lw => !unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).length > 0 && activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
+                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${C.cardBdr}` }}>
+                    {tapNode!.locked_words.filter(lw => !unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).map(nextWord => (
+                      <button
+                        key={nextWord.word_id}
+                        onClick={() => setActiveWordId(nextWord.word_id)}
+                        style={{
+                          width: '100%', padding: '8px 12px', background: C.btnDark, color: C.btnGold,
+                          border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          fontFamily: FONT, cursor: 'pointer', textAlign: 'center', letterSpacing: '0.08em'
+                        }}
+                      >
+                        Target Next Word: &quot;{nextWord.word}&quot; →
+                      </button>
                     ))}
                   </div>
                 )}
@@ -1064,7 +1202,18 @@ export default function TapCluesPage() {
             <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.65, margin: '0 0 14px', fontStyle: 'italic' }}>&ldquo;{defPanel.contextual_usage}&rdquo;</p>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>TRANSLATION (FILIPINO)</div>
             <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 22px' }}>{defPanel.translation}</p>
-            <button onClick={() => setDefPanel(null)} style={{ ...btnPrimary, width: '100%', textAlign: 'center' }}>Got it — Continue</button>
+            <button
+              onClick={() => {
+                setDefPanel(null)
+                if (tapNode) {
+                  const nextUnsolved = tapNode.locked_words.find(lw => !unlockedWords.includes(lw.word_id) && lw.word_id !== defPanel.word_id)
+                  if (nextUnsolved) setActiveWordId(nextUnsolved.word_id)
+                }
+              }}
+              style={{ ...btnPrimary, width: '100%', textAlign: 'center' }}
+            >
+              Got it — Continue
+            </button>
           </div>
         </div>
       )}

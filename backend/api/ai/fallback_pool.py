@@ -947,16 +947,31 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
 
 
 def _format_tap_clues(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
+    locked = []
+    for lw in tpl["locked_words"]:
+        clues = lw.get("correct_clue_ids") or lw.get("context_clues") or []
+        locked.append({
+            "word_id": lw["word_id"],
+            "word": lw["word"],
+            "correct_clue_ids": clues,
+            "context_clues": clues,
+            "target_clues_count": len(clues),
+            "definition": lw.get("definition", ""),
+            "contextual_usage": lw.get("contextual_usage", f"Used in context as: {lw['word']}"),
+            "translation": lw.get("translation", lw.get("definition", "").split(";")[0]),
+        })
+
+    first_clues = locked[0]["correct_clue_ids"][:2] if locked and locked[0]["correct_clue_ids"] else []
     hints = [
         {"tier": 1, "hint_text": "Search the surrounding sentences for definitions, antonyms, or synonyms."},
-        {"tier": 2, "hint_text": f"Look closely near the term '{tpl['locked_words'][0]['word']}'."},
-        {"tier": 3, "hint_text": f"Clue words include: {', '.join(tpl['locked_words'][0]['context_clues'][:2])}."},
+        {"tier": 2, "hint_text": f"Look closely near the term '{locked[0]['word']}'." if locked else "Look near the target term."},
+        {"tier": 3, "hint_text": f"Clue words include: {', '.join(first_clues)}." if first_clues else "Check signal adjectives and nearby verbs."},
     ]
     return {
         "exercise_id": f"proc_tap_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",
         "reading_passage": tpl["reading_passage"],
-        "locked_words": tpl["locked_words"],
+        "locked_words": locked,
         "scaffold_hints": hints,
         "difficulty": tpl["tier"],
     }
