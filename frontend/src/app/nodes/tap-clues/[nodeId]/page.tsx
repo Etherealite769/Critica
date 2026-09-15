@@ -663,6 +663,10 @@ export default function TapCluesPage() {
         if (isClueCorrect) {
           setPulseClue(cleanWord)
           setTimeout(() => setPulseClue(null), 600)
+          apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+            method: 'POST',
+            body: JSON.stringify({ is_correct: true, word_id: targetWordId, clue_word: cleanWord }),
+          }).catch(() => {})
           const updatedFound = Array.from(new Set([...currentFound, cleanWord]))
           const requiredCount = targetLockedWord?.target_clues_count || correctClues.length || 2
           const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => c === f || c.includes(f) || f.includes(c))))
@@ -671,14 +675,18 @@ export default function TapCluesPage() {
 
           if (allFound) {
             setUnlockedWords(prev => Array.from(new Set([...prev, targetWordId])))
+            const wordToLog = targetLockedWord?.word || cleanWord
+            const defToLog = targetLockedWord?.definition || 'Target academic vocabulary unlocked.'
+            const usageToLog = targetLockedWord?.contextual_usage || ''
+            const transToLog = targetLockedWord?.translation || ''
             setDefPanel({
               word_id: targetWordId,
-              word: targetLockedWord?.word || cleanWord,
-              definition: targetLockedWord?.definition || 'Target academic vocabulary unlocked.',
-              contextual_usage: targetLockedWord?.contextual_usage || '',
-              translation: targetLockedWord?.translation || '',
+              word: wordToLog,
+              definition: defToLog,
+              contextual_usage: usageToLog,
+              translation: transToLog,
             })
-            await logWordToLexical(targetLockedWord?.word, targetLockedWord?.definition, targetLockedWord?.contextual_usage, targetLockedWord?.translation)
+            await logWordToLexical(wordToLog, defToLog, usageToLog, transToLog)
           }
         } else {
           const nextWrongs = wrongs + 1
@@ -732,6 +740,15 @@ export default function TapCluesPage() {
       }).catch(() => {})
 
       if (isMastered) {
+        // Log all locked words of current exercise to Lexical Deck
+        if (currentEx?.locked_words) {
+          for (const lw of currentEx.locked_words) {
+            if (lw.word) {
+              logWordToLexical(lw.word, lw.definition || '', lw.contextual_usage || '', lw.translation || '')
+            }
+          }
+        }
+
         const nextIdx = questionIndex + 1
         if (sessionId) {
           updateSessionProgress(sessionId, nextIdx).catch(() => {})
@@ -788,6 +805,13 @@ export default function TapCluesPage() {
         body: JSON.stringify({ unlocked_word_ids: unlockedWords, save_progression: false }),
       })
       if (res.status === 'mastered') {
+        if (tapNode?.locked_words) {
+          for (const lw of tapNode.locked_words) {
+            if (lw.word) {
+              logWordToLexical(lw.word, lw.definition || '', lw.contextual_usage || '', lw.translation || '')
+            }
+          }
+        }
         const nextIdx = questionIndex + 1
         if (nextIdx < sessionQueue.length) {
           if (sessionStartId) saveSession('tap_clues', sessionStartId, {

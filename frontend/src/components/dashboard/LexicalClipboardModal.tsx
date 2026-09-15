@@ -65,7 +65,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
   const fetchDeck = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await apiFetch('/lexical/deck/?format=enriched')
+      const data = await apiFetch('/lexical/deck/?mode=enriched')
       if (data && data.words) {
         setWords(data.words)
         if (data.deck_status) {

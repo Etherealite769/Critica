@@ -119,13 +119,67 @@ class SessionFeedbackView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id, exercise_index):
+        student_id = str(request.user.id)
         feedback_data = request.data
         res = SessionService.get_exercise_feedback(
             session_id=session_id,
             exercise_index=int(exercise_index),
             feedback_query=feedback_data
         )
+
+        try:
+            from .mongo_models import GeneratedSessionDocument
+            session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
+            if session_doc:
+                tier = feedback_data.get('tier', 1)
+                ScaffoldEngineService.log_attempt(
+                    student_id=student_id,
+                    node_id=session_doc.node_id,
+                    module=session_doc.module,
+                    is_correct=False,
+                    hint_used=(tier > 1),
+                    hint_tier=tier if tier > 1 else None,
+                    word_id=feedback_data.get('word_id', ''),
+                    clue_word_id=feedback_data.get('clue_word', ''),
+                )
+        except Exception as e:
+            print(f"[Warning] Failed to log feedback attempt telemetry: {e}")
+
         return Response(res, status=status.HTTP_200_OK)
+
+
+class SessionLogAttemptView(APIView):
+    """
+    POST /api/ai/session/<session_id>/log-attempt/
+    Body: { is_correct: bool, word_id, clue_word, pair_id, selected_tile }
+    Logs individual tap or step attempts for telemetry and accuracy calculations.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        student_id = str(request.user.id)
+        is_correct = bool(request.data.get('is_correct', True))
+        word_id = request.data.get('word_id', '')
+        clue_word = request.data.get('clue_word', '')
+
+        try:
+            from .mongo_models import GeneratedSessionDocument
+            session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
+            node_id = session_doc.node_id if session_doc else 'tap_node_01'
+            module = session_doc.module if session_doc else 'tap_clues'
+
+            ScaffoldEngineService.log_attempt(
+                student_id=student_id,
+                node_id=node_id,
+                module=module,
+                is_correct=is_correct,
+                word_id=word_id,
+                clue_word_id=clue_word,
+            )
+        except Exception as e:
+            print(f"[Warning] Failed to log attempt telemetry: {e}")
+
+        return Response({'status': 'logged'})
 
 
 class SessionLiveHintView(APIView):

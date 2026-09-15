@@ -9,6 +9,7 @@ from .views import (
     SessionLiveHintView,
     SessionProgressView,
     SessionMasteryView,
+    SessionLogAttemptView,
 )
 
 urlpatterns = [
@@ -24,6 +25,7 @@ urlpatterns = [
     path('session/<str:session_id>/live-hint/<int:exercise_index>/', SessionLiveHintView.as_view(), name='ai_session_live_hint'),
     path('session/<str:session_id>/progress/', SessionProgressView.as_view(), name='ai_session_progress'),
     path('session/<str:session_id>/mastery/', SessionMasteryView.as_view(), name='ai_session_mastery'),
+    path('session/<str:session_id>/log-attempt/', SessionLogAttemptView.as_view(), name='ai_session_log_attempt'),
     path('session/<str:module>/<str:node_id>/regenerate/', SessionRegenerateView.as_view(), name='ai_session_regenerate'),
 
     # Generic load route last, since it will match any
