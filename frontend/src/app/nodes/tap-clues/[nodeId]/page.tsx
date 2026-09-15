@@ -15,7 +15,7 @@ import { notifyLexicalUpdated, notifyProgressionUpdated } from '@/lib/realtime-s
 
 // ── Palette (identical to Logic Thread) ───────────
 const C: Record<string, string> = {
-  pageBg:     '#2D0909',
+  pageBg:     'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)',
   board:      '#D4A86A',
   canvas:     '#E8D5B0',
   cardPaper:  '#FFFBF0',
@@ -160,8 +160,8 @@ function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () 
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: FONT }}>{node.title}</h2>
         <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px', fontFamily: FONT }}>{node.focus}</p>
         <hr style={{ border: 'none', borderTop: `1px solid ${C.cardBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT }}>{node.micro_lesson_text}</p>
-        <button onClick={onContinue} style={btnPrimary}>Continue →</button>
+        <p style={{ fontSize: 15, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT, fontWeight: 700 }}>{node.micro_lesson_text}</p>
+        <button onClick={onContinue} style={{ ...btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
       </div>
     </div>
   )

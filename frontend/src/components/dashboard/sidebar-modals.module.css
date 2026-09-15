@@ -4,7 +4,7 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(18, 2, 2, 0.85);
+  background: rgba(65, 72, 51, 0.85);
   backdrop-filter: blur(5px);
   z-index: 1000;
   display: flex;
@@ -29,18 +29,18 @@
   max-width: 960px;
   max-height: 90vh;
   background: #F2DEC1;
-  border: 2px solid #8C5A3C;
+  border: 2px solid #BEA791;
   box-shadow:
     0 25px 50px -12px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(140, 90, 60, 0.3),
-    inset 0 0 60px rgba(196, 154, 90, 0.15);
+    0 0 0 1px rgba(190, 167, 145, 0.3),
+    inset 0 0 60px rgba(190, 167, 145, 0.15);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   position: relative;
   font-family: var(--font-serif, "Georgia", serif);
-  color: #432818;
+  color: #414833;
   animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -57,13 +57,18 @@
 
 /* ── Manila Folder Tab Header ── */
 .folderHeader {
-  background: #2D0909;
-  border-bottom: 2px solid #C49A5A;
+  background: #414833;
+  border-bottom: 2px solid #BEA791;
   padding: 0.85rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: relative;
+}
+
+.folderHeader .stampBox {
+  color: #F2DEC1;
+  border-color: #BEA791;
 }
 
 .headerLeft {
@@ -78,8 +83,8 @@
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  background: #C49A5A;
-  color: #2D0909;
+  background: #BEA791;
+  color: #414833;
   padding: 0.2rem 0.6rem;
   border-radius: 2px;
 }
@@ -89,7 +94,7 @@
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #F4E6CC;
+  color: #FFF8ED;
   text-transform: uppercase;
   margin: 0;
   display: flex;
@@ -99,8 +104,8 @@
 
 .closeButton {
   background: transparent;
-  border: 1px solid #8C5A3C;
-  color: #D4B896;
+  border: 1px solid #BEA791;
+  color: #DCC9B6;
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
   padding: 0.25rem 0.6rem;
@@ -110,18 +115,18 @@
 }
 
 .closeButton:hover {
-  background: #C49A5A;
-  color: #1a0000;
-  border-color: #C49A5A;
+  background: #BEA791;
+  color: #414833;
+  border-color: #BEA791;
 }
 
 /* ── Sub Navigation Tabs ── */
 .subNavBar {
-  background: #E2CBA8;
-  border-bottom: 1.5px solid #8C5A3C;
+  background: #DCC9B6;
+  border-bottom: 1.5px solid #BEA791;
   display: flex;
   padding: 0 1rem;
-  gap: 0.35rem;
+  gap: 0;
   overflow-x: auto;
 }
 
@@ -133,22 +138,23 @@
   text-transform: uppercase;
   padding: 0.65rem 1rem;
   background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: #6A381F;
+  border: 1px solid #BEA791;
+  border-bottom: 3px solid #BEA791;
+  color: #414833;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
 }
 
 .navTab:hover {
-  color: #2D0909;
-  background: rgba(196, 154, 90, 0.25);
+  color: #414833;
+  background: rgba(190, 167, 145, 0.25);
 }
 
 .navTabActive {
-  color: #2D0909;
-  border-bottom: 3px solid #8C2424;
+  color: #414833;
+  border: 1px solid #414833;
+  border-bottom: 3px solid #414833;
   background: #F2DEC1;
   font-weight: 800;
 }
@@ -164,8 +170,8 @@
 /* ── Official Stamp ── */
 .stampBox {
   display: inline-block;
-  border: 2px solid #8C2424;
-  color: #8C2424;
+  border: 2px solid #BEA791;
+  color: #414833;
   font-family: var(--font-mono, monospace);
   font-weight: 900;
   font-size: 0.75rem;
@@ -194,18 +200,18 @@
 .searchInput {
   flex: 1;
   background: #FFF8ED;
-  border: 1.5px solid #8C5A3C;
+  border: 1.5px solid #BEA791;
   border-radius: 3px;
   padding: 0.5rem 0.85rem;
   font-family: var(--font-mono, monospace);
   font-size: 0.85rem;
-  color: #432818;
+  color: #414833;
   outline: none;
 }
 
 .searchInput:focus {
-  border-color: #2D0909;
-  box-shadow: 0 0 0 2px rgba(140, 90, 60, 0.2);
+  border-color: #414833;
+  box-shadow: 0 0 0 2px rgba(190, 167, 145, 0.2);
 }
 
 /* ── Flashcard 3D Container ── */

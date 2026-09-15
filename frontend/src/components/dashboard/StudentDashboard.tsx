@@ -564,19 +564,21 @@ export default function StudentDashboard() {
 
   // ── Loading state ─────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#1a0000]
+    <div className="min-h-screen
       flex items-center justify-center
-      font-mono text-[#C4A882] text-sm">
+      font-mono text-[#C4A882] text-sm"
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
       Loading...
     </div>
   )
 
   // ── Error state ───────────────────────────
   if (error) return (
-    <div className="min-h-screen bg-[#1a0000]
+    <div className="min-h-screen
       flex items-center justify-center
       font-mono text-red-400 text-sm
-      flex-col gap-4">
+      flex-col gap-4"
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
       <p>{error}</p>
       <button
         onClick={() => router.push('/auth')}
@@ -593,16 +595,10 @@ export default function StudentDashboard() {
   return (
     <div
       className="min-h-screen text-[#F4E6CC] font-serif"
-      style={{ background: `
-        radial-gradient(ellipse 35% 80% at 0% 70%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 35% 80% at 100% 70%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 100% 35% at 50% 100%, #6a1010 0%, transparent 100%),
-        radial-gradient(ellipse 60% 60% at 50% 50%, #5a1010 0%, transparent 70%),
-        #1a0000
-      `.replace(/\s+/g, ' ') }}>
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
 
       {/* ── TOPBAR ── */}
-      <header className="h-[52px] bg-transparent
+      <header className="h-[52px] bg-[#414833]/90 backdrop-blur-sm border-b border-[#BEA791]/55 shadow-sm
         flex items-center justify-end gap-9 px-9">
 
         {/* ── REALTIME STREAK ── */}
@@ -629,16 +625,16 @@ export default function StudentDashboard() {
         <button
           onClick={() => setShowMetricLogModal(true)}
           className="flex items-center gap-2 font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#C49A5A]
-            px-2.5 py-1 rounded border border-[#8C5A3C]
-            bg-[#2D0909]/60 cursor-pointer transition-all"
+            hover:text-[#FFF8ED] hover:border-[#BEA791]
+            px-2.5 py-1 rounded border border-[#BEA791]/60
+            bg-[#414833] cursor-pointer transition-all"
           title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
           <span className="text-amber-400">⚡</span>
           <span>
             <strong>LVL {dashboard?.level ?? 1}</strong>
             &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
           </span>
-          <div className="w-12 h-1.5 bg-[#432818] rounded-full overflow-hidden border border-[#8C5A3C]/60 ml-0.5">
+          <div className="w-12 h-1.5 bg-[#414833] rounded-full overflow-hidden border border-[#BEA791]/50 ml-0.5">
             <div
               className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
               style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
@@ -651,9 +647,9 @@ export default function StudentDashboard() {
           onClick={() => setShowOnboardingGuide(true)}
           className="flex items-center gap-1.5
             font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#C49A5A]
-            px-2.5 py-1 rounded border border-[#8C5A3C]
-            bg-[#2D0909]/60 cursor-pointer transition-all"
+            hover:text-[#FFF8ED] hover:border-[#BEA791]
+            px-2.5 py-1 rounded border border-[#BEA791]/60
+            bg-[#414833] cursor-pointer transition-all"
           title="Open the Field Manual & Interactive Demo">
           <span>📖</span>
           <span className="font-bold">FIELD GUIDE</span>
@@ -673,8 +669,8 @@ export default function StudentDashboard() {
           </button>
           {showMenu && (
             <div className="absolute top-full
-              right-0 mt-2 bg-[#2a0a00]
-              border border-[#5a2010] rounded-sm
+              right-0 mt-2 bg-[#414833]
+              border border-[#BEA791]/60 rounded-sm
               shadow-lg z-50 min-w-[170px]">
               <button
                 onClick={() => {
@@ -683,16 +679,16 @@ export default function StudentDashboard() {
                 }}
                 className="w-full text-left px-4
                   py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#3a1010]
+                  hover:bg-[#2B424A]
                   hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
                 <span>📖</span> Field Manual & Demo
               </button>
-              <div className="h-px bg-[#5a2010]" />
+              <div className="h-px bg-[#BEA791]/35" />
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4
                   py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#3a1010]
+                  hover:bg-[#2B424A]
                   hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
                 <span>🚪</span> Logout
               </button>
@@ -763,7 +759,7 @@ export default function StudentDashboard() {
                 {/* Outlined header box — centered */}
                 <div className="flex justify-center mb-3">
                   <div className="border-[1.5px] border-[#6A381F]
-                    px-8 py-[5px] font-mono text-[10px]
+                    px-8 py-2 font-mono text-sm font-semibold
                     tracking-widest text-[#432818]
                     bg-transparent whitespace-nowrap">
                     OFFICIAL STUDENT DASHBOARD DOCUMENT
@@ -774,7 +770,7 @@ export default function StudentDashboard() {
                   <div className="flex-1 h-[1.5px] bg-[#C49A5A] opacity-80" />
                   <div
                     className="border-[2.5px] border-[#6A381F]
-                      px-4 py-[5px] font-mono text-xs font-bold
+                      px-4 py-2 font-mono text-base font-bold
                       uppercase tracking-widest text-[#432818]
                       bg-transparent whitespace-nowrap"
                     style={{ transform: 'rotate(-1.5deg)' }}>

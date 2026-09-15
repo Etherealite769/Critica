@@ -72,8 +72,8 @@ export default function SignInForm() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email address here..."
             required
-            onFocus={(e) => { e.target.style.borderColor = '#800020'; e.target.style.boxShadow = '0 0 0 2px rgba(128,0,32,0.1)'; }}
-            onBlur={(e) => { e.target.style.borderColor = '#C49A5A'; e.target.style.boxShadow = 'none'; }}
+            onFocus={(e) => { e.target.style.borderColor = '#414833'; e.target.style.boxShadow = '0 0 0 2px rgba(65,72,51,0.14)'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#BEA791'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
 
@@ -86,8 +86,8 @@ export default function SignInForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter password here..."
             required
-            onFocus={(e) => { e.target.style.borderColor = '#800020'; e.target.style.boxShadow = '0 0 0 2px rgba(128,0,32,0.1)'; }}
-            onBlur={(e) => { e.target.style.borderColor = '#C49A5A'; e.target.style.boxShadow = 'none'; }}
+            onFocus={(e) => { e.target.style.borderColor = '#414833'; e.target.style.boxShadow = '0 0 0 2px rgba(65,72,51,0.14)'; }}
+            onBlur={(e) => { e.target.style.borderColor = '#BEA791'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
 
@@ -103,8 +103,8 @@ export default function SignInForm() {
             type="submit"
             disabled={loading}
             style={{ ...s.btn, opacity: loading ? 0.55 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #432818'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #432818'; e.currentTarget.style.transform = 'none'; }}
+            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #414833'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #414833'; e.currentTarget.style.transform = 'none'; }}
           >
             {loading ? 'Proceeding...' : 'Proceed to Access'}
           </button>
@@ -120,8 +120,8 @@ const s: Record<string, React.CSSProperties> = {
   /* Header — outlined box, no fill */
   hdrWrap: { display: 'flex', justifyContent: 'center', marginBottom: '10px' },
   hdr: {
-    border: '2px solid #6A381F',
-    color: '#432818',
+    border: '2px solid #414833',
+    color: '#414833',
     padding: '7px 18px',
     fontSize: '10px',
     fontWeight: 700,
@@ -133,43 +133,43 @@ const s: Record<string, React.CSSProperties> = {
 
   /* Stamp row — line / stamp / line */
   stampRow: { display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 16px' },
-  stampLine: { flex: 1, height: '1.5px', background: '#C49A5A', opacity: 0.8 },
+  stampLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
   stamp: {
     display: 'inline-block',
-    border: '2.5px solid #6A381F',
+    border: '2.5px solid #414833',
     padding: '5px 14px',
     fontFamily: "'Courier Prime', monospace",
     fontSize: '11px',
     fontWeight: 700,
     letterSpacing: '0.18em',
-    color: '#6A381F',
+    color: '#414833',
     background: 'transparent',
     transform: 'rotate(-2deg)',
     whiteSpace: 'nowrap' as const,
   },
 
   /* Section dividers — label then line */
-  sec: { display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 10px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#432818', fontFamily: "'Courier Prime', monospace" },
-  hrLine: { flex: 1, height: '1.5px', background: '#C49A5A', opacity: 0.8 },
+  sec: { display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 10px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#414833', fontFamily: "'Courier Prime', monospace" },
+  hrLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
 
   /* Input groups */
   fieldGroup: { marginBottom: '16px' },
   msg: { borderRadius: '3px', padding: '7px 10px', fontSize: '10px', margin: '10px 0 4px', fontFamily: "'Courier Prime', monospace", letterSpacing: '0.05em' },
-  msgErr: { background: '#f5d4cc', border: '1.5px solid #800020', color: '#800020' },
+  msgErr: { background: '#ead8d2', border: '1.5px solid #8b4f45', color: '#713d36' },
   msgOk:  { background: '#d4eed8', border: '1.5px solid #3a8050', color: '#1a5030' },
   lbl: {
     display: 'block', fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em',
-    color: '#8C5A3C', marginBottom: '6px',
+    color: '#414833', marginBottom: '6px',
     fontFamily: "'Courier Prime', monospace",
   },
   inp: {
     width: '100%',
-    background: '#FFFDF7',
-    border: '1px solid #C49A5A',
+    background: '#FFF8ED',
+    border: '1px solid #BEA791',
     borderRadius: '8px',
     fontFamily: "'Courier Prime', monospace",
     fontSize: '13px',
-    color: '#432818',
+    color: '#414833',
     padding: '8px 10px',
     outline: 'none',
     transition: 'border-color 0.15s, box-shadow 0.15s',
@@ -181,7 +181,7 @@ const s: Record<string, React.CSSProperties> = {
   fgt: {
     fontSize: '11px',
     fontStyle: 'italic',
-    color: '#432818',
+    color: '#414833',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
@@ -195,12 +195,12 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: '11px',
     fontWeight: 700,
     letterSpacing: '0.1em',
-    color: '#432818',
-    background: '#FFDFA7',
-    border: '2px solid #8C5A3C',
+    color: '#414833',
+    background: '#DCC9B6',
+    border: '2px solid #414833',
     padding: '9px 26px',
     cursor: 'pointer',
-    boxShadow: '3px 3px 0 #432818',
+    boxShadow: '3px 3px 0 #414833',
     transition: 'box-shadow 0.1s, transform 0.1s',
     borderRadius: '2px',
   },

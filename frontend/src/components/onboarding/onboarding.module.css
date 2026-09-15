@@ -2,7 +2,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(35, 8, 8, 0.82) 0%, rgba(10, 0, 0, 0.95) 100%);
+  background: radial-gradient(circle at 50% 50%, rgba(65, 72, 51, 0.82) 0%, rgba(34, 38, 27, 0.95) 100%);
   backdrop-filter: blur(5px);
   z-index: 1000;
   display: flex;
@@ -35,23 +35,27 @@
   max-height: 94vh;
   display: flex;
   flex-direction: column;
-  background: #E8D5B0;
-  border: 2px solid #8C5A3C;
+  background: #F2DEC1;
+  border: 2px solid #BEA791;
   border-radius: 8px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 223, 167, 0.15);
+  box-shadow: 0 25px 60px rgba(15, 24, 28, 0.75), 0 0 0 1px rgba(190, 167, 145, 0.25);
   overflow: hidden;
   animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-serif, "Georgia", serif);
+  font-size: 1rem;
+  color: #414833;
 }
 
 /* Header */
 .topBar {
-  background: #2D0909;
-  border-bottom: 2px solid #8C5A3C;
+  background: #414833;
+  border-bottom: 2px solid #BEA791;
   padding: 10px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #F4E6CC;
+  color: #FFF8ED;
+  font-family: var(--font-mono, monospace);
 }
 
 .topBarLeft {
@@ -62,7 +66,7 @@
 
 .sealIcon {
   font-size: 16px;
-  color: #C49A5A;
+  color: #BEA791;
 }
 
 .docTitle {
@@ -74,9 +78,9 @@
 }
 
 .classificationBadge {
-  border: 1px solid #8C5A3C;
-  background: rgba(140, 90, 60, 0.25);
-  color: #C49A5A;
+  border: 1px solid #BEA791;
+  background: rgba(190, 167, 145, 0.22);
+  color: #DCC9B6;
   font-size: 9px;
   letter-spacing: 0.15em;
   padding: 2px 7px;
@@ -85,8 +89,8 @@
 
 .skipBtn {
   background: transparent;
-  border: 1px solid #8C5A3C;
-  color: #D4B896;
+  border: 1px solid #BEA791;
+  color: #DCC9B6;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -101,21 +105,22 @@
 }
 
 .skipBtn:hover {
-  background: #432818;
+  background: #2B424A;
   color: #FFF8ED;
-  border-color: #C49A5A;
+  border-color: #BEA791;
 }
 
 /* Step Bar */
 .stepBar {
-  background: #D4C0A0;
-  border-bottom: 1px solid #B8905A;
+  background: #DCC9B6;
+  border-bottom: 1px solid #BEA791;
   padding: 8px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   overflow-x: auto;
+  font-family: var(--font-mono, monospace);
 }
 
 .stepPill {
@@ -135,25 +140,25 @@
 
 .stepPillActive {
   background: #FFF8ED;
-  color: #432818;
-  border-color: #8C5A3C;
+  color: #414833;
+  border-color: #BEA791;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .stepPillDone {
-  background: #E4D0B0;
-  color: #6A381F;
+  background: #BEA791;
+  color: #414833;
 }
 
 .stepPillPending {
-  color: #8C6A4A;
+  color: #414833;
 }
 
 .stepNumber {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #432818;
+  background: #414833;
   color: #FFF8ED;
   font-size: 9px;
   display: flex;
@@ -162,7 +167,7 @@
 }
 
 .stepPillActive .stepNumber {
-  background: #800020;
+  background: #BEA791;
   color: #FFF8ED;
 }
 
@@ -181,11 +186,11 @@
   display: flex;
   align-items: flex-start;
   gap: 18px;
-  background: #FFFBF0;
-  border: 1.5px solid #C49A5A;
+  background: #FFF8ED;
+  border: 1.5px solid #BEA791;
   border-radius: 6px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(67, 40, 24, 0.08);
+  box-shadow: 0 2px 8px rgba(34, 51, 59, 0.08);
 }
 
 .avatarWrap {
@@ -200,8 +205,8 @@
 .avatarBadge {
   width: 52px;
   height: 52px;
-  background: #2D0909;
-  border: 2px solid #8C5A3C;
+  background: #414833;
+  border: 2px solid #BEA791;
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -223,19 +228,19 @@
   height: 10px;
   border-radius: 50%;
   background: #16a34a;
-  border: 2px solid #FFFBF0;
+  border: 2px solid #FFF8ED;
 }
 
 .avatarName {
   font-size: 11px;
   font-weight: 700;
-  color: #2D0909;
+  color: #414833;
   letter-spacing: 0.06em;
 }
 
 .avatarRole {
   font-size: 8px;
-  color: #8C5A3C;
+  color: #414833;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -244,12 +249,12 @@
   flex: 1;
   position: relative;
   background: #FFF8ED;
-  border: 1px solid #D4C0A0;
+  border: 1px solid #BEA791;
   border-radius: 6px;
   padding: 12px 16px;
-  font-size: 12px;
+  font-size: 0.9rem;
   line-height: 1.6;
-  color: #331A0F;
+  color: #414833;
 }
 
 .speechArrow {
@@ -259,8 +264,8 @@
   width: 14px;
   height: 14px;
   background: #FFF8ED;
-  border-left: 1px solid #D4C0A0;
-  border-bottom: 1px solid #D4C0A0;
+  border-left: 1px solid #BEA791;
+  border-bottom: 1px solid #BEA791;
   transform: rotate(45deg);
 }
 
@@ -273,7 +278,7 @@
 
 .featureCard {
   background: #FFF8ED;
-  border: 1px solid #C49A5A;
+  border: 1px solid #BEA791;
   border-radius: 6px;
   padding: 12px 14px;
   display: flex;
@@ -284,7 +289,7 @@
 
 .featureCard:hover {
   transform: translateY(-2px);
-  border-color: #800020;
+  border-color: #BEA791;
 }
 
 .featureCardHeader {
@@ -297,7 +302,7 @@
   width: 26px;
   height: 26px;
   border-radius: 4px;
-  background: #2D0909;
+  background: #414833;
   color: #FFF8ED;
   display: flex;
   align-items: center;
@@ -309,14 +314,14 @@
 .featureCardTitle {
   font-size: 11px;
   font-weight: 700;
-  color: #432818;
+  color: #414833;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .featureCardDesc {
-  font-size: 10px;
-  color: #6A381F;
+  font-size: 0.78rem;
+  color: #414833;
   line-height: 1.45;
 }
 
@@ -456,7 +461,7 @@
 }
 
 .demoCardContent {
-  font-size: 11px;
+  font-size: 0.82rem;
   line-height: 1.45;
   color: #1C0800;
 }

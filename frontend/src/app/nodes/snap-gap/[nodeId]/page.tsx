@@ -86,7 +86,7 @@ const TUTORIAL_STEPS = [
 
 // ── Color palette ─────────────────────────────────
 const C = {
-  pageBg:     '#2D0909',
+  pageBg:     'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)',
   board:      '#D4A86A',
   canvas:     '#E8D5B0',
   cardPaper:  '#FFFBF0',
@@ -272,10 +272,10 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
         </h2>
         <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 16px' }}>{node.focus}</p>
         <hr style={S.hr} />
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#1C0800', margin: '0 0 32px' }}>
+        <p style={{ fontSize: 15, lineHeight: 1.85, color: '#1C0800', margin: '0 0 32px', fontWeight: 700 }}>
           {node.micro_lesson_text}
         </p>
-        <button onClick={onContinue} style={S.btnPrimary}>Continue →</button>
+        <button onClick={onContinue} style={{ ...S.btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
       </div>
     </div>
   )

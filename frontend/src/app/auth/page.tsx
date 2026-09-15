@@ -48,7 +48,7 @@ export default function AuthPage() {
 
       <style>{`
         html, body {
-          background: #1a0000 !important;
+          background: #414833 !important;
           margin: 0;
           padding: 0;
           min-height: 100%;
@@ -56,7 +56,7 @@ export default function AuthPage() {
 
         .auth-page {
           min-height: 100vh;
-          background: radial-gradient(ellipse at center, #7a1a1a 0%, #4a0a0a 40%, #1a0000 75%);
+          background: radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -97,19 +97,19 @@ export default function AuthPage() {
 
         .tab-active {
           background: #F2DEC1 !important;
-          color: #432818;
+          color: #414833;
           padding: 10px 28px 12px;
         }
 
         .tab-inactive {
-          background: #C49A5A;
-          color: #432818;
+          background: #BEA791;
+          color: #414833;
           padding: 8px 28px 10px;
         }
 
         .tab-inactive:hover {
-          background: #B8905A;
-          color: #1a0000;
+          background: #DCC9B6;
+          color: #414833;
         }
 
         /* ── Folder Body ── */
@@ -120,7 +120,7 @@ export default function AuthPage() {
           position: relative;
           width: 100%;
           box-sizing: border-box;
-          box-shadow: 0 8px 32px rgba(26,0,0,0.55);
+          box-shadow: 0 8px 32px rgba(34, 51, 59, 0.45);
         }
 
         /* ── Punch Holes ── */
@@ -138,8 +138,8 @@ export default function AuthPage() {
           width: 14px;
           height: 14px;
           border-radius: 50%;
-          background: rgba(196, 168, 130, 0.15);
-          border: 2px solid rgba(196, 168, 130, 0.35);
+          background: rgba(34, 51, 59, 0.12);
+          border: 2px solid rgba(34, 51, 59, 0.28);
           box-sizing: border-box;
         }
 

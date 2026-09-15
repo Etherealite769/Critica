@@ -198,7 +198,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
           <div className={styles.headerLeft}>
             <span className={styles.headerBadge}>TELEMETRY & AUDIT</span>
             <h2 className={styles.headerTitle}>
-              <span>📈</span> Metric Log & Performance Audit
+              Metric Log & Performance Audit
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -214,17 +214,17 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
           <button
             className={`${styles.navTab} ${activeTab === 'overview' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('overview')}>
-            📊 Clearance & Overview
+            Clearance & Overview
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'modules' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('modules')}>
-            🏛️ Module Proficiency Matrix
+            Module Proficiency Matrix
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'telemetry' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('telemetry')}>
-            📜 Activity Timeline ({metrics?.recent_activity.length || 0})
+            Activity Timeline ({metrics?.recent_activity.length || 0})
           </button>
         </div>
 
@@ -232,13 +232,13 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
         <div className={styles.contentBody}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
-              <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>📡 Interrogating Telemetry Ledger...</div>
-              <p style={{ fontSize: '0.8rem', color: '#8C5A3C' }}>Aggregating diagnostic case logs.</p>
+              <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Interrogating Telemetry Ledger...</div>
+              <p style={{ fontSize: '0.8rem', color: '#414833' }}>Aggregating diagnostic case logs.</p>
             </div>
           ) : !metrics ? (
             <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
               <span className={styles.stampBox}>NO TELEMETRY AVAILABLE</span>
-              <p style={{ marginTop: '1rem', color: '#6A381F', fontSize: '0.85rem' }}>
+              <p style={{ marginTop: '1rem', color: '#414833', fontSize: '0.85rem' }}>
                 Failed to retrieve operational metrics. Please verify session authorization.
               </p>
               <button
@@ -256,7 +256,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                   <div
                     style={{
                       background: '#FFF8ED',
-                      border: '2px solid #8C5A3C',
+                      border: '2px solid #BEA791',
                       borderRadius: '6px',
                       padding: '1.25rem',
                       marginBottom: '1.5rem',
@@ -272,24 +272,24 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                           width: '54px',
                           height: '54px',
                           borderRadius: '50%',
-                          background: '#2D0909',
-                          border: '2px solid #C49A5A',
+                          background: '#414833',
+                          border: '2px solid #BEA791',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '1.6rem',
-                          color: '#F4E6CC',
+                          color: '#FFF8ED',
                         }}>
                         🛡️
                       </div>
                       <div>
-                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', color: '#8C5A3C', letterSpacing: '0.1em' }}>
+                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', color: '#414833', letterSpacing: '0.1em' }}>
                           INVESTIGATOR DOSSIER // AGENT #{metrics.student_id}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-serif, serif)', fontSize: '1.4rem', fontWeight: 'bold', color: '#2D0909' }}>
+                        <div style={{ fontFamily: 'var(--font-serif, serif)', fontSize: '1.4rem', fontWeight: 'bold', color: '#414833' }}>
                           {metrics.rank_title}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6A381F' }}>
+                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#414833' }}>
                           Operational User: <strong>{metrics.username}</strong> • Active Streak: <strong>{metrics.streak} Days</strong>
                         </div>
                       </div>
@@ -306,17 +306,17 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                   <div
                     style={{
                       background: '#FFF8ED',
-                      border: '1.5px solid #8C5A3C',
+                      border: '1.5px solid #BEA791',
                       borderRadius: '4px',
                       padding: '1rem 1.25rem',
                       marginBottom: '1.25rem',
-                      boxShadow: '0 2px 8px rgba(140, 90, 60, 0.08)',
+                      boxShadow: '0 2px 8px rgba(65, 72, 51, 0.08)',
                     }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', fontWeight: 'bold', color: '#2D0909', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ color: '#C49A5A' }}>⚡</span> CLEARANCE EXPERIENCE (EXP) PROGRESSION
+                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', fontWeight: 'bold', color: '#414833', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        CLEARANCE EXPERIENCE (EXP) PROGRESSION
                       </span>
-                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#6A381F' }}>
+                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#414833' }}>
                         <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
                       </span>
                     </div>
@@ -329,14 +329,14 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                         backgroundColor: '#E8D8B8',
                         borderRadius: '9999px',
                         overflow: 'hidden',
-                        border: '1px solid #8C5A3C',
+                        border: '1px solid #BEA791',
                         position: 'relative',
                       }}>
                       <div
                         style={{
                           width: `${metrics.level_progress_pct ?? 0}%`,
                           height: '100%',
-                          background: 'linear-gradient(90deg, #8C5A3C 0%, #C49A5A 50%, #2E6B3A 100%)',
+                          background: 'linear-gradient(90deg, #414833 0%, #BEA791 50%, #2E6B3A 100%)',
                           transition: 'width 0.6s ease-in-out',
                         }}
                       />
@@ -396,11 +396,11 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                   </div>
 
                   {/* Operational Summary */}
-                  <div style={{ background: '#FFF8ED', border: '1.5px solid #8C5A3C', borderRadius: '4px', padding: '1rem' }}>
-                    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', color: '#2D0909', marginBottom: '0.35rem' }}>
-                      📋 INTELLIGENCE OFFICER DEBRIEF
+                  <div style={{ background: '#FFF8ED', border: '1.5px solid #BEA791', borderRadius: '4px', padding: '1rem' }}>
+                    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', color: '#414833', marginBottom: '0.35rem' }}>
+                      INTELLIGENCE OFFICER DEBRIEF
                     </div>
-                    <p style={{ fontSize: '0.82rem', lineHeight: '1.5', color: '#432818', margin: 0 }}>
+                    <p style={{ fontSize: '0.82rem', lineHeight: '1.5', color: '#414833', margin: 0 }}>
                       {metrics.completed_count >= 6
                         ? `Agent demonstrates advanced proficiency across analytical modules with high hint independence (${metrics.hint_independence}%). Cleared for intermediate and advanced diagnostic operations.`
                         : metrics.completed_count >= 2
