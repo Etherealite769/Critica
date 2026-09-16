@@ -162,14 +162,10 @@ function LessonScreen({ node, onContinue }: { node: TapNodeData; onContinue: () 
       <div className={styles.screenCard} style={{ maxWidth: 640, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={stamp}>MICRO-LESSON</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: FONT }}>{node.title}</h2>
-        <p style={{ fontSize: 12, color: C.textMuted, margin: '0 0 16px', fontFamily: FONT }}>{node.focus}</p>
-        <hr style={{ border: 'none', borderTop: `1px solid ${C.cardBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 15, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT, fontWeight: 700 }}>{node.micro_lesson_text}</p>
-        <button onClick={onContinue} style={{ ...btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
         <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: FONT }}>{node.focus}</p>
         <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT }}>{node.micro_lesson_text}</p>
-        <button onClick={onContinue} style={btnPrimary}>Continue →</button>
+        <p style={{ fontSize: 15, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT, fontWeight: 700 }}>{node.micro_lesson_text}</p>
+        <button onClick={onContinue} style={{ ...btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
       </div>
     </div>
   )

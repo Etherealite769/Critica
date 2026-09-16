@@ -283,12 +283,9 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: F }}>
           {node.title}
         </h2>
-        <p style={{ fontSize: 13, color: C.textMuted, margin: '0 0 16px' }}>{node.focus}</p>
-        <hr style={S.hr} />
-        <p style={{ fontSize: 15, lineHeight: 1.85, color: '#1C0800', margin: '0 0 32px', fontWeight: 700 }}>
         <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: F }}>{node.focus}</p>
         <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: C.textDark, margin: '0 0 32px', fontFamily: F }}>
+        <p style={{ fontSize: 15, lineHeight: 1.85, color: C.textDark, margin: '0 0 32px', fontFamily: F, fontWeight: 700 }}>
           {node.micro_lesson_text}
         </p>
         <button onClick={onContinue} style={{ ...S.btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
