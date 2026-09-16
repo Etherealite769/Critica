@@ -265,6 +265,17 @@ class ProgressionManagementService:
         if node_id in profile.completed_nodes:
             profile.completed_nodes.remove(node_id)
             profile.save()
+
+        # Purge any ongoing or completed AI generated session for this node
+        try:
+            from api.ai.mongo_models import GeneratedSessionDocument
+            GeneratedSessionDocument.objects(
+                student_id=student_id,
+                node_id=node_id,
+            ).delete()
+        except Exception:
+            pass
+
         return profile
 
     @staticmethod

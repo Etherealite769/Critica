@@ -1,5 +1,6 @@
 # backend/api/ai/session_service.py
 import uuid
+import random
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple, Set
@@ -259,6 +260,11 @@ class SessionService:
 
         # 6. Verify intra-session diversity
         check_intra_session_diversity(valid_exercises)
+
+        # 6b. Guarantee anti-pattern shuffling on all valid exercises
+        for ex in valid_exercises:
+            if module == 'snap_gap' and isinstance(ex.get('transition_tile_dock'), list):
+                random.shuffle(ex['transition_tile_dock'])
 
         # 7. Create new session document
         session_id = f"sess_{uuid.uuid4().hex[:12]}"

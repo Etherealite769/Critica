@@ -902,9 +902,8 @@ def _format_logic_thread(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
     for bid, text, order in blocks_data:
         p_blocks.append({"block_id": bid, "text": text, "order": order})
     
-    # Shuffle paragraph blocks for student interaction
+    # Shuffle paragraph blocks for student interaction with true random distribution
     shuffled_blocks = list(p_blocks)
-    random.seed(seed_idx + 42)
     random.shuffle(shuffled_blocks)
 
     correct_seq = [b["block_id"] for b in sorted(p_blocks, key=lambda x: x["order"])]
@@ -929,14 +928,28 @@ def _format_logic_thread(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
 
 
 def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
-    hints = [
-        {"tier": 1, "hint_text": "Examine the logical connection between the two sentences."},
-        {"tier": 2, "hint_text": f"Consider words like '{tpl['sentence_pairs'][0]['correct_tile']}' to link the ideas."},
-        {"tier": 3, "hint_text": f"Correct transition for first pair: {tpl['sentence_pairs'][0]['correct_tile']}."},
-    ]
+    tier = tpl.get("tier", 1)
+    pair_count = 1 if tier == 1 else (2 if tier <= 3 else 3)
+    raw_pairs = tpl.get("sentence_pairs", [])
+    sentence_pairs = raw_pairs[:pair_count]
+
+    correct_map = {
+        p["pair_id"]: p["correct_tile"]
+        for p in sentence_pairs
+        if "pair_id" in p and "correct_tile" in p
+    }
+
+    dock_tiles = list(tpl.get("dock", []))
+    for p in sentence_pairs:
+        ct = p.get("correct_tile")
+        if ct and ct not in dock_tiles:
+            dock_tiles.append(ct)
+
+    # Crucial anti-pattern fix: Shuffle dock_tiles so correct answers are not in fixed positions
+    random.shuffle(dock_tiles)
+
     explanations = {}
-    dock_tiles = tpl.get("dock", [])
-    for pair in tpl.get("sentence_pairs", []):
+    for pair in sentence_pairs:
         pid = pair.get("pair_id", "pair_1")
         correct = pair.get("correct_tile", "")
         for tile in dock_tiles:
@@ -946,16 +959,22 @@ def _format_snap_gap(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
                     f"Review the logical connection between sentence A and sentence B."
                 )
 
+    hints = [
+        {"tier": 1, "hint_text": "Examine the logical connection between the two sentences."},
+        {"tier": 2, "hint_text": f"Consider words like '{sentence_pairs[0]['correct_tile']}' to link the ideas."},
+        {"tier": 3, "hint_text": f"Correct transition for first pair: {sentence_pairs[0]['correct_tile']}."},
+    ]
+
     return {
         "exercise_id": f"proc_snp_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",
         "reading_passage": tpl["reading_passage"],
-        "sentence_pairs": tpl["sentence_pairs"],
-        "transition_tile_dock": tpl["dock"],
-        "correct_tile_map": tpl["correct_tile_map"],
+        "sentence_pairs": sentence_pairs,
+        "transition_tile_dock": dock_tiles,
+        "correct_tile_map": correct_map,
         "tile_error_explanations": explanations,
         "scaffold_hints": hints,
-        "difficulty": tpl["tier"],
+        "difficulty": tier,
     }
 
 
@@ -973,6 +992,10 @@ def _format_tap_clues(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
             "contextual_usage": lw.get("contextual_usage", f"Used in context as: {lw['word']}"),
             "translation": lw.get("translation", lw.get("definition", "").split(";")[0]),
         })
+
+    # If multiple locked words, randomly permute their presentation order
+    if len(locked) > 1:
+        random.shuffle(locked)
 
     first_clues = locked[0]["correct_clue_ids"][:2] if locked and locked[0]["correct_clue_ids"] else []
     hints = [
@@ -993,7 +1016,13 @@ def _format_tap_clues(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
 def _format_fact_scanner(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
     art_sentences = []
     sentence_exps = {}
-    for sid, text, is_flawed, reason in tpl["sentences"]:
+
+    # Crucial anti-pattern fix: Shuffle sentences so flawed sentence position is unpredictable
+    shuffled_sentences = list(tpl["sentences"])
+    random.shuffle(shuffled_sentences)
+
+    for idx, (_, text, is_flawed, reason) in enumerate(shuffled_sentences):
+        sid = f"s{idx + 1}"
         art_sentences.append({
             "sentence_id": sid,
             "text": text,
@@ -1008,7 +1037,7 @@ def _format_fact_scanner(tpl: Dict[str, Any], seed_idx: int) -> Dict[str, Any]:
         {"tier": 3, "hint_text": "Quarantine the sentence containing unverified or flawed assertions."},
     ]
 
-    full_text = " ".join([s[1] for s in tpl["sentences"]])
+    full_text = " ".join([s["text"] for s in art_sentences])
     return {
         "exercise_id": f"proc_fac_{seed_idx}_{abs(hash(tpl['topic'])) % 10000}",
         "topic_title": f"{tpl['topic']} ({tpl['domain']})",
