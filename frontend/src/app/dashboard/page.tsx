@@ -29,7 +29,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#1e1e1e] text-white flex items-center justify-center">
+      <main
+        className="min-h-screen text-white flex items-center justify-center"
+        style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
         <p>Loading...</p>
       </main>
     );

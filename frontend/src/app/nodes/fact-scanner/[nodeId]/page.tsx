@@ -35,7 +35,7 @@ const FONT = "'Courier New', Courier, monospace"
 
 // ── Shared palette (matches Logic Thread) ────────────────────
 const C = {
-  pageBg:      '#2D0909',
+  pageBg:      'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)',
   board:       '#D4A86A',
   canvas:      '#E8D5B0',
   cardPaper:   '#FFFBF0',
@@ -637,8 +637,8 @@ export default function FactScannerPage() {
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 8px', fontFamily: FONT }}>{factNode!.title}</h2>
         <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: FONT }}>{factNode!.focus}</p>
         <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 14, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT }}>{factNode!.micro_lesson_text}</p>
-        <button onClick={() => setPhase(factNode!.deep_dive_required ? 'deep_dive' : 'task')} style={btnPrimary}>CONTINUE →</button>
+        <p style={{ fontSize: 15, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT, fontWeight: 700 }}>{factNode!.micro_lesson_text}</p>
+        <button onClick={() => setPhase(factNode!.deep_dive_required ? 'deep_dive' : 'task')} style={{ ...btnPrimary, fontSize: 12, padding: '12px 28px' }}>CONTINUE →</button>
       </div>
     </div>
   )

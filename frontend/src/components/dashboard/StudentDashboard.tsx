@@ -563,6 +563,10 @@ export default function StudentDashboard() {
 
   // ── Loading state ─────────────────────────
   if (loading) return (
+    <div className="min-h-screen
+      flex items-center justify-center
+      font-mono text-[#C4A882] text-sm"
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
     <div className="min-h-screen bg-[#1F2E23]
       flex items-center justify-center
       font-mono text-[#C9BC9C] text-sm">
@@ -572,6 +576,11 @@ export default function StudentDashboard() {
 
   // ── Error state ───────────────────────────
   if (error) return (
+    <div className="min-h-screen
+      flex items-center justify-center
+      font-mono text-red-400 text-sm
+      flex-col gap-4"
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
     <div className="min-h-screen bg-[#1F2E23]
       flex items-center justify-center
       font-mono text-[#D98B65] text-sm
@@ -591,11 +600,13 @@ export default function StudentDashboard() {
 
   return (
     <div
+      className="min-h-screen text-[#F4E6CC] font-serif"
+      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
       className="min-h-screen text-[#F2E9D3] font-serif"
      style={{ background: '#4E6E52' }}>
 
       {/* ── TOPBAR ── */}
-      <header className="h-[52px] bg-transparent
+      <header className="h-[52px] bg-[#414833]/90 backdrop-blur-sm border-b border-[#BEA791]/55 shadow-sm
         flex items-center justify-end gap-9 px-9">
 
         {/* ── REALTIME STREAK ── */}
@@ -621,6 +632,10 @@ export default function StudentDashboard() {
         {/* ── REALTIME EXP & LEVEL PILL ── */}
         <button
           onClick={() => setShowMetricLogModal(true)}
+          className="flex items-center gap-2 font-mono text-xs text-[#D4B896]
+            hover:text-[#FFF8ED] hover:border-[#BEA791]
+            px-2.5 py-1 rounded border border-[#BEA791]/60
+            bg-[#414833] cursor-pointer transition-all"
           className="flex items-center gap-2 font-mono text-xs text-[#C9BC9C]
             hover:text-[#FBF6E8] hover:border-[#D3A63C]
             px-2.5 py-1 rounded border border-[#5C4526]
@@ -631,6 +646,7 @@ export default function StudentDashboard() {
             <strong>LVL {dashboard?.level ?? 1}</strong>
             &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
           </span>
+          <div className="w-12 h-1.5 bg-[#414833] rounded-full overflow-hidden border border-[#BEA791]/50 ml-0.5">
           <div className="w-12 h-1.5 bg-[#3B2E20] rounded-full overflow-hidden border border-[#5C4526]/60 ml-0.5">
             <div
               className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
@@ -643,6 +659,10 @@ export default function StudentDashboard() {
         <button
           onClick={() => setShowOnboardingGuide(true)}
           className="flex items-center gap-1.5
+            font-mono text-xs text-[#D4B896]
+            hover:text-[#FFF8ED] hover:border-[#BEA791]
+            px-2.5 py-1 rounded border border-[#BEA791]/60
+            bg-[#414833] cursor-pointer transition-all"
             font-mono text-xs text-[#C9BC9C]
             hover:text-[#FBF6E8] hover:border-[#D3A63C]
             px-2.5 py-1 rounded border border-[#5C4526]
@@ -666,6 +686,8 @@ export default function StudentDashboard() {
           </button>
           {showMenu && (
             <div className="absolute top-full
+              right-0 mt-2 bg-[#414833]
+              border border-[#BEA791]/60 rounded-sm
               right-0 mt-2 bg-[#1F2E23]
               border border-[#3E4F3D] rounded-sm
               shadow-lg z-50 min-w-[170px]">
@@ -675,6 +697,18 @@ export default function StudentDashboard() {
                   setShowOnboardingGuide(true)
                 }}
                 className="w-full text-left px-4
+                  py-2 text-xs font-mono text-[#D4B896]
+                  hover:bg-[#2B424A]
+                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
+                <span>📖</span> Field Manual & Demo
+              </button>
+              <div className="h-px bg-[#BEA791]/35" />
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4
+                  py-2 text-xs font-mono text-[#D4B896]
+                  hover:bg-[#2B424A]
+                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
                   py-2 text-xs font-mono text-[#C9BC9C]
                   hover:bg-[#2C3D2C]
                   hover:text-[#F2E9D3] transition-colors flex items-center gap-2">
@@ -755,6 +789,9 @@ export default function StudentDashboard() {
               <div className="mb-6">
                 {/* Outlined header box — centered */}
                 <div className="flex justify-center mb-3">
+                  <div className="border-[1.5px] border-[#6A381F]
+                    px-8 py-2 font-mono text-sm font-semibold
+                    tracking-widest text-[#432818]
                   <div className="border-[1.5px] border-[#5C4526]
                     px-8 py-[5px] font-mono text-[10px]
                     tracking-widest text-[#3B2E20]
@@ -766,6 +803,9 @@ export default function StudentDashboard() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-[1.5px] bg-[#C6A868] opacity-80" />
                   <div
+                    className="border-[2.5px] border-[#6A381F]
+                      px-4 py-2 font-mono text-base font-bold
+                      uppercase tracking-widest text-[#432818]
                     className="border-[2.5px] border-[#5C4526]
                       px-4 py-[5px] font-mono text-xs font-bold
                       uppercase tracking-widest text-[#3B2E20]
