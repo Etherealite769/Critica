@@ -130,7 +130,7 @@ const S = {
     fontFamily: F,
   },
   card: {
-    maxWidth: 640,
+    maxWidth: 760,
     width: '100%',
     background: C.cardPaper,
     border: `1px solid ${C.cardBdr}`,
@@ -277,7 +277,7 @@ function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: ()
   return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
-      <div className={styles.screenCard} style={{ maxWidth: 640, width: '100%',
+      <div className={styles.screenCard} style={{ maxWidth: 720, width: '100%',
         background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
         <div style={S.stamp}>MICRO-LESSON</div>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: F }}>
@@ -1112,14 +1112,14 @@ export default function SnapInGapPage() {
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', borderRadius: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', borderRadius: 8, width: '100%', maxWidth: 1080 }}>
 
         {/* ── BOARD WRAPPER ── */}
         <div className={styles.boardEnter} style={{
           background: C.board, border: canvasOutline,
-          borderRadius: 6, overflow: 'hidden',
+          borderRadius: 8, overflow: 'hidden',
           transition: 'border-color 0.4s',
-          display: 'flex', flexDirection: 'column', width: 900,
+          display: 'flex', flexDirection: 'column', width: '100%', minHeight: 560,
         }}>
 
           {/* ── Header row 1: objective ── */}
@@ -1190,23 +1190,23 @@ export default function SnapInGapPage() {
           )}
 
           {/* ── 3-COLUMN LAYOUT: sentence A | tile dock | sentence B ── */}
-          <div style={{ display: 'flex', gap: 20, padding: '22px 28px 0', background: C.canvas, alignItems: 'stretch', flex: 1, position: 'relative' }}>
+          <div style={{ display: 'flex', gap: 22, padding: '24px 28px 4px', background: C.canvas, alignItems: 'stretch', flex: 1, minHeight: 380, position: 'relative' }}>
 
             {/* LEFT — Sentence A */}
             <div style={{
               flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
-              borderRadius: 8, padding: '20px 22px',
-              fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
-              maxHeight: 280, overflowY: 'auto', wordBreak: 'break-word',
+              borderRadius: 8, padding: '22px 24px',
+              fontSize: 15, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+              minHeight: 340, maxHeight: 420, overflowY: 'auto', wordBreak: 'break-word',
             }}>
               {currentPair ? currentPair.sentence_a : ''}
             </div>
 
             {/* MIDDLE — Scrollable tile dock */}
-            <div style={{ width: 168, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               {/* dock label */}
               <div style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: '0.13em',
+                fontSize: 10, fontWeight: 700, letterSpacing: '0.13em',
                 color: C.textMid, fontFamily: F, textAlign: 'center',
               }}>
                 TRANSITION TILE DOCK
@@ -1233,7 +1233,7 @@ export default function SnapInGapPage() {
                 borderRadius: 8,
                 display: 'flex', flexDirection: 'column',
                 boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.06), 3px 0 0 ${C.cardBdr}`,
-                maxHeight: 280,
+                minHeight: 340, maxHeight: 420,
               }}>
                 {snapNode!.transition_tile_dock.map((tile, idx) => (
                   <button
@@ -1275,9 +1275,9 @@ export default function SnapInGapPage() {
             {/* RIGHT — Sentence B */}
             <div style={{
               flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
-              borderRadius: 8, padding: '20px 22px',
-              fontSize: 14, lineHeight: 1.85, color: C.textDark, fontFamily: F,
-              maxHeight: 280, overflowY: 'auto', wordBreak: 'break-word',
+              borderRadius: 8, padding: '22px 24px',
+              fontSize: 15, lineHeight: 1.85, color: C.textDark, fontFamily: F,
+              minHeight: 340, maxHeight: 420, overflowY: 'auto', wordBreak: 'break-word',
             }}>
               {currentPair ? (
                 currentPair.sentence_b ? (currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)) : ''
@@ -1288,37 +1288,52 @@ export default function SnapInGapPage() {
             {hintOverlay && (
               <div className={styles.hintOverlay} style={{
                 position: 'absolute', inset: 0,
-                background: 'rgba(0,0,0,0.52)', zIndex: 30,
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 18,
+                background: 'rgba(0,0,0,0.58)', zIndex: 30,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+                backdropFilter: 'blur(2px)',
               }}>
                 <div className={styles.hintCard} style={{
                   background: C.cardPaper, border: `2px solid ${C.cardBdr}`,
-                  borderRadius: 6, padding: '18px 20px 16px',
-                  maxWidth: 320, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+                  borderRadius: 8, padding: '22px 26px 20px',
+                  width: '100%', maxWidth: 500,
+                  maxHeight: '94%',
+                  boxShadow: '0 12px 36px rgba(0,0,0,0.45)',
+                  display: 'flex', flexDirection: 'column',
+                  overflowY: 'auto',
                 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: F }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: F, flexShrink: 0 }}>
                     AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
                   </div>
-                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: F }}>
+                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: F, flexShrink: 0 }}>
                     {hintOverlayText}
                   </p>
 
                   {socraticText && (
-                    <div style={{ background: '#FFF2D6', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '10px 12px', margin: '0 0 14px' }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: C.textMid, marginBottom: 4, fontFamily: F }}>SOCRATIC GUIDANCE</div>
-                      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: C.textDark, fontFamily: F }}>{socraticText}</p>
+                    <div style={{
+                      background: '#FFF2D6', border: `1.5px solid ${C.btnGoldBdr}`,
+                      borderRadius: 6, padding: '12px 14px', margin: '0 0 16px',
+                      maxHeight: 180, overflowY: 'auto', flexShrink: 0,
+                    }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.textMid, marginBottom: 6, fontFamily: F, letterSpacing: '0.08em' }}>
+                        SOCRATIC GUIDANCE
+                      </div>
+                      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: C.textDark, fontFamily: F }}>
+                        {socraticText}
+                      </p>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, paddingTop: 4 }}>
                     <button
                       onClick={handleAskSocraticAdvice}
                       disabled={socraticLoading}
                       style={{
-                        fontSize: 10, fontWeight: 700, color: C.textDark,
+                        fontSize: 11, fontWeight: 700, color: C.textDark,
                         background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
-                        padding: '6px 12px', cursor: 'pointer',
-                        fontFamily: F, letterSpacing: '0.04em', borderRadius: 4,
+                        padding: '8px 16px', cursor: socraticLoading ? 'wait' : 'pointer',
+                        fontFamily: F, letterSpacing: '0.04em', borderRadius: 6,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
@@ -1326,10 +1341,11 @@ export default function SnapInGapPage() {
                     <button
                       onClick={() => { setHintOverlay(false); setSocraticText('') }}
                       style={{
-                        fontSize: 10, fontWeight: 700, color: C.textMid,
-                        background: 'transparent', border: `1px solid ${C.textMid}`,
-                        padding: '6px 12px', cursor: 'pointer',
-                        fontFamily: F, borderRadius: 4,
+                        fontSize: 11, fontWeight: 700, color: C.textMid,
+                        background: 'transparent', border: `1px solid ${C.btnGoldBdr}`,
+                        padding: '8px 16px', cursor: 'pointer',
+                        fontFamily: F, borderRadius: 6,
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       Close
