@@ -563,34 +563,24 @@ export default function StudentDashboard() {
 
   // ── Loading state ─────────────────────────
   if (loading) return (
-    <div className="min-h-screen
-      flex items-center justify-center
-      font-mono text-[#C4A882] text-sm"
+    <div
+      className="min-h-screen flex items-center justify-center font-mono text-[#C4A882] text-sm"
       style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
-    <div className="min-h-screen bg-[#1F2E23]
-      flex items-center justify-center
-      font-mono text-[#C9BC9C] text-sm">
       Loading...
     </div>
   )
 
   // ── Error state ───────────────────────────
   if (error) return (
-    <div className="min-h-screen
-      flex items-center justify-center
-      font-mono text-red-400 text-sm
-      flex-col gap-4"
+    <div
+      className="min-h-screen flex items-center justify-center font-mono text-red-400 text-sm flex-col gap-4"
       style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
-    <div className="min-h-screen bg-[#1F2E23]
-      flex items-center justify-center
-      font-mono text-[#D98B65] text-sm
-      flex-col gap-4">
       <p>{error}</p>
       <button
         onClick={() => router.push('/auth')}
-        className="border border-[#5C6B5C] px-4 py-2
-          text-xs text-[#C9BC9C] hover:text-[#FBF6E8]
-          hover:border-[#D3A63C] transition-colors">
+        className="border border-[#BEA791] px-4 py-2
+          text-xs text-[#D4B896] hover:text-[#FFF8ED]
+          hover:border-[#BEA791] transition-colors">
         Go to Login
       </button>
     </div>
@@ -602,8 +592,6 @@ export default function StudentDashboard() {
     <div
       className="min-h-screen text-[#F4E6CC] font-serif"
       style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
-      className="min-h-screen text-[#F2E9D3] font-serif"
-     style={{ background: '#4E6E52' }}>
 
       {/* ── TOPBAR ── */}
       <header className="h-[52px] bg-[#414833]/90 backdrop-blur-sm border-b border-[#BEA791]/55 shadow-sm
@@ -636,10 +624,6 @@ export default function StudentDashboard() {
             hover:text-[#FFF8ED] hover:border-[#BEA791]
             px-2.5 py-1 rounded border border-[#BEA791]/60
             bg-[#414833] cursor-pointer transition-all"
-          className="flex items-center gap-2 font-mono text-xs text-[#C9BC9C]
-            hover:text-[#FBF6E8] hover:border-[#D3A63C]
-            px-2.5 py-1 rounded border border-[#5C4526]
-            bg-[#20301F]/60 cursor-pointer transition-all"
           title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
           <span className="text-amber-400">⚡</span>
           <span>
@@ -647,7 +631,6 @@ export default function StudentDashboard() {
             &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
           </span>
           <div className="w-12 h-1.5 bg-[#414833] rounded-full overflow-hidden border border-[#BEA791]/50 ml-0.5">
-          <div className="w-12 h-1.5 bg-[#3B2E20] rounded-full overflow-hidden border border-[#5C4526]/60 ml-0.5">
             <div
               className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
               style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
@@ -663,10 +646,6 @@ export default function StudentDashboard() {
             hover:text-[#FFF8ED] hover:border-[#BEA791]
             px-2.5 py-1 rounded border border-[#BEA791]/60
             bg-[#414833] cursor-pointer transition-all"
-            font-mono text-xs text-[#C9BC9C]
-            hover:text-[#FBF6E8] hover:border-[#D3A63C]
-            px-2.5 py-1 rounded border border-[#5C4526]
-            bg-[#20301F]/60 cursor-pointer transition-all"
           title="Open the Field Manual & Interactive Demo">
           <span>📖</span>
           <span className="font-bold">FIELD GUIDE</span>
@@ -676,8 +655,8 @@ export default function StudentDashboard() {
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="flex items-center gap-2
-              font-mono text-xs text-[#C9BC9C]
-              hover:text-[#F2E9D3] cursor-pointer
+              font-mono text-xs text-[#D4B896]
+              hover:text-[#FFF8ED] cursor-pointer
               transition-colors">
             <span>👤</span>
             {dashboard?.first_name && dashboard?.last_name
@@ -688,8 +667,6 @@ export default function StudentDashboard() {
             <div className="absolute top-full
               right-0 mt-2 bg-[#414833]
               border border-[#BEA791]/60 rounded-sm
-              right-0 mt-2 bg-[#1F2E23]
-              border border-[#3E4F3D] rounded-sm
               shadow-lg z-50 min-w-[170px]">
               <button
                 onClick={() => {
@@ -709,18 +686,6 @@ export default function StudentDashboard() {
                   py-2 text-xs font-mono text-[#D4B896]
                   hover:bg-[#2B424A]
                   hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
-                  py-2 text-xs font-mono text-[#C9BC9C]
-                  hover:bg-[#2C3D2C]
-                  hover:text-[#F2E9D3] transition-colors flex items-center gap-2">
-                <span>📖</span> Field Manual & Demo
-              </button>
-              <div className="h-px bg-[#3E4F3D]" />
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4
-                  py-2 text-xs font-mono text-[#C9BC9C]
-                  hover:bg-[#2C3D2C]
-                  hover:text-[#F2E9D3] transition-colors flex items-center gap-2">
                 <span>🚪</span> Logout
               </button>
             </div>
@@ -761,7 +726,7 @@ export default function StudentDashboard() {
                     transition-all cursor-pointer
                     ${isActive
                       ? 'bg-[#F2E9D3] text-[#3B2E20] h-[64px] rounded-t-lg'
-                      : 'bg-[#C6A868] text-[#3B2E20] hover:bg-[#B08F52] hover:text-[#1F2E23] h-[52px] rounded-t-lg'
+                      : 'bg-[#C6A868] text-[#3B2E20] hover:bg-[#B08F52] hover:text-[#414833] h-[52px] rounded-t-lg'
                     }`}>
                   {tab.label}
                 </button>
@@ -792,9 +757,6 @@ export default function StudentDashboard() {
                   <div className="border-[1.5px] border-[#6A381F]
                     px-8 py-2 font-mono text-sm font-semibold
                     tracking-widest text-[#432818]
-                  <div className="border-[1.5px] border-[#5C4526]
-                    px-8 py-[5px] font-mono text-[10px]
-                    tracking-widest text-[#3B2E20]
                     bg-transparent whitespace-nowrap">
                     OFFICIAL STUDENT DASHBOARD DOCUMENT
                   </div>
@@ -806,9 +768,6 @@ export default function StudentDashboard() {
                     className="border-[2.5px] border-[#6A381F]
                       px-4 py-2 font-mono text-base font-bold
                       uppercase tracking-widest text-[#432818]
-                    className="border-[2.5px] border-[#5C4526]
-                      px-4 py-[5px] font-mono text-xs font-bold
-                      uppercase tracking-widest text-[#3B2E20]
                       bg-transparent whitespace-nowrap"
                     style={{ transform: 'rotate(-1.5deg)' }}>
                     {activeTabCfg.header}
