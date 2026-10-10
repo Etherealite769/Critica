@@ -17,7 +17,17 @@ class User(Document):
     password = StringField(required=True)
     is_active = BooleanField(default=True)
     is_staff = BooleanField(default=False)
-    
+
+    # Email verification. New sign-ups start as 'unverified'; documents created
+    # before this field existed load with the default 'active' so existing
+    # accounts keep working.
+    account_status = StringField(default='active', choices=('unverified', 'active'))
+    verification_code_hash = StringField()
+    verification_link_hash = StringField()   # one-click email link (HMAC)
+    verification_expires_at = DateTimeField()
+    verification_attempts = IntField(default=0)
+    verification_sent_at = DateTimeField()
+
     # Progression tracking
     streak = IntField(default=0)
     total_xp = IntField(default=0)
@@ -28,7 +38,7 @@ class User(Document):
     
     meta = {
         'collection': 'users',
-        'indexes': ['email']
+        'indexes': ['email', {'fields': ['verification_link_hash'], 'sparse': True}]
     }
     
     def __str__(self):

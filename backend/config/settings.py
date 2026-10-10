@@ -29,7 +29,8 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fahptlbc+_5y8o_2^da#895p1vq!aasxn&94tn=o363-+aurpv')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+# Production-safe default: DEBUG is off unless explicitly enabled (local .env sets DEBUG=True)
+DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 from corsheaders.defaults import default_headers
 
@@ -218,7 +219,30 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Django 5.1+ ignores the old STATICFILES_STORAGE setting; configure via STORAGES.
+# Compressed (non-manifest) storage so a missing collectstatic can't 500 the app;
+# run `python manage.py collectstatic --noinput` in the host's build step.
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage'},
+}
+
+# ── Production security (active when DEBUG is off) ──
+if not DEBUG:
+    # Render/Railway terminate TLS at their proxy and forward the original scheme
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False   # shared *.onrender.com host
+    SECURE_HSTS_PRELOAD = False
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
+    if SECRET_KEY.startswith('django-insecure-'):
+        import warnings
+        warnings.warn('SECRET_KEY is the insecure development default — set SECRET_KEY on the host!')
 
 # Default Auto Field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -231,7 +255,44 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.AllowAny',
     ),
+    # Per-IP limits for the public auth helpers (throttle classes live in
+    # api/email_verification.py and are attached per view).
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_check_email': '30/min',
+        'auth_verify_email': '10/min',
+        'auth_resend_verification': '5/hour',
+    },
 }
+
+# Email (verification codes) — Gmail SMTP by default.
+# Set in backend/.env (see backend/.env.example):
+#   EMAIL_SERVER_HOST=smtp.gmail.com   EMAIL_SERVER_PORT=587
+#   EMAIL_SERVER_USER=you@gmail.com    EMAIL_SERVER_PASSWORD=<16-char Gmail App Password>
+#   EMAIL_FROM="Critica Bureau <you@gmail.com>"
+# (Values come from backend/.env, loaded by load_dotenv() at the top of this file.)
+# If USER or PASSWORD is missing, api/email_verification.py skips sending and
+# logs the code and one-click verification URL to the server console instead.
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_SERVER_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_SERVER_PORT', 587))
+EMAIL_USE_TLS = True    # STARTTLS on 587 (Gmail)
+EMAIL_USE_SSL = False
+# .env EMAIL_SERVER_* → Django's standard EMAIL_HOST_* names.
+# Gmail requires the authenticated account to be the sender, so the From
+# address defaults to EMAIL_HOST_USER.
+EMAIL_HOST_USER = (os.getenv('EMAIL_SERVER_USER') or 'agentcritica@gmail.com').strip()
+# Gmail shows App Passwords as 4 groups of 4 — strip all whitespace
+EMAIL_HOST_PASSWORD = ''.join((os.getenv('EMAIL_SERVER_PASSWORD') or '').split())
+EMAIL_TIMEOUT = 15
+# Django only logs in to SMTP when BOTH user and password are non-empty;
+# without a password Gmail answers "530 Authentication Required"
+# (SMTPSenderRefused), so verification emails fall back to console logging.
+EMAIL_DELIVERY_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+DEFAULT_FROM_EMAIL = (os.getenv('EMAIL_FROM') or '').strip() or f'Inspector Crit <{EMAIL_HOST_USER}>'
+SERVER_EMAIL = EMAIL_HOST_USER
+
+# Public frontend URL, used for the one-click verification link in emails
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
 
 # JWT Configuration
 from datetime import timedelta

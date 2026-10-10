@@ -1,12 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/api';
+import { IdCard, KeyRound, LoaderCircle, Stamp } from 'lucide-react';
+import PasswordField from './PasswordField';
+import PasswordStrength from './PasswordStrength';
+import TermsModal from './TermsModal';
+import VerificationModal from './VerificationModal';
+import { EMAIL_RE, passwordMeetsPolicy } from './passwordPolicy';
+import styles from './auth.module.css';
 
 interface SignUpFormData {
   firstName: string; lastName: string; email: string; password: string; passwordConfirm: string;
 }
+
+type EmailStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'error';
+
+const EMAIL_TAKEN_MSG = 'Cadet email is already registered in the Bureau database.';
 
 export default function SignUpForm() {
   const router = useRouter();
@@ -16,19 +27,66 @@ export default function SignUpForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
+  const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
+  const [verifyNotice, setVerifyNotice] = useState('');
+  const checkAbort = useRef<AbortController | null>(null);
+  const lastChecked = useRef('');  // skip duplicate checks (debounce + blur)
 
   const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'email') { setEmailStatus('idle'); lastChecked.current = ''; }
   };
+
+  // ── Async email availability check (debounced while typing, immediate on blur) ──
+  const checkEmail = useCallback(async (raw: string) => {
+    const email = raw.trim();
+    if (!email) { setEmailStatus('idle'); return; }
+    if (!EMAIL_RE.test(email)) { setEmailStatus('invalid'); return; }
+    if (email.toLowerCase() === lastChecked.current) return;
+    lastChecked.current = email.toLowerCase();
+    checkAbort.current?.abort();
+    const ctrl = new AbortController();
+    checkAbort.current = ctrl;
+    setEmailStatus('checking');
+    try {
+      const res = await fetch(`${API_BASE}/auth/check-email/?email=${encodeURIComponent(email)}`, { signal: ctrl.signal });
+      if (!res.ok) { lastChecked.current = ''; setEmailStatus('error'); return; }
+      const data = await res.json();
+      setEmailStatus(data.available ? 'available' : 'taken');
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') { lastChecked.current = ''; setEmailStatus('error'); }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!formData.email.trim()) return;
+    const t = setTimeout(() => { void checkEmail(formData.email); }, 500);
+    return () => clearTimeout(t);
+  }, [formData.email, checkEmail]);
+
+  useEffect(() => () => checkAbort.current?.abort(), []);
+
+  const passwordsMismatch =
+    formData.password.length > 0 &&
+    formData.passwordConfirm.length > 0 &&
+    formData.password !== formData.passwordConfirm;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(''); setSuccess('');
     const { firstName, lastName, email, password, passwordConfirm } = formData;
-    if (!firstName || !lastName || !email || !password || !passwordConfirm) { setError('ALL FIELDS ARE REQUIRED.'); return; }
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !passwordConfirm) { setError('ALL FIELDS ARE REQUIRED.'); return; }
+    if (!EMAIL_RE.test(email.trim())) { setError('PLEASE ENTER A VALID EMAIL ADDRESS.'); return; }
+    if (emailStatus === 'taken') { setError(EMAIL_TAKEN_MSG.toUpperCase()); return; }
     if (password !== passwordConfirm) { setError('PASSWORDS DO NOT MATCH.'); return; }
-    if (password.length < 8) { setError('PASSWORD MUST BE AT LEAST 8 CHARACTERS.'); return; }
+    if (!passwordMeetsPolicy(password)) { setError('PASSWORD DOES NOT MEET ALL SECURITY REQUIREMENTS.'); return; }
+    if (!agreedToTerms) { setError('YOU MUST AGREE TO THE BUREAU FIELD RULES & TERMS OF SERVICE.'); return; }
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/register/`, {
@@ -37,7 +95,19 @@ export default function SignUpForm() {
         body: JSON.stringify({ first_name: firstName, last_name: lastName, email, password, password_confirm: passwordConfirm }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || JSON.stringify(data)); return; }
+      if (!res.ok) {
+        if (data.code === 'email_taken') setEmailStatus('taken');
+        setError(data.error || JSON.stringify(data));
+        return;
+      }
+      // New flow: account is created unverified → enter the emailed code
+      if (data.status === 'unverified') {
+        setSuccess('INDUCTION FORM FILED — VERIFY YOUR EMAIL TO CONTINUE.');
+        setVerifyNotice(data.email_sent === false ? "We couldn't send the email just now — use \"Resend code\"." : '');
+        setVerifyEmail(data.email || email.trim().toLowerCase());
+        return;
+      }
+      // Backwards compatible: a backend that still returns tokens directly
       localStorage.setItem('accessToken', data.tokens.access);
       localStorage.setItem('refreshToken', data.tokens.refresh);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -50,142 +120,142 @@ export default function SignUpForm() {
     }
   };
 
+  const emailHint = {
+    idle: null,
+    invalid: <p className={styles.fieldHint}>Enter a valid email address.</p>,
+    checking: (
+      <p className={`${styles.fieldHint} ${styles.fieldHintMuted}`}>
+        <LoaderCircle size={11} className={styles.spin} aria-hidden /> Checking Bureau records…
+      </p>
+    ),
+    available: <p className={`${styles.fieldHint} ${styles.fieldHintOk}`}>Email clear for enrollment.</p>,
+    taken: <p className={styles.fieldHint} role="alert">{EMAIL_TAKEN_MSG}</p>,
+    error: null, // network hiccup: the server re-checks on submit anyway
+  }[emailStatus];
+
   return (
-    <div style={s.inner}>
-      {/* Document header — outlined box, centered */}
-      <div style={s.hdrWrap}>
-        <div style={s.hdr}>NEW STUDENT ENROLLMENT FORM</div>
-      </div>
-
-      {/* Stamp flanked by lines */}
-      <div style={s.stampRow}>
-        <div style={s.stampLine} />
-        <span style={s.stamp}>ENROLLMENT FORM</span>
-        <div style={s.stampLine} />
-      </div>
-
-      {/* Section Divider */}
-      <div style={s.sec}>
-        <span>PERSONAL INFORMATION</span>
-        <div style={s.hrLine} />
+    <div>
+      {/* Form header with CONFIDENTIAL stamp + Inspector Crit's tip */}
+      <div className={styles.formHead}>
+        <div className={styles.formTitle}>FIELD CADET INDUCTION FORM</div>
+        <span className={styles.stamp} aria-hidden>CONFIDENTIAL</span>
+        <p className={styles.tip}>Fill in all credentials carefully, Cadet. — Inspector Crit</p>
       </div>
 
       {/* Messages */}
-      {error && <div style={{ ...s.msg, ...s.msgErr }}>{error}</div>}
-      {success && <div style={{ ...s.msg, ...s.msgOk }}>{success}</div>}
+      {error && <div className={`${styles.msg} ${styles.msgErr}`} role="alert">{error}</div>}
+      {success && <div className={`${styles.msg} ${styles.msgOk}`} role="status">{success}</div>}
 
-      <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1, marginTop: '12px' }}>
-        <div style={s.twoCol}>
-          <div>
-            <label style={s.lbl}>FIRST NAME</label>
-            <input style={s.inp} type="text" name="firstName" value={formData.firstName} onChange={handle} required />
-          </div>
-          <div>
-            <label style={s.lbl}>LAST NAME</label>
-            <input style={s.inp} type="text" name="lastName" value={formData.lastName} onChange={handle} required />
-          </div>
+      {/* noValidate: our themed checks below replace the browser's native bubbles */}
+      <form onSubmit={handleSubmit} noValidate>
+        {/* Section: identity */}
+        <div className={styles.sec}>
+          <IdCard size={14} aria-hidden />
+          <span>CADET IDENTITY</span>
+          <div className={styles.secLine} />
         </div>
 
-        <div style={{ marginBottom: '14px' }}>
-          <label style={s.lbl}>EMAIL ADDRESS</label>
-          <input style={s.inp} type="email" name="email" value={formData.email} onChange={handle} required />
-        </div>
-
-        {/* Credentials Section */}
-        <div style={{ ...s.sec, marginTop: '20px' }}>
-          <span>ACCESS CREDENTIALS</span>
-          <div style={s.hrLine} />
-        </div>
-
-        <div style={s.twoCol}>
-          <div>
-            <label style={s.lbl}>PASSWORD</label>
-            <input style={s.inp} type="password" name="password" value={formData.password} onChange={handle} required />
+        <div className={styles.twoCol}>
+          <div className={styles.field}>
+            <label className={styles.lbl} htmlFor="su-first">FIRST NAME</label>
+            <input id="su-first" className={styles.inp} type="text" name="firstName" value={formData.firstName} onChange={handle} autoComplete="given-name" required />
           </div>
-          <div>
-            <label style={s.lbl}>CONFIRM PASSWORD</label>
-            <input style={s.inp} type="password" name="passwordConfirm" value={formData.passwordConfirm} onChange={handle} required />
+          <div className={styles.field}>
+            <label className={styles.lbl} htmlFor="su-last">LAST NAME</label>
+            <input id="su-last" className={styles.inp} type="text" name="lastName" value={formData.lastName} onChange={handle} autoComplete="family-name" required />
           </div>
         </div>
 
-        <div style={s.subWrap}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ ...s.btn, opacity: loading ? 0.55 : 1 }}
-            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #414833'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #414833'; e.currentTarget.style.transform = 'none'; }}
-          >
-            {loading ? 'Submitting...' : 'Submit Enrollment Form'}
+        <div className={styles.field}>
+          <label className={styles.lbl} htmlFor="su-email">EMAIL ADDRESS</label>
+          <input
+            id="su-email"
+            className={`${styles.inp} ${emailStatus === 'taken' || emailStatus === 'invalid' ? styles.inpError : ''}`}
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handle}
+            onBlur={() => { void checkEmail(formData.email); }}
+            autoComplete="email"
+            aria-invalid={emailStatus === 'taken' || emailStatus === 'invalid'}
+            required
+          />
+          {emailHint}
+        </div>
+
+        {/* Section: credentials */}
+        <div className={styles.sec}>
+          <KeyRound size={14} aria-hidden />
+          <span>SECURITY CLEARANCE CREDENTIALS</span>
+          <div className={styles.secLine} />
+        </div>
+
+        <div className={styles.twoCol}>
+          <PasswordField
+            id="su-pass"
+            label="PASSWORD"
+            name="password"
+            value={formData.password}
+            onChange={handle}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            autoComplete="new-password"
+          />
+          <PasswordField
+            id="su-pass2"
+            label="CONFIRM PASSWORD"
+            name="passwordConfirm"
+            value={formData.passwordConfirm}
+            onChange={handle}
+            visible={showConfirmPassword}
+            onToggleVisible={() => setShowConfirmPassword((v) => !v)}
+            autoComplete="new-password"
+          />
+        </div>
+        <PasswordStrength password={formData.password} />
+        {passwordsMismatch && (
+          <p className={styles.fieldHint} role="status">Passphrases don&apos;t match yet.</p>
+        )}
+
+        {/* Terms & Conditions */}
+        <div className={styles.terms}>
+          <input
+            id="su-terms"
+            type="checkbox"
+            className={styles.checkbox}
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+          />
+          <label htmlFor="su-terms" className={styles.termsLabel}>
+            I agree to the{' '}
+            <button type="button" className={styles.termsLink} onClick={() => setShowTerms(true)}>
+              Bureau Field Rules &amp; Terms of Service
+            </button>
+          </label>
+        </div>
+        {!agreedToTerms && (
+          <p className={styles.termsNote}>Tick the box to file your induction form.</p>
+        )}
+
+        <div className={styles.subWrap}>
+          <button type="submit" disabled={loading || !agreedToTerms || emailStatus === 'taken'} className={styles.btn}>
+            <Stamp size={16} aria-hidden />
+            {loading ? 'Stamping…' : 'Stamp & Enroll'}
           </button>
         </div>
       </form>
+
+      <TermsModal
+        open={showTerms}
+        onClose={() => setShowTerms(false)}
+        onAccept={() => setAgreedToTerms(true)}
+      />
+      <VerificationModal
+        open={verifyEmail !== null}
+        email={verifyEmail ?? ''}
+        notice={verifyNotice}
+        onClose={() => setVerifyEmail(null)}
+      />
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  inner: { fontFamily: "'Courier Prime', monospace", position: 'relative', zIndex: 1, padding: '8px 4px' },
-
-  /* Header — outlined box, no fill */
-  hdrWrap: { display: 'flex', justifyContent: 'center', marginBottom: '10px' },
-  hdr: {
-    border: '2px solid #414833',
-    color: '#414833',
-    padding: '7px 18px',
-    fontSize: '10px',
-    fontWeight: 700,
-    letterSpacing: '0.22em',
-    fontFamily: "'Courier Prime', monospace",
-    textAlign: 'center',
-    background: 'transparent',
-  },
-
-  /* Stamp row — line / stamp / line */
-  stampRow: { display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 16px' },
-  stampLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
-  stamp: {
-    display: 'inline-block',
-    border: '2.5px solid #414833',
-    padding: '5px 14px',
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '11px',
-    fontWeight: 700,
-    letterSpacing: '0.18em',
-    color: '#414833',
-    background: 'transparent',
-    transform: 'rotate(-2deg)',
-    whiteSpace: 'nowrap',
-  },
-
-  /* Section dividers — label then line */
-  sec: { display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 10px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#414833', fontFamily: "'Courier Prime', monospace" },
-  hrLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
-
-  /* Messages */
-  msg: { borderRadius: '3px', padding: '7px 10px', fontSize: '10px', margin: '10px 0 4px', fontFamily: "'Courier Prime', monospace", letterSpacing: '0.05em' },
-  msgErr: { background: '#ead8d2', border: '1.5px solid #8b4f45', color: '#713d36' },
-  msgOk: { background: '#d4eed8', border: '1.5px solid #3a8050', color: '#1a5030' },
-
-  /* Labels & inputs */
-  lbl: { display: 'block', fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em', color: '#414833', marginBottom: '5px', fontFamily: "'Courier Prime', monospace" },
-  inp: { width: '100%', background: '#FFF8ED', border: '1px solid #BEA791', borderRadius: '8px', fontFamily: "'Courier Prime', monospace", fontSize: '13px', color: '#414833', padding: '8px 10px', outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box', marginBottom: '12px' },
-
-  /* Grid & button */
-  twoCol: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  subWrap: { textAlign: 'center', marginTop: '20px' },
-  btn: {
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '11px',
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    color: '#414833',
-    background: '#DCC9B6',
-    border: '2px solid #414833',
-    padding: '9px 26px',
-    cursor: 'pointer',
-    boxShadow: '3px 3px 0 #414833',
-    transition: 'box-shadow 0.1s, transform 0.1s',
-    borderRadius: '2px',
-  },
-};

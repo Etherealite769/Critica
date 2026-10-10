@@ -1,10 +1,13 @@
 from django.urls import path, include
-from .views import api_root, register, login
+from .views import api_root, register, login, check_email, verify_email, resend_verification
 
 urlpatterns = [
     path('', api_root, name='api_root'),
     path('auth/register/', register, name='register'),
     path('auth/login/', login, name='login'),
+    path('auth/check-email/', check_email, name='check_email'),
+    path('auth/verify-email/', verify_email, name='verify_email'),
+    path('auth/resend-verification/', resend_verification, name='resend_verification'),
 
     # new routes — add these
     path('progression/',

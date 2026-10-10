@@ -1,154 +1,119 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
+import { Crosshair, FolderLock, Paperclip } from 'lucide-react';
 import SignUpForm from '@/components/auth/SignUpForm';
 import SignInForm from '@/components/auth/SignInForm';
+import desk from '@/components/dashboard/desk.module.css';
+import styles from '@/components/auth/auth.module.css';
+
+// Red-string pins around the dossier: [left %, top %, pin colour]
+const PINS: [number, number, 'red' | 'amber'][] = [
+  [3, 6, 'red'],
+  [97, 12, 'red'],
+  [2, 90, 'amber'],
+  [98, 78, 'red'],
+];
 
 export default function AuthPage() {
-  const [activeTab, setActiveTab] = useState<'signup' | 'signin'>('signup');
+  const [authMode, setAuthMode] = useState<'signup' | 'signin'>('signup');
 
   return (
-    <main className="auth-page">
-      <div className="folder-unit">
+    <main data-auth className={`${desk.desk} ${styles.page}`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
 
-        {/* Folder Tabs */}
-        <div className="tab-row">
-          <button
-            onClick={() => setActiveTab('signup')}
-            className={`tab-btn ${activeTab === 'signup' ? 'tab-active' : 'tab-inactive'}`}
-          >
-            Sign Up
-          </button>
-          <button
-            onClick={() => setActiveTab('signin')}
-            className={`tab-btn ${activeTab === 'signin' ? 'tab-active' : 'tab-inactive'}`}
-          >
-            Sign In
-          </button>
-        </div>
-
-        {/* Folder Body */}
-        <div className="folder-body">
-
-          {/* Binder punch holes */}
-          <div className="binder-holes">
-            <div className="hole" />
-            <div className="hole" />
-            <div className="hole" />
-            <div className="hole" />
-          </div>
-
-          {/* Form content directly on folder */}
-          <div className="form-content">
-            {activeTab === 'signup' ? <SignUpForm /> : <SignInForm />}
-          </div>
-
-        </div>
+      {/* Bureau header */}
+      <div className={styles.brand}>
+        <Image
+          src="/mascot-detective.png"
+          alt="Inspector Crit, the Critica detective caterpillar"
+          width={44}
+          height={44}
+          priority
+        />
+        <Crosshair size={17} color="#9e2a2b" aria-hidden />
+        CRITICA
+        <span className={styles.brandSub}>{'// CADET ENROLLMENT'}</span>
       </div>
 
-      <style>{`
-        html, body {
-          background: #414833 !important;
-          margin: 0;
-          padding: 0;
-          min-height: 100%;
-        }
+      <div className={styles.folderUnit}>
 
-        .auth-page {
-          min-height: 100vh;
-          background: radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 2rem 1rem;
-          font-family: 'Courier New', Courier, monospace;
-        }
+        {/* Red forensic string from the dossier to the board */}
+        <div className={styles.strings} aria-hidden>
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <g stroke="#c22b2d" strokeWidth="2" fill="none" opacity="0.85">
+              <path d="M3 6 Q 10 20 18 22" vectorEffect="non-scaling-stroke" />
+              <path d="M97 12 Q 90 26 83 28" vectorEffect="non-scaling-stroke" />
+              <path d="M2 90 Q 10 80 18 76" vectorEffect="non-scaling-stroke" />
+              <path d="M98 78 Q 90 70 83 66" vectorEffect="non-scaling-stroke" />
+              <path d="M3 6 Q 1 50 2 90" vectorEffect="non-scaling-stroke" />
+            </g>
+          </svg>
+          {PINS.map(([x, y, c]) => (
+            <span
+              key={`${x}-${y}`}
+              className={`${styles.pin} ${c === 'amber' ? styles.pinAmber : ''}`}
+              style={{ left: `${x}%`, top: `${y}%` }}
+            />
+          ))}
+        </div>
 
-        .folder-unit {
-          width: 560px;
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-        }
+        {/* Folder Tabs */}
+        <div className={styles.tabRow} role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMode === 'signup'}
+            onClick={() => setAuthMode('signup')}
+            className={`${styles.tab} ${authMode === 'signup' ? styles.tabActive : styles.tabInactive}`}
+          >
+            {authMode === 'signup' && <Paperclip size={24} strokeWidth={1.75} className={styles.tabClip} aria-hidden />}
+            SIGN UP
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMode === 'signin'}
+            onClick={() => setAuthMode('signin')}
+            className={`${styles.tab} ${authMode === 'signin' ? styles.tabActive : styles.tabInactive}`}
+          >
+            {authMode === 'signin' && <Paperclip size={24} strokeWidth={1.75} className={styles.tabClip} aria-hidden />}
+            SIGN IN
+          </button>
+        </div>
 
-        /* ── Tabs ── */
-        .tab-row {
-          display: flex;
-          flex-direction: row;
-          align-items: flex-end;
-          justify-content: flex-end;
-          gap: 4px;
-          padding-bottom: 0;
-          padding-right: 40px;
-        }
+        {/* Recruitment dossier */}
+        <div className={styles.folder}>
+          <Paperclip size={36} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
 
-        .tab-btn {
-          padding: 9px 28px;
-          font-family: 'Courier New', Courier, monospace;
-          font-size: 13px;
-          font-weight: 700;
-          border: none;
-          cursor: pointer;
-          letter-spacing: 0.05em;
-          border-radius: 8px 8px 0 0;
-          transition: background 0.12s, color 0.12s;
-          line-height: 1;
-        }
+          {/* Binder rings */}
+          <div className={styles.rings} aria-hidden>
+            <div className={styles.ring} />
+            <div className={styles.ring} />
+            <div className={styles.ring} />
+            <div className={styles.ring} />
+          </div>
 
-        .tab-active {
-          background: #F2DEC1 !important;
-          color: #414833;
-          padding: 10px 28px 12px;
-        }
+          <div className={styles.dossierBar}>
+            <span>
+              <FolderLock size={14} color="#4e3629" aria-hidden />
+              RECRUITMENT DOSSIER {'//'} PERSONNEL FILE
+            </span>
+            <span className={styles.fileNo}>
+              FILE NO. {authMode === 'signup' ? 'CR-NEW' : 'CR-ACT'}
+            </span>
+          </div>
 
-        .tab-inactive {
-          background: #BEA791;
-          color: #414833;
-          padding: 8px 28px 10px;
-        }
-
-        .tab-inactive:hover {
-          background: #DCC9B6;
-          color: #414833;
-        }
-
-        /* ── Folder Body ── */
-        .folder-body {
-          background: #F2DEC1;
-          border-radius: 12px 12px 12px 12px;
-          padding: 16px 16px 24px 12px;
-          position: relative;
-          width: 100%;
-          box-sizing: border-box;
-          box-shadow: 0 8px 32px rgba(34, 51, 59, 0.45);
-        }
-
-        /* ── Punch Holes ── */
-        .binder-holes {
-          position: absolute;
-          left: 16px;
-          top: 20px;
-          bottom: 20px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-around;
-        }
-
-        .hole {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          background: rgba(34, 51, 59, 0.12);
-          border: 2px solid rgba(34, 51, 59, 0.28);
-          box-sizing: border-box;
-        }
-
-        /* ── Form Content ── */
-        .form-content {
-          padding: 8px 16px 16px 52px;
-          box-sizing: border-box;
-        }
-      `}</style>
+          {/* Same locked dossier for both tabs; the form fades in on switch */}
+          <div className={styles.folderScroll}>
+            <div key={authMode} className={styles.formSwap}>
+              {authMode === 'signup' ? <SignUpForm /> : <SignInForm />}
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

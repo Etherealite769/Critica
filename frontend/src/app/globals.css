@@ -38,3 +38,15 @@ html:has([data-dashboard])::-webkit-scrollbar,
 html:has([data-dashboard]) body::-webkit-scrollbar {
   display: none;
 }
+
+/* Auth page: bureau-slate canvas behind the dossier (no olive overscroll) */
+html:has([data-auth]),
+html:has([data-auth]) body {
+  background: #1e2227;
+}
+
+html:has([data-auth]),
+html:has([data-auth]) body {
+  overflow: hidden;
+  scrollbar-width: none;
+}

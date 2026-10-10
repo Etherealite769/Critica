@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { API_BASE } from '@/lib/api';
+import { IdCard, KeyRound, MailWarning, ShieldCheck } from 'lucide-react';
+import PasswordField from './PasswordField';
+import VerificationModal from './VerificationModal';
+import styles from './auth.module.css';
 
 export default function SignInForm() {
   const router = useRouter();
@@ -11,11 +15,17 @@ export default function SignInForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  // Set when the account exists but its email isn't verified yet
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [resendOnOpen, setResendOnOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setPendingEmail(null);
     if (!email || !password) { setError('EMAIL AND PASSWORD ARE REQUIRED.'); return; }
     setLoading(true);
     try {
@@ -25,6 +35,10 @@ export default function SignInForm() {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
+      if (res.status === 403 && data.code === 'email_unverified') {
+        setPendingEmail(data.email || email.trim().toLowerCase());
+        return;
+      }
       if (!res.ok) { setError(data.error || data.detail || 'LOGIN FAILED. PLEASE CHECK YOUR CREDENTIALS.'); return; }
       localStorage.setItem('accessToken', data.tokens.access);
       localStorage.setItem('refreshToken', data.tokens.refresh);
@@ -39,169 +53,108 @@ export default function SignInForm() {
   };
 
   return (
-    <div style={s.inner}>
-      {/* Header — outlined box, centered */}
-      <div style={s.hdrWrap}>
-        <div style={s.hdr}>OFFICIAL STUDENT AUTHENTICATION DOCUMENT</div>
-      </div>
-
-      {/* Stamp flanked by lines */}
-      <div style={s.stampRow}>
-        <div style={s.stampLine} />
-        <span style={s.stamp}>AUTHENTICATION FORM</span>
-        <div style={s.stampLine} />
-      </div>
-
-      {/* Section label — text then line */}
-      <div style={s.sec}>
-        <span>IDENTIFICATION</span>
-        <div style={s.hrLine} />
+    <div>
+      {/* Form header with clearance stamp + Inspector Crit's tip */}
+      <div className={styles.formHead}>
+        <div className={styles.formTitle}>FIELD INVESTIGATOR LOGIN</div>
+        <span className={`${styles.stamp} ${styles.stampLong}`} aria-hidden>SECURITY CLEARANCE VERIFICATION</span>
+        <p className={styles.tip}>Accessing classified case files requires clearance. — Inspector Crit</p>
       </div>
 
       {/* Messages */}
-      {error && <div style={{ ...s.msg, ...s.msgErr }}>{error}</div>}
-      {success && <div style={{ ...s.msg, ...s.msgOk }}>{success}</div>}
+      {error && <div className={`${styles.msg} ${styles.msgErr}`} role="alert">{error}</div>}
+      {success && <div className={`${styles.msg} ${styles.msgOk}`} role="status">{success}</div>}
 
-      <form onSubmit={handleSubmit} style={{ position: 'relative', zIndex: 1, marginTop: '16px' }}>
-        <div style={s.fieldGroup}>
-          <label style={s.lbl}>EMAIL ADDRESS</label>
+      {/* Unverified account: prompt to verify or resend */}
+      {pendingEmail && (
+        <div className={styles.pendingBox} role="alert">
+          <MailWarning size={16} aria-hidden className={styles.pendingIcon} />
+          <div>
+            <p className={styles.pendingText}>
+              Account pending verification. Check your email or resend verification link.
+            </p>
+            <div className={styles.pendingActions}>
+              <button
+                type="button"
+                className={styles.termsLink}
+                onClick={() => { setResendOnOpen(true); setVerifyOpen(true); }}
+              >
+                Resend verification
+              </button>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                className={styles.termsLink}
+                onClick={() => { setResendOnOpen(false); setVerifyOpen(true); }}
+              >
+                I have a code
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        {/* Section: identity */}
+        <div className={styles.sec}>
+          <IdCard size={14} aria-hidden />
+          <span>AGENT IDENTIFICATION</span>
+          <div className={styles.secLine} />
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.lbl} htmlFor="si-email">CADET EMAIL</label>
           <input
-            style={s.inp}
+            id="si-email"
+            className={styles.inp}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter email address here..."
+            autoComplete="email"
             required
-            onFocus={(e) => { e.target.style.borderColor = '#414833'; e.target.style.boxShadow = '0 0 0 2px rgba(65,72,51,0.14)'; }}
-            onBlur={(e) => { e.target.style.borderColor = '#BEA791'; e.target.style.boxShadow = 'none'; }}
           />
         </div>
 
-        <div style={s.fieldGroup}>
-          <label style={s.lbl}>PASSWORD</label>
-          <input
-            style={s.inp}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password here..."
-            required
-            onFocus={(e) => { e.target.style.borderColor = '#414833'; e.target.style.boxShadow = '0 0 0 2px rgba(65,72,51,0.14)'; }}
-            onBlur={(e) => { e.target.style.borderColor = '#BEA791'; e.target.style.boxShadow = 'none'; }}
-          />
+        {/* Section: credentials */}
+        <div className={styles.sec}>
+          <KeyRound size={14} aria-hidden />
+          <span>SECURITY CLEARANCE CREDENTIALS</span>
+          <div className={styles.secLine} />
         </div>
+
+        <PasswordField
+          id="si-pass"
+          label="SECURITY PASSPHRASE"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          visible={showPassword}
+          onToggleVisible={() => setShowPassword((v) => !v)}
+          placeholder="Enter password here..."
+          autoComplete="current-password"
+        />
 
         {/* Forgot password — right aligned */}
-        <div style={s.fgtRow}>
-          <button type="button" style={s.fgt} onClick={() => alert('Password recovery coming soon!')}>
+        <div className={styles.fgtRow}>
+          <button type="button" className={styles.fgt} onClick={() => alert('Password recovery coming soon!')}>
             Forgot Password?
           </button>
         </div>
 
-        <div style={s.subWrap}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ ...s.btn, opacity: loading ? 0.55 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
-            onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.boxShadow = '1px 1px 0 #414833'; e.currentTarget.style.transform = 'translate(2px,2px)'; }}}
-            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '3px 3px 0 #414833'; e.currentTarget.style.transform = 'none'; }}
-          >
-            {loading ? 'Proceeding...' : 'Proceed to Access'}
+        <div className={styles.subWrap}>
+          <button type="submit" disabled={loading} className={styles.btn}>
+            <ShieldCheck size={16} aria-hidden />
+            {loading ? 'Verifying…' : 'Verify Credentials & Enter'}
           </button>
         </div>
       </form>
+
+      <VerificationModal
+        open={verifyOpen && pendingEmail !== null}
+        email={pendingEmail ?? ''}
+        resendOnOpen={resendOnOpen}
+        onClose={() => setVerifyOpen(false)}
+      />
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  inner: { fontFamily: "'Courier Prime', monospace", position: 'relative', zIndex: 1, padding: '8px 4px' },
-
-  /* Header — outlined box, no fill */
-  hdrWrap: { display: 'flex', justifyContent: 'center', marginBottom: '10px' },
-  hdr: {
-    border: '2px solid #414833',
-    color: '#414833',
-    padding: '7px 18px',
-    fontSize: '10px',
-    fontWeight: 700,
-    letterSpacing: '0.22em',
-    fontFamily: "'Courier Prime', monospace",
-    textAlign: 'center',
-    background: 'transparent',
-  },
-
-  /* Stamp row — line / stamp / line */
-  stampRow: { display: 'flex', alignItems: 'center', gap: '10px', margin: '10px 0 16px' },
-  stampLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
-  stamp: {
-    display: 'inline-block',
-    border: '2.5px solid #414833',
-    padding: '5px 14px',
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '11px',
-    fontWeight: 700,
-    letterSpacing: '0.18em',
-    color: '#414833',
-    background: 'transparent',
-    transform: 'rotate(-2deg)',
-    whiteSpace: 'nowrap' as const,
-  },
-
-  /* Section dividers — label then line */
-  sec: { display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 10px', fontSize: '9px', fontWeight: 700, letterSpacing: '0.2em', color: '#414833', fontFamily: "'Courier Prime', monospace" },
-  hrLine: { flex: 1, height: '1.5px', background: '#BEA791', opacity: 0.8 },
-
-  /* Input groups */
-  fieldGroup: { marginBottom: '16px' },
-  msg: { borderRadius: '3px', padding: '7px 10px', fontSize: '10px', margin: '10px 0 4px', fontFamily: "'Courier Prime', monospace", letterSpacing: '0.05em' },
-  msgErr: { background: '#ead8d2', border: '1.5px solid #8b4f45', color: '#713d36' },
-  msgOk:  { background: '#d4eed8', border: '1.5px solid #3a8050', color: '#1a5030' },
-  lbl: {
-    display: 'block', fontSize: '9px', fontWeight: 700, letterSpacing: '0.18em',
-    color: '#414833', marginBottom: '6px',
-    fontFamily: "'Courier Prime', monospace",
-  },
-  inp: {
-    width: '100%',
-    background: '#FFF8ED',
-    border: '1px solid #BEA791',
-    borderRadius: '8px',
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '13px',
-    color: '#414833',
-    padding: '8px 10px',
-    outline: 'none',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-    boxSizing: 'border-box',
-  },
-
-  /* Forgot password — right aligned */
-  fgtRow: { display: 'flex', justifyContent: 'flex-end', marginTop: '4px', marginBottom: '20px' },
-  fgt: {
-    fontSize: '11px',
-    fontStyle: 'italic',
-    color: '#414833',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: "'Courier Prime', monospace",
-    padding: 0,
-  },
-
-  subWrap: { textAlign: 'center' },
-  btn: {
-    fontFamily: "'Courier Prime', monospace",
-    fontSize: '11px',
-    fontWeight: 700,
-    letterSpacing: '0.1em',
-    color: '#414833',
-    background: '#DCC9B6',
-    border: '2px solid #414833',
-    padding: '9px 26px',
-    cursor: 'pointer',
-    boxShadow: '3px 3px 0 #414833',
-    transition: 'box-shadow 0.1s, transform 0.1s',
-    borderRadius: '2px',
-  },
-};
