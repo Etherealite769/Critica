@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import StudentDashboard from '@/components/dashboard/StudentDashboard';
+import desk from '@/components/dashboard/desk.module.css';
 
 interface User {
   id: number;
@@ -30,8 +31,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <main
-        className="min-h-screen text-white flex items-center justify-center"
-        style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
+        className={`${desk.desk} min-h-screen text-[#C4A882] font-mono text-sm flex items-center justify-center`}>
         <p>Loading...</p>
       </main>
     );

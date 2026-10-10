@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import styles from './sidebar-modals.module.css'
+import {
+  Check, ChevronLeft, ChevronRight, FileText, RotateCcw, Timer,
+  TriangleAlert, X, Zap,
+} from 'lucide-react'
 
 interface QuickReviewModalProps {
   isOpen: boolean
@@ -161,13 +165,13 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
           <div className={styles.headerLeft}>
             <span className={styles.headerBadge}>TACTICAL FIELD GUIDE</span>
             <h2 className={styles.headerTitle}>
-              <span>📄</span> Quick Review & Field Manual
+              <FileText size={18} aria-hidden /> Quick Review & Field Manual
             </h2>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span className={styles.stampBox}>AUTHORIZED REFERENCE</span>
             <button className={styles.closeButton} onClick={onClose} title="Close Manual (Esc)">
-              ✕ CLOSE
+              <X size={14} aria-hidden /> CLOSE
             </button>
           </div>
         </div>
@@ -202,7 +206,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                 startDrill()
               }
             }}>
-            ⚡ 60s Field Drill
+            <Timer size={14} aria-hidden /> 60s Field Drill
           </button>
         </div>
 
@@ -323,7 +327,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
 
               <div style={{ marginTop: '1.25rem', background: '#FFF8ED', border: '1.5px solid #8C5A3C', padding: '1rem', borderRadius: '4px' }}>
                 <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', color: '#8C2424', marginBottom: '0.25rem' }}>
-                  ⚠️ COMMON PITFALL: PSEUDO-CONNECTIVES
+                  <TriangleAlert size={14} className={styles.inlineIcon} aria-hidden />COMMON PITFALL: PSEUDO-CONNECTIVES
                 </div>
                 <p style={{ fontSize: '0.78rem', lineHeight: '1.4', color: '#432818', margin: 0 }}>
                   Never pick "Furthermore" when Sentence 2 introduces counter-arguments. Always test the two surrounding sentences by reading them without the connector first.
@@ -467,7 +471,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                       </span>
                     </div>
                     <div style={{ fontSize: '0.78rem', color: '#8C2424', fontFamily: 'var(--font-mono, monospace)', background: 'rgba(140, 36, 36, 0.08)', padding: '0.35rem 0.6rem', borderRadius: '3px' }}>
-                      ⚠️ <strong>RED FLAG:</strong> {item.redFlag}
+                      <TriangleAlert size={13} className={styles.inlineIcon} aria-hidden /><strong>RED FLAG:</strong> {item.redFlag}
                     </div>
                   </div>
                 ))}
@@ -481,7 +485,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                 <div>
                   <h3 style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.95rem', fontWeight: 'bold', color: '#2D0909', margin: 0 }}>
-                    ⚡ 60-SECOND DIAGNOSTIC DRILL
+                    <Zap size={16} className={styles.inlineIcon} aria-hidden />60-SECOND DIAGNOSTIC DRILL
                   </h3>
                   <p style={{ fontSize: '0.78rem', color: '#6A381F', margin: '0.2rem 0 0 0' }}>
                     Rapid assessment of text structure, transitions, and forensic clues.
@@ -500,10 +504,10 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                       padding: '0.3rem 0.75rem',
                       borderRadius: '3px',
                     }}>
-                    ⏱️ {timeLeft}s
+                    <Timer size={18} className={styles.inlineIcon} aria-hidden />{timeLeft}s
                   </div>
                   <button className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`} onClick={startDrill}>
-                    🔄 Reset Drill
+                    <RotateCcw size={14} aria-hidden /> Reset Drill
                   </button>
                 </div>
               </div>
@@ -534,7 +538,9 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                       return (
                         <div key={idx} style={{ padding: '0.75rem', border: '1px solid #C49A5A', background: isCorrect ? '#F2FAED' : '#FDF4F4', borderRadius: '4px' }}>
                           <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', fontWeight: 'bold', color: isCorrect ? '#2E6B3A' : '#8C2424', marginBottom: '0.25rem' }}>
-                            {isCorrect ? '✓ CORRECT' : '✗ INCORRECT'} — {q.category}
+                            {isCorrect
+                              ? <><Check size={13} className={styles.inlineIcon} aria-hidden />CORRECT</>
+                              : <><X size={13} className={styles.inlineIcon} aria-hidden />INCORRECT</>} — {q.category}
                           </div>
                           <div style={{ fontSize: '0.82rem', fontWeight: 'bold', color: '#2D0909', marginBottom: '0.35rem' }}>
                             {q.question}
@@ -559,7 +565,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                     className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
                     onClick={startDrill}
                     style={{ marginTop: '1.5rem' }}>
-                    ⚡ Run Drill Again
+                    <RotateCcw size={14} aria-hidden /> Run Drill Again
                   </button>
                 </div>
               ) : (
@@ -587,7 +593,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                           color: '#2D0909',
                           cursor: 'pointer',
                         }}>
-                        Q{idx + 1} {selectedAnswers[idx] !== undefined ? '✓' : ''}
+                        Q{idx + 1} {selectedAnswers[idx] !== undefined ? <Check size={12} className={styles.inlineIcon} aria-hidden /> : null}
                       </button>
                     ))}
                   </div>
@@ -654,20 +660,20 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                       className={styles.tacticalBtn}
                       onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))}
                       disabled={currentQIndex === 0}>
-                      ◀ Previous Question
+                      <ChevronLeft size={14} aria-hidden /> Previous Question
                     </button>
 
                     {currentQIndex < drillQuestions.length - 1 ? (
                       <button
                         className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
                         onClick={() => setCurrentQIndex(prev => prev + 1)}>
-                        Next Question ▶
+                        Next Question <ChevronRight size={14} aria-hidden />
                       </button>
                     ) : (
                       <button
                         className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
                         onClick={finishDrill}>
-                        ✓ Submit Drill Answers
+                        <Check size={14} aria-hidden /> Submit Drill Answers
                       </button>
                     )}
                   </div>

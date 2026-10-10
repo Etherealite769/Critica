@@ -7,10 +7,17 @@ import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModa
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
+import desk                   from './desk.module.css'
 import {
   subscribeToProgressionUpdates,
   subscribeToLexicalUpdates,
 } from '@/lib/realtime-sync'
+import Image                  from 'next/image'
+import {
+  Activity, BookOpen, CircleCheck, Clipboard, Crosshair, FileText, Flame,
+  FolderOpen, Lock, LogOut, Network, Paperclip, Pin, Puzzle, RotateCcw,
+  ScanSearch, Search, ShieldAlert, Zap, type LucideIcon,
+} from 'lucide-react'
 
 interface NodeStatus {
   node_id: string
@@ -45,7 +52,6 @@ interface DashboardData {
 const NODE_META: Record<string, {
   title: string
   focus: string
-  icon:  string
   level?: string
   type?:  string
 }> = {
@@ -53,273 +59,273 @@ const NODE_META: Record<string, {
   log_node_01: {
     title: 'Narration — Basics',
     focus: 'Identify simple time-order signals',
-    icon: '⊕', level: 'BASICS', type: 'NARRATION',
+    level: 'BASICS', type: 'NARRATION',
   },
   log_node_02: {
     title: 'Narration — Intermediate',
     focus: 'Sequence events using multiple time markers',
-    icon: '⊕', level: 'INTERMEDIATE', type: 'NARRATION',
+    level: 'INTERMEDIATE', type: 'NARRATION',
   },
   log_node_03: {
     title: 'Narration — Advanced',
     focus: 'Map complex chronological narrative development',
-    icon: '⊕', level: 'ADVANCED', type: 'NARRATION',
+    level: 'ADVANCED', type: 'NARRATION',
   },
   // ── LOGIC THREAD — DEFINITION ─────────────
   log_node_04: {
     title: 'Definition — Basics',
     focus: 'Identify a simple three-part definition',
-    icon: '⊕', level: 'BASICS', type: 'DEFINITION',
+    level: 'BASICS', type: 'DEFINITION',
   },
   log_node_05: {
     title: 'Definition — Intermediate',
     focus: 'Map a multi-part definition with characteristics',
-    icon: '⊕', level: 'INTERMEDIATE', type: 'DEFINITION',
+    level: 'INTERMEDIATE', type: 'DEFINITION',
   },
   log_node_06: {
     title: 'Definition — Advanced',
     focus: 'Map a full academic definition with examples',
-    icon: '⊕', level: 'ADVANCED', type: 'DEFINITION',
+    level: 'ADVANCED', type: 'DEFINITION',
   },
   // ── LOGIC THREAD — COMPARISON ─────────────
   log_node_07: {
     title: 'Comparison & Contrast — Basics',
     focus: 'Identify simple similarity and difference signals',
-    icon: '⊕', level: 'BASICS', type: 'COMPARISON',
+    level: 'BASICS', type: 'COMPARISON',
   },
   log_node_08: {
     title: 'Comparison & Contrast — Intermediate',
     focus: 'Map a four-part compare and contrast structure',
-    icon: '⊕', level: 'INTERMEDIATE', type: 'COMPARISON',
+    level: 'INTERMEDIATE', type: 'COMPARISON',
   },
   log_node_09: {
     title: 'Comparison & Contrast — Advanced',
     focus: 'Map a complex multi-criteria comparison text',
-    icon: '⊕', level: 'ADVANCED', type: 'COMPARISON',
+    level: 'ADVANCED', type: 'COMPARISON',
   },
   // ── LOGIC THREAD — CAUSE & EFFECT ─────────
   log_node_10: {
     title: 'Cause & Effect — Basics',
     focus: 'Identify a simple cause and its direct effect',
-    icon: '⊕', level: 'BASICS', type: 'CAUSE-EFFECT',
+    level: 'BASICS', type: 'CAUSE-EFFECT',
   },
   log_node_11: {
     title: 'Cause & Effect — Intermediate',
     focus: 'Map a chained cause-effect academic argument',
-    icon: '⊕', level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
+    level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
   },
   log_node_12: {
     title: 'Cause & Effect — Advanced',
     focus: 'Map complex cascading cause-effect relationships',
-    icon: '⊕', level: 'ADVANCED', type: 'CAUSE-EFFECT',
+    level: 'ADVANCED', type: 'CAUSE-EFFECT',
   },
   // ── SNAP-IN GAP — ADDITION ────────────────
   snp_node_01: {
     title: 'Addition & Sequence — Basics',
     focus: 'Identify the simplest addition transition',
-    icon: '⊞', level: 'BASICS', type: 'ADDITION',
+    level: 'BASICS', type: 'ADDITION',
   },
   snp_node_02: {
     title: 'Addition & Sequence — Intermediate',
     focus: 'Use addition and sequence in two-pair context',
-    icon: '⊞', level: 'INTERMEDIATE', type: 'ADDITION',
+    level: 'INTERMEDIATE', type: 'ADDITION',
   },
   snp_node_03: {
     title: 'Addition & Sequence — Advanced',
     focus: 'Apply complex addition transitions academically',
-    icon: '⊞', level: 'ADVANCED', type: 'ADDITION',
+    level: 'ADVANCED', type: 'ADDITION',
   },
   // ── SNAP-IN GAP — CONTRAST ────────────────
   snp_node_04: {
     title: 'Contrast & Opposition — Basics',
     focus: 'Identify the most basic contrast transition',
-    icon: '⊞', level: 'BASICS', type: 'CONTRAST',
+    level: 'BASICS', type: 'CONTRAST',
   },
   snp_node_05: {
     title: 'Contrast & Opposition — Intermediate',
     focus: 'Use contrast transitions in two-pair context',
-    icon: '⊞', level: 'INTERMEDIATE', type: 'CONTRAST',
+    level: 'INTERMEDIATE', type: 'CONTRAST',
   },
   snp_node_06: {
     title: 'Contrast & Opposition — Advanced',
     focus: 'Apply nuanced contrast in academic arguments',
-    icon: '⊞', level: 'ADVANCED', type: 'CONTRAST',
+    level: 'ADVANCED', type: 'CONTRAST',
   },
   // ── SNAP-IN GAP — CAUSE & EFFECT ──────────
   snp_node_07: {
     title: 'Cause & Effect — Basics',
     focus: 'Identify the simplest cause-effect transition',
-    icon: '⊞', level: 'BASICS', type: 'CAUSE-EFFECT',
+    level: 'BASICS', type: 'CAUSE-EFFECT',
   },
   snp_node_08: {
     title: 'Cause & Effect — Intermediate',
     focus: 'Distinguish between two cause-effect signals',
-    icon: '⊞', level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
+    level: 'INTERMEDIATE', type: 'CAUSE-EFFECT',
   },
   snp_node_09: {
     title: 'Cause & Effect — Advanced',
     focus: 'Apply cause-effect transitions academically',
-    icon: '⊞', level: 'ADVANCED', type: 'CAUSE-EFFECT',
+    level: 'ADVANCED', type: 'CAUSE-EFFECT',
   },
   // ── SNAP-IN GAP — CONCLUSION ──────────────
   snp_node_10: {
     title: 'Conclusion Signals — Basics',
     focus: 'Identify the simplest conclusion transition',
-    icon: '⊞', level: 'BASICS', type: 'CONCLUSION',
+    level: 'BASICS', type: 'CONCLUSION',
   },
   snp_node_11: {
     title: 'Conclusion Signals — Intermediate',
     focus: 'Apply two different conclusion transitions',
-    icon: '⊞', level: 'INTERMEDIATE', type: 'CONCLUSION',
+    level: 'INTERMEDIATE', type: 'CONCLUSION',
   },
   snp_node_12: {
     title: 'Conclusion Signals — Advanced',
     focus: 'Apply advanced conclusion signals academically',
-    icon: '⊞', level: 'ADVANCED', type: 'CONCLUSION',
+    level: 'ADVANCED', type: 'CONCLUSION',
   },
   // ── TAP THE CLUES — SYNONYM ───────────────
   tap_node_01: {
     title: 'Synonym Clues — Basics',
     focus: 'Find one synonym clue right beside the word',
-    icon: '🔍', level: 'BASICS', type: 'SYNONYM',
+    level: 'BASICS', type: 'SYNONYM',
   },
   tap_node_02: {
     title: 'Synonym Clues — Intermediate',
     focus: 'Find two synonym clues in context',
-    icon: '🔍', level: 'INTERMEDIATE', type: 'SYNONYM',
+    level: 'INTERMEDIATE', type: 'SYNONYM',
   },
   tap_node_03: {
     title: 'Synonym Clues — Advanced',
     focus: 'Unlock two words using synonym clues',
-    icon: '🔍', level: 'ADVANCED', type: 'SYNONYM',
+    level: 'ADVANCED', type: 'SYNONYM',
   },
   // ── TAP THE CLUES — DEFINITION ────────────
   tap_node_04: {
     title: 'Definition Clues — Basics',
     focus: 'Spot a single embedded definition clue',
-    icon: '🔍', level: 'BASICS', type: 'DEFINITION',
+    level: 'BASICS', type: 'DEFINITION',
   },
   tap_node_05: {
     title: 'Definition Clues — Intermediate',
     focus: 'Find two definition clue words in context',
-    icon: '🔍', level: 'INTERMEDIATE', type: 'DEFINITION',
+    level: 'INTERMEDIATE', type: 'DEFINITION',
   },
   tap_node_06: {
     title: 'Definition Clues — Advanced',
     focus: 'Unlock two words using definition clues',
-    icon: '🔍', level: 'ADVANCED', type: 'DEFINITION',
+    level: 'ADVANCED', type: 'DEFINITION',
   },
   // ── TAP THE CLUES — ANTONYM ───────────────
   tap_node_07: {
     title: 'Antonym & Contrast Clues — Basics',
     focus: 'Find one antonym clue near the word',
-    icon: '🔍', level: 'BASICS', type: 'ANTONYM',
+    level: 'BASICS', type: 'ANTONYM',
   },
   tap_node_08: {
     title: 'Antonym & Contrast Clues — Intermediate',
     focus: 'Find two antonym clues in academic context',
-    icon: '🔍', level: 'INTERMEDIATE', type: 'ANTONYM',
+    level: 'INTERMEDIATE', type: 'ANTONYM',
   },
   tap_node_09: {
     title: 'Antonym & Contrast Clues — Advanced',
     focus: 'Unlock two words using antonym clues',
-    icon: '🔍', level: 'ADVANCED', type: 'ANTONYM',
+    level: 'ADVANCED', type: 'ANTONYM',
   },
   // ── TAP THE CLUES — EXAMPLE/INFERENCE ─────
   tap_node_10: {
     title: 'Example & Inference Clues — Basics',
     focus: 'Infer word meaning from one nearby example',
-    icon: '🔍', level: 'BASICS', type: 'INFERENCE',
+    level: 'BASICS', type: 'INFERENCE',
   },
   tap_node_11: {
     title: 'Example & Inference Clues — Intermediate',
     focus: 'Infer meaning from two example clues',
-    icon: '🔍', level: 'INTERMEDIATE', type: 'INFERENCE',
+    level: 'INTERMEDIATE', type: 'INFERENCE',
   },
   tap_node_12: {
     title: 'Example & Inference Clues — Advanced',
     focus: 'Unlock two words using inference clues',
-    icon: '🔍', level: 'ADVANCED', type: 'INFERENCE',
+    level: 'ADVANCED', type: 'INFERENCE',
   },
   // ── FACT SCANNER — CURRENCY ───────────────
   fac_node_01: {
     title: 'Currency — Basics',
     focus: 'Spot a very obviously outdated source',
-    icon: '🔎', level: 'BASICS', type: 'CURRENCY',
+    level: 'BASICS', type: 'CURRENCY',
   },
   fac_node_02: {
     title: 'Currency — Intermediate',
     focus: 'Identify a moderately outdated source',
-    icon: '🔎', level: 'INTERMEDIATE', type: 'CURRENCY',
+    level: 'INTERMEDIATE', type: 'CURRENCY',
   },
   fac_node_03: {
     title: 'Currency — Advanced',
     focus: 'Detect a subtly outdated claim',
-    icon: '🔎', level: 'ADVANCED', type: 'CURRENCY',
+    level: 'ADVANCED', type: 'CURRENCY',
   },
   // ── FACT SCANNER — RELEVANCE ──────────────
   fac_node_04: {
     title: 'Relevance — Basics',
     focus: 'Spot a completely off-topic sentence',
-    icon: '🔎', level: 'BASICS', type: 'RELEVANCE',
+    level: 'BASICS', type: 'RELEVANCE',
   },
   fac_node_05: {
     title: 'Relevance — Intermediate',
     focus: 'Identify a moderately off-topic sentence',
-    icon: '🔎', level: 'INTERMEDIATE', type: 'RELEVANCE',
+    level: 'INTERMEDIATE', type: 'RELEVANCE',
   },
   fac_node_06: {
     title: 'Relevance — Advanced',
     focus: 'Detect a subtly irrelevant sentence',
-    icon: '🔎', level: 'ADVANCED', type: 'RELEVANCE',
+    level: 'ADVANCED', type: 'RELEVANCE',
   },
   // ── FACT SCANNER — AUTHORITY ──────────────
   fac_node_07: {
     title: 'Authority — Basics',
     focus: 'Spot an obviously unverified claim',
-    icon: '🔎', level: 'BASICS', type: 'AUTHORITY',
+    level: 'BASICS', type: 'AUTHORITY',
   },
   fac_node_08: {
     title: 'Authority — Intermediate',
     focus: 'Identify a moderately unverified source',
-    icon: '🔎', level: 'INTERMEDIATE', type: 'AUTHORITY',
+    level: 'INTERMEDIATE', type: 'AUTHORITY',
   },
   fac_node_09: {
     title: 'Authority — Advanced',
     focus: 'Detect a subtly unqualified claim',
-    icon: '🔎', level: 'ADVANCED', type: 'AUTHORITY',
+    level: 'ADVANCED', type: 'AUTHORITY',
   },
   // ── FACT SCANNER — ACCURACY ───────────────
   fac_node_10: {
     title: 'Accuracy — Basics',
     focus: 'Spot a wildly inaccurate claim',
-    icon: '🔎', level: 'BASICS', type: 'ACCURACY',
+    level: 'BASICS', type: 'ACCURACY',
   },
   fac_node_11: {
     title: 'Accuracy — Intermediate',
     focus: 'Identify a moderately inaccurate claim',
-    icon: '🔎', level: 'INTERMEDIATE', type: 'ACCURACY',
+    level: 'INTERMEDIATE', type: 'ACCURACY',
   },
   fac_node_12: {
     title: 'Accuracy — Advanced',
     focus: 'Detect a subtly fabricated statistic',
-    icon: '🔎', level: 'ADVANCED', type: 'ACCURACY',
+    level: 'ADVANCED', type: 'ACCURACY',
   },
   // ── FACT SCANNER — PURPOSE ────────────────
   fac_node_13: {
     title: 'Purpose — Basics',
     focus: 'Spot overtly biased or insulting language',
-    icon: '🔎', level: 'BASICS', type: 'PURPOSE',
+    level: 'BASICS', type: 'PURPOSE',
   },
   fac_node_14: {
     title: 'Purpose — Intermediate',
     focus: 'Identify moderately biased framing',
-    icon: '🔎', level: 'INTERMEDIATE', type: 'PURPOSE',
+    level: 'INTERMEDIATE', type: 'PURPOSE',
   },
   fac_node_15: {
     title: 'Purpose — Advanced',
     focus: 'Detect subtly manipulative academic language',
-    icon: '🔎', level: 'ADVANCED', type: 'PURPOSE',
+    level: 'ADVANCED', type: 'PURPOSE',
   },
 }
 
@@ -330,29 +336,116 @@ const NODE_META: Record<string, {
 const TABS = [
   {
     id:         'logic_thread',
-    label:      '[1] TEXT STRUCTURE\nMASTERY',
+    label:      '[1] CASE 01: FORENSIC TEXTUAL ANALYSIS',
     route_base: '/nodes/logic-thread',
-    header:     'TEXT STRUCTURE MASTERY',
+    header:     'FORENSIC TEXTUAL ANALYSIS',
+    note:       'Follow the signal words — they always point to the culprit.',
   },
   {
     id:         'snap_gap',
-    label:      '[2] SNAP-IN-GAP',
+    label:      '[2] CASE 02: SCENE RECONSTRUCTION',
     route_base: '/nodes/snap-gap',
-    header:     'SNAP-IN-GAP',
+    header:     'SCENE RECONSTRUCTION',
+    note:       'Bridge the missing evidence gaps to rebuild the sequence of events.',
   },
   {
     id:         'tap_clues',
-    label:      '[3] TAP THE CLUES',
+    label:      '[3] CASE 03: CLUE EXTRACTION',
     route_base: '/nodes/tap-clues',
-    header:     'TAP THE CLUES',
+    header:     'CLUE EXTRACTION',
+    note:       "Scan for key facts — don't let red herrings distract you.",
   },
   {
     id:         'fact_scanner',
-    label:      '[4] FACT SCANNER',
+    label:      '[4] CASE 04: WITNESS CROSS-EXAMINATION',
     route_base: '/nodes/fact-scanner',
-    header:     'FACT SCANNER',
+    header:     'WITNESS CROSS-EXAMINATION',
+    note:       'Cross-examine every statement with cold, hard evidence.',
   },
 ]
+
+// Typewriter accent font (Courier Prime is loaded in globals.css)
+const TYPE = "font-['Courier_Prime',ui-monospace,monospace]"
+
+// Top-bar stat badge: slate glass container with consistent padding
+const TOPBAR_BADGE =
+  'inline-flex items-center gap-1.5 h-8 py-1 px-2.5 rounded-md font-mono text-xs whitespace-nowrap flex-shrink-0 ' +
+  'border border-[rgba(255,255,255,0.12)] bg-white/[0.04] transition-all'
+
+// Folder-tab colours by tab index (manila / amber / khaki / sage)
+const TAB_COLORS = [
+  'bg-[#E8CF8E]',
+  'bg-[#D9A441]',
+  'bg-[#BFB07A]',
+  'bg-[#8FA37A]',
+]
+
+// Pencil scribbles & doodles for the lower (empty, lined) part of each
+// case-tool index card. Purely decorative; variant = card index.
+function CaseScribbles({ variant }: { variant: number }) {
+  const pen = { stroke: 'currentColor', strokeWidth: 1.2, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+  return (
+    <svg
+      className={`${desk.scribble} absolute left-3 right-3 bottom-1.5 h-[42px]`}
+      viewBox="0 0 212 42"
+      preserveAspectRatio="xMinYMid meet"
+      aria-hidden>
+      {variant === 0 && (
+        <>
+          <text x="4" y="16" fontSize="11" fill="currentColor" transform="rotate(-3 4 16)">ubiquitous = everywhere??</text>
+          <path {...pen} d="M8 30 q 20 6 44 -2 t 40 2" />
+          <text x="98" y="36" fontSize="10" fill="currentColor" transform="rotate(2 98 36)">ctx clue</text>
+          <ellipse {...pen} cx="120" cy="32" rx="26" ry="8" transform="rotate(-5 120 32)" />
+          {/* magnifying glass */}
+          <circle {...pen} cx="172" cy="17" r="8" />
+          <path {...pen} d="M178 23 l9 9" strokeWidth={2} />
+          <text x="194" y="16" fontSize="13" fill="currentColor">?</text>
+        </>
+      )}
+      {variant === 1 && (
+        <>
+          <text x="4" y="15" fontSize="11" fill="currentColor" transform="rotate(-2 4 15)">drill #3 — 4/5 → retry!</text>
+          {/* crossed-out wrong answer */}
+          <text x="6" y="35" fontSize="10" fill="currentColor">furthermore</text>
+          <path {...pen} d="M4 31 l62 -1" />
+          {/* faint arrow pathway */}
+          <path {...pen} d="M72 32 q 18 -14 38 -2 t 30 -6" strokeDasharray="3 3" />
+          <path {...pen} d="M136 21 l5 3 -6 3" />
+          <text x="146" y="31" fontSize="11" fill="currentColor">however!</text>
+          {/* tiny stars */}
+          <path {...pen} d="M168 8 l2 5 5 0 -4 3 2 5 -5 -3 -5 3 2 -5 -4 -3 5 0z" strokeWidth={1} />
+          <path {...pen} d="M196 12 l1 3 3 0 -2 2 1 3 -3 -2 -3 2 1 -3 -2 -2 3 0z" strokeWidth={1} />
+          {/* X marks */}
+          <path {...pen} d="M144 4 l6 6 M150 4 l-6 6" />
+        </>
+      )}
+      {variant === 2 && (
+        <>
+          <text x="4" y="14" fontSize="11" fill="currentColor" transform="rotate(-2 4 14)">acc ↑ 72%?? hints…</text>
+          {/* interconnected suspect circles */}
+          <circle {...pen} cx="16" cy="31" r="7" />
+          <circle {...pen} cx="52" cy="27" r="6" />
+          <circle {...pen} cx="84" cy="34" r="6" />
+          <path {...pen} d="M23 30 L46 28 M57 30 L78 33 M20 25 q 30 -18 60 3" strokeDasharray="2 2" />
+          <text x="49" y="30" fontSize="7" fill="currentColor">A</text>
+          {/* little trend squiggle */}
+          <path {...pen} d="M104 36 l10 -6 8 4 10 -12 9 5 12 -14" />
+          <path {...pen} d="M150 13 l4 -1 -1 4" />
+          <text x="166" y="34" fontSize="14" fill="currentColor" transform="rotate(8 166 34)">?</text>
+          <path {...pen} d="M184 26 l7 7 M191 26 l-7 7" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+// Gamemode icons (tabs + node card badges)
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  logic_thread: Network,
+  snap_gap:     Puzzle,
+  tap_clues:    Search,
+  fact_scanner: ScanSearch,
+}
 
 // ── Component ────────────────────────────────────
 export default function StudentDashboard() {
@@ -364,7 +457,6 @@ export default function StudentDashboard() {
     useState('logic_thread')
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
-  const [scrollPos, setScrollPos] = useState(0)
   const [showMenu, setShowMenu]   = useState(false)
   const [showOnboardingGuide, setShowOnboardingGuide] = useState(false)
   const [showLexicalModal, setShowLexicalModal] = useState(false)
@@ -564,8 +656,7 @@ export default function StudentDashboard() {
   // ── Loading state ─────────────────────────
   if (loading) return (
     <div
-      className="min-h-screen flex items-center justify-center font-mono text-[#C4A882] text-sm"
-      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
+      className={`${desk.desk} min-h-screen flex items-center justify-center font-mono text-[#C4A882] text-sm`}>
       Loading...
     </div>
   )
@@ -573,8 +664,7 @@ export default function StudentDashboard() {
   // ── Error state ───────────────────────────
   if (error) return (
     <div
-      className="min-h-screen flex items-center justify-center font-mono text-red-400 text-sm flex-col gap-4"
-      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
+      className={`${desk.desk} min-h-screen flex items-center justify-center font-mono text-red-400 text-sm flex-col gap-4`}>
       <p>{error}</p>
       <button
         onClick={() => router.push('/auth')}
@@ -587,463 +677,463 @@ export default function StudentDashboard() {
   )
 
   const activeNodes = getActiveNodes()
+  const ActiveModuleIcon = MODULE_ICONS[activeTab] ?? Network
+
+  // Index of the first open (unlocked, not completed) exhibit — gets a "start here" note
+  const firstOpenIdx = activeNodes.findIndex(n => n.status === 'unlocked')
 
   return (
     <div
-      className="min-h-screen text-[#F4E6CC] font-serif"
-      style={{ background: 'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)' }}>
+      data-dashboard
+      className={`${desk.desk} h-screen overflow-hidden flex flex-col text-[var(--parchment)] font-serif`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
 
-      {/* ── TOPBAR ── */}
-      <header className="h-[52px] bg-[#414833]/90 backdrop-blur-sm border-b border-[#BEA791]/55 shadow-sm
-        flex items-center justify-end gap-9 px-9">
+      {/* ── TOPBAR: brand | stats | profile, always one line ── */}
+      <header className="relative z-30 flex-shrink-0 w-full h-12 px-4 overflow-hidden
+        flex items-center justify-between gap-4
+        bg-[rgba(20,24,28,0.95)] backdrop-blur-[8px] border-b border-[rgba(255,255,255,0.08)]
+        shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
 
-        {/* ── REALTIME STREAK ── */}
-        <div
-          className={`flex items-center gap-2 font-mono text-xs transition-all duration-300 ${
-            streakPulse ? 'scale-110 text-amber-300 font-bold' : 'text-[#C9BC9C]'
-          }`}
-          title="Daily Active Streak (Updated in Realtime)">
-          <span className={streakPulse ? 'animate-bounce' : ''}>🔥</span>
-          <strong>Streak:</strong>
-          &nbsp;{dashboard?.streak ?? 0} Days
-        </div>
-
-        {/* ── NODES COMPLETED ── */}
-        <div className="flex items-center gap-2
-          font-mono text-xs text-[#C9BC9C]">
-          <span>⭐</span>
-          <strong>Nodes:</strong>
-          &nbsp;{dashboard?.completed_count ?? 0}
-          &nbsp;Completed
-        </div>
-
-        {/* ── REALTIME EXP & LEVEL PILL ── */}
-        <button
-          onClick={() => setShowMetricLogModal(true)}
-          className="flex items-center gap-2 font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#BEA791]
-            px-2.5 py-1 rounded border border-[#BEA791]/60
-            bg-[#414833] cursor-pointer transition-all"
-          title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
-          <span className="text-amber-400">⚡</span>
-          <span>
-            <strong>LVL {dashboard?.level ?? 1}</strong>
-            &nbsp;•&nbsp;{dashboard?.total_xp ?? 0} XP
+        {/* ── LEFT: mascot + brand ── */}
+        <div className={`${TYPE} flex items-center gap-2 flex-shrink-0 whitespace-nowrap text-[15px] font-bold tracking-[0.16em] text-[var(--parchment)]`}>
+          {/* Mascot logo — transparent PNG, inline with the wordmark */}
+          <Image
+            src="/mascot-detective.png"
+            alt="Critica detective caterpillar"
+            width={32}
+            height={32}
+            className="w-8 h-8 flex-shrink-0 object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]"
+            priority
+          />
+          <Crosshair size={15} className="flex-shrink-0 text-[var(--crimson)]" aria-hidden />
+          CRITICA
+          <span className="hidden lg:inline font-normal text-[11px] tracking-[0.05em] text-[#b9a98d]">
+            {'// FORENSIC INVESTIGATION BUREAU'}
           </span>
-          <div className="w-12 h-1.5 bg-[#414833] rounded-full overflow-hidden border border-[#BEA791]/50 ml-0.5">
-            <div
-              className="h-full bg-gradient-to-r from-amber-600 to-amber-300 transition-all duration-500"
-              style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
-            />
+        </div>
+
+        {/* ── CENTER: stat badges + field guide ── */}
+        <div className="flex flex-1 min-w-0 items-center justify-center gap-3 whitespace-nowrap">
+          {/* ── REALTIME STREAK ── */}
+          <div
+            className={`${TOPBAR_BADGE} duration-300 ${
+              streakPulse ? 'scale-110 text-[var(--amber)] font-bold border-[var(--amber)]/60' : 'text-[#e3d6bd]'
+            }`}
+            title="Daily Active Streak (Updated in Realtime)">
+            <Flame size={14} className={`text-[var(--amber)] ${streakPulse ? 'animate-bounce' : ''}`} aria-hidden />
+            Streak: <strong className="text-[var(--parchment)]">{dashboard?.streak ?? 0}</strong> Days
           </div>
-        </button>
 
-        {/* ── FIELD GUIDE BUTTON ── */}
-        <button
-          onClick={() => setShowOnboardingGuide(true)}
-          className="flex items-center gap-1.5
-            font-mono text-xs text-[#D4B896]
-            hover:text-[#FFF8ED] hover:border-[#BEA791]
-            px-2.5 py-1 rounded border border-[#BEA791]/60
-            bg-[#414833] cursor-pointer transition-all"
-          title="Open the Field Manual & Interactive Demo">
-          <span>📖</span>
-          <span className="font-bold">FIELD GUIDE</span>
-        </button>
+          {/* ── CASES CLOSED ── */}
+          <div className={`${TOPBAR_BADGE} text-[#e3d6bd]`} title="Cases closed">
+            <CircleCheck size={14} className="text-[#d04a4b]" aria-hidden />
+            Cases closed: <strong className="text-[var(--parchment)]">{dashboard?.completed_count ?? 0}</strong>
+          </div>
 
-        <div className="relative">
+          {/* ── REALTIME EXP & LEVEL PILL ── */}
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="flex items-center gap-2
-              font-mono text-xs text-[#D4B896]
-              hover:text-[#FFF8ED] cursor-pointer
-              transition-colors">
-            <span>👤</span>
+            onClick={() => setShowMetricLogModal(true)}
+            className={`${TOPBAR_BADGE} text-[var(--parchment)] hover:border-[var(--lime)]/70 cursor-pointer`}
+            title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
+            <Zap size={14} className="text-[var(--amber)]" aria-hidden />
+            <span>LVL {dashboard?.level ?? 1} – {dashboard?.total_xp ?? 0} XP</span>
+            <span className="block w-[72px] h-1.5 flex-shrink-0 bg-black/40 rounded-full overflow-hidden">
+              <span
+                className="block h-full rounded-full bg-[var(--lime)] transition-all duration-500"
+                style={{ width: `${dashboard?.level_progress_pct ?? 0}%` }}
+              />
+            </span>
+          </button>
+
+          {/* ── FIELD GUIDE BUTTON ── */}
+          <button
+            onClick={() => setShowOnboardingGuide(true)}
+            className={`${TOPBAR_BADGE} text-[#e3d6bd] hover:text-[var(--parchment)] hover:border-white/25 cursor-pointer`}
+            title="Open the Field Manual & Interactive Demo">
+            <BookOpen size={14} aria-hidden />
+            <span className="hidden xl:inline">Field Guide</span>
+          </button>
+        </div>
+
+        {/* ── RIGHT: user profile (mascot avatar) ── */}
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          aria-expanded={showMenu}
+          aria-haspopup="menu"
+          className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap font-mono text-xs text-[var(--parchment)]
+            hover:text-white cursor-pointer transition-colors">
+          <span className="w-8 h-8 flex-shrink-0 rounded-full bg-[var(--parchment)] border-2 border-[var(--lime)] overflow-hidden flex items-center justify-center">
+            <Image src="/mascot-detective.png" alt="" width={30} height={30} />
+          </span>
+          <span className="max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap">
             {dashboard?.first_name && dashboard?.last_name
               ? `${dashboard.first_name} ${dashboard.last_name}`
               : (dashboard?.username ?? 'Student')}
-          </button>
-          {showMenu && (
-            <div className="absolute top-full
-              right-0 mt-2 bg-[#414833]
-              border border-[#BEA791]/60 rounded-sm
-              shadow-lg z-50 min-w-[170px]">
-              <button
-                onClick={() => {
-                  setShowMenu(false)
-                  setShowOnboardingGuide(true)
-                }}
-                className="w-full text-left px-4
-                  py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#2B424A]
-                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
-                <span>📖</span> Field Manual & Demo
-              </button>
-              <div className="h-px bg-[#BEA791]/35" />
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4
-                  py-2 text-xs font-mono text-[#D4B896]
-                  hover:bg-[#2B424A]
-                  hover:text-[#F4E6CC] transition-colors flex items-center gap-2">
-                <span>🚪</span> Logout
-              </button>
-            </div>
-          )}
-        </div>
+          </span>
+        </button>
       </header>
 
+      {/* User menu lives outside the header (which clips overflow) */}
+      {showMenu && (
+        <div
+          role="menu"
+          className={`${desk.indexCard} fixed top-[52px] right-4 rounded-sm z-50 min-w-[200px] overflow-hidden`}>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setShowMenu(false)
+              setShowOnboardingGuide(true)
+            }}
+            className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--ink)]
+              hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
+            <BookOpen size={14} aria-hidden /> Field Manual & Demo
+          </button>
+          <button
+            role="menuitem"
+            onClick={handleLogout}
+            className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--crimson)]
+              hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
+            <LogOut size={14} aria-hidden /> Logout
+          </button>
+        </div>
+      )}
+
       {/* ── SPACER ── */}
-      <div className="h-8 bg-transparent" />
+      <div className="h-6 flex-shrink-0" />
 
       {/* ── BODY ── */}
-      <div className="flex justify-center px-6
-        h-[calc(100vh-52px-32px)] bg-transparent">
+      <div className="flex-1 min-h-0 flex justify-center px-10 2xl:px-16 pb-6
+        bg-transparent">
 
         {/* ── CENTER CONTAINER ── */}
-        <div className="w-full max-w-7xl flex
-          items-start gap-3">
+        <div className="relative w-full max-w-[min(1600px,86vw)] h-[calc(100vh-120px)] flex items-start gap-6">
+
+          {/* Forensic red string: pins on the case-tool cards → behind the folder */}
+          <svg
+            className="absolute right-0 top-0 z-0 pointer-events-none"
+            width={312}
+            height={560}
+            viewBox="0 0 312 560"
+            fill="none"
+            aria-hidden>
+            <g stroke="#c22b2d" strokeWidth="2.2" strokeLinecap="round" opacity="0.85">
+              <path d="M192 79 Q 95 150 0 140" />
+              <path d="M192 79 Q 215 160 192 229" />
+              <path d="M192 229 Q 90 290 0 320" />
+              <path d="M192 379 Q 130 330 192 229" />
+              <path d="M192 379 Q 80 460 0 490" />
+            </g>
+          </svg>
 
           {/* ── LEFT COLUMN (tabs + folder) ── */}
-          <div className="flex-1 flex flex-col
-            min-w-0 h-full">
+          <div className="relative z-10 flex-1 flex flex-col min-w-0 h-full">
 
-          {/* ── TABS ── */}
-          <div className="flex items-end
-            flex-shrink-0 bg-transparent">
-            {TABS.map(tab => {
+          {/* ── FOLDER TABS ── */}
+          <div className={`${desk.noScrollbar} flex items-end gap-1 flex-shrink-0 pl-2`}>
+            {TABS.map((tab, i) => {
               const isActive = activeTab === tab.id
+              const TabIcon = MODULE_ICONS[tab.id] ?? Network
               return (
                 <button
                   key={tab.id}
-                  onClick={() =>
-                    setActiveTab(tab.id)}
-                  className={`flex items-center
-                    justify-center font-mono text-xs
-                    font-bold uppercase tracking-wider
-                    border-none outline-none px-6
-                    whitespace-pre-wrap text-center
-                    transition-all cursor-pointer
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`relative flex flex-col items-start justify-center gap-0.5 px-4 py-1.5
+                    max-w-[260px] text-left
+                    rounded-t-lg border border-b-0 border-black/20
+                    outline-none transition-all cursor-pointer
+                    focus-visible:ring-2 focus-visible:ring-[var(--lime)]
                     ${isActive
-                      ? 'bg-[#F2E9D3] text-[#3B2E20] h-[64px] rounded-t-lg'
-                      : 'bg-[#C6A868] text-[#3B2E20] hover:bg-[#B08F52] hover:text-[#414833] h-[52px] rounded-t-lg'
+                      ? `${desk.paper} bg-[var(--manila)] text-[var(--ink)] min-h-[58px] z-10 -mb-px shadow-[0_-4px_12px_rgba(0,0,0,0.3)]`
+                      : `${TAB_COLORS[i] ?? 'bg-[#D9A441]'} text-[var(--ink)] min-h-[50px] hover:brightness-110 shadow-[inset_0_-8px_10px_-8px_rgba(0,0,0,0.45)]`
                     }`}>
-                  {tab.label}
+                  {isActive && (
+                    <Paperclip
+                      size={26}
+                      strokeWidth={1.75}
+                      className="absolute -top-3 right-2 rotate-[30deg] text-[#8d8a84]"
+                      aria-hidden />
+                  )}
+                  <span className={`${TYPE} text-[10px] font-bold tracking-[0.18em] ${isActive ? 'text-[var(--crimson)]' : 'text-[var(--ink)]/75'}`}>
+                    [{i + 1}] CASE {String(i + 1).padStart(2, '0')}:
+                  </span>
+                  <span className={`${TYPE} flex items-start gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] leading-tight`}>
+                    <TabIcon size={13} className="flex-shrink-0 mt-px" aria-hidden />
+                    {tab.header}
+                  </span>
                 </button>
               )
             })}
           </div>
 
-          {/* ── CONTENT PANEL ── */}
-          <div className="flex-1 bg-[#F2E9D3]
-            rounded-tr-xl
-            overflow-hidden flex">
-            <div
-              className="flex-1 overflow-y-auto
-                px-9 pt-[30px] pb-[30px]"
-              onScroll={e =>
-                setScrollPos(
-                  (e.currentTarget.scrollTop /
-                    (e.currentTarget.scrollHeight
-                     - e.currentTarget.clientHeight)
-                  ) * 100
-                )
-              }>
+          {/* ── FOLDER BODY (stacked manila sheets) ── */}
+          <div className={`${desk.folder} relative flex-1 overflow-hidden flex flex-col min-h-0`}>
+
+            {/* Paperclip clamping the sheets on the folder's right edge (clear of the header text) */}
+            <Paperclip
+              size={34}
+              strokeWidth={1.6}
+              className="absolute right-1 top-20 rotate-[100deg] text-[#8d8a84] drop-shadow-[0_2px_1px_rgba(0,0,0,0.35)] pointer-events-none z-20"
+              aria-hidden />
+
+            {/* ── FIXED DOSSIER HEADER (never scrolls) ── */}
+            <div className="flex-shrink-0 px-8 pt-6 pb-3 text-[var(--ink)] border-b border-[rgba(139,115,85,0.3)]">
 
               {/* Doc Header */}
-              <div className="mb-6">
-                {/* Outlined header box — centered */}
-                <div className="flex justify-center mb-3">
-                  <div className="border-[1.5px] border-[#6A381F]
-                    px-8 py-2 font-mono text-sm font-semibold
-                    tracking-widest text-[#432818]
-                    bg-transparent whitespace-nowrap">
-                    OFFICIAL STUDENT DASHBOARD DOCUMENT
-                  </div>
-                </div>
-                {/* Stamp row: line / stamp / line */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-[1.5px] bg-[#C6A868] opacity-80" />
-                  <div
-                    className="border-[2.5px] border-[#6A381F]
-                      px-4 py-2 font-mono text-base font-bold
-                      uppercase tracking-widest text-[#432818]
-                      bg-transparent whitespace-nowrap"
-                    style={{ transform: 'rotate(-1.5deg)' }}>
-                    {activeTabCfg.header}
-                  </div>
-                  <div className="flex-1 h-[1.5px] bg-[#C6A868] opacity-80" />
-                </div>
+              <div className={`${TYPE} flex items-center justify-between gap-4 pr-4 text-xs tracking-[0.15em] text-[var(--ink)] mb-5`}>
+                <span className="flex items-center gap-2">
+                  <FolderOpen size={15} className="text-[var(--hat)]" aria-hidden />
+                  CASE FILE {'//'} EVIDENCE DOSSIER
+                </span>
+                <span>CLASSIFICATION: TRAINING</span>
               </div>
+
+              {/* Case stamp + Inspector Crit's handwritten note (follows the active case) */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 min-h-[72px] mb-1">
+                <div
+                  className={`${TYPE} ${desk.wornStamp} col-start-2 justify-self-center flex items-center gap-2 px-4 py-1.5
+                    text-[15px] font-bold uppercase tracking-[0.1em] whitespace-nowrap`}
+                  style={{ transform: 'rotate(-2deg)' }}>
+                  <ActiveModuleIcon size={17} aria-hidden />
+                  CASE {String(TABS.findIndex(t => t.id === activeTabCfg.id) + 1).padStart(2, '0')}: {activeTabCfg.header}
+                </div>
+                <p
+                  key={activeTabCfg.id}
+                  className={`${desk.handwritten} hidden xl:block col-start-3 justify-self-end self-start max-w-[240px] text-[12.5px] leading-snug -rotate-3`}>
+                  {activeTabCfg.note}
+                  <span className="block text-right">— Inspector Crit</span>
+                </p>
+              </div>
+            </div>
+
+            {/* ── SCROLLING EXHIBITS ── */}
+            <div className={`${desk.noScrollbar} flex-1 min-h-0 overflow-y-auto px-8 pt-5 pb-8 text-[var(--ink)]`}>
 
               {/* Empty state */}
               {activeNodes.length === 0 && (
-                <div className="font-mono text-xs
-                  text-[#6B5233] text-center py-10">
-                  No nodes available for this module.
+                <div className="font-mono text-xs text-[var(--hat)] text-center py-10">
+                  No evidence filed for this case yet.
                 </div>
               )}
 
-              {/* ── NODE CARDS ── */}
-              {activeNodes.map((node) => {
+              {/* ── EXHIBIT CARDS ── */}
+              <div className="grid grid-cols-1 min-[1700px]:grid-cols-2 gap-4">
+              {activeNodes.map((node, idx) => {
                 const meta = NODE_META[node.node_id]
                 if (!meta) return null
 
-                const isDone   =
-                  node.status === 'completed'
-                const isReady  =
-                  node.status === 'unlocked'
-                const isLocked =
-                  node.status === 'locked'
+                const isDone   = node.status === 'completed'
+                const isReady  = node.status === 'unlocked'
+                const isLocked = node.status === 'locked'
+                const progress = getNodeProgress(node.node_id)
 
                 return (
-                  <div key={node.node_id}>
-                    <div className="flex items-start
-                      gap-2.5 mb-1.5">
+                  <div
+                    key={node.node_id}
+                    className={`relative min-w-0 rounded-sm border border-[#a8915f] border-l-4
+                      px-4 py-2.5 max-h-[150px] shadow-[0_3px_8px_rgba(60,40,20,0.18)]
+                      ${isDone
+                        ? `${desk.paper} bg-[var(--parchment)] border-l-[var(--crimson)]`
+                        : isLocked
+                        ? 'bg-[#e6dcc4] border-l-[#9b9384]'
+                        : `${desk.paper} bg-[var(--parchment)] border-l-[var(--lime)]`
+                      }`}>
+                    {/* Paperclip on the exhibit corner */}
+                    {/* Paperclip on the exhibit */}
+                    <Paperclip
+                      size={20}
+                      strokeWidth={1.6}
+                      className="absolute -top-3 -left-2 -rotate-[35deg] text-[#8d8a84] pointer-events-none"
+                      aria-hidden />
 
-                      {/* Card */}
-                      <div className={`flex-1
-                        border border-[#C6A868]/50
-                        rounded-lg pl-10 pr-4 py-4
-                        text-[#3B2E20]
-                        relative min-w-0
+                    {/* Top row */}
+                    <div className="flex justify-between items-start gap-3 mb-1.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`w-7 h-7 rounded-sm flex items-center justify-center flex-shrink-0
+                          ${isLocked ? 'bg-[#9b9384] text-[var(--parchment)]' : 'bg-[var(--ink)] text-[var(--parchment)]'}`}>
+                          {isLocked
+                            ? <Lock size={14} aria-hidden />
+                            : <ActiveModuleIcon size={14} aria-hidden />}
+                        </div>
+                        <div className={`${TYPE} min-w-0 leading-tight ${isLocked ? 'text-[#4a4339]' : 'text-[var(--ink)]'}`}>
+                          <div className="text-[10px] tracking-[0.15em]">
+                            EXHIBIT {String(idx + 1).padStart(2, '0')}{meta.level && <> · {meta.level}</>}
+                          </div>
+                          <div className="text-xs font-bold uppercase tracking-wider truncate">
+                            {meta.title}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status pill */}
+                      <div className={`${TYPE} inline-flex items-center gap-1 flex-shrink-0
+                        text-[10px] font-extrabold tracking-[0.12em] uppercase px-2 py-0.5 rounded-sm -rotate-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]
                         ${isDone
-                          ? 'bg-[#E6DCC0]'
-                          : isLocked
-                          ? 'bg-[#E6DCC0] opacity-60'
-                          : 'bg-[#FBF6E8]'
+                          ? 'bg-[var(--crimson)] text-white border-2 border-[#7d1f20]'
+                          : isReady
+                          ? 'border-2 border-[#4f8f2f] text-[#2f6418] bg-[var(--lime)]/15'
+                          : 'border-2 border-[#6d665a] text-[#4a4339] bg-[#9b9384]/10'
                         }`}>
-
-                        {/* Binder punch holes — inside left edge */}
-                        <div className="absolute left-3 top-0 h-full flex flex-col justify-evenly items-center pointer-events-none z-10">
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
-                          <div className="w-[12px] h-[12px] rounded-full border-2 border-[#C6A868]/60" style={{background:'rgba(198,168,104,0.15)'}} />
-                        </div>
-
-
-                        {/* Top row */}
-                        <div className="flex
-                          justify-between
-                          items-center mb-2">
-                          <div className="flex
-                            items-center gap-2">
-                            <div className="w-6 h-6
-                              bg-[#3B2E20] rounded-sm
-                              flex items-center
-                              justify-center
-                              text-[#F2E9D3] text-xs
-                              flex-shrink-0">
-                              {isLocked
-                                ? '🔒'
-                                : meta.icon}
-                            </div>
-                            <div className="font-mono
-                              text-xs font-bold
-                              uppercase tracking-wider
-                              text-[#3B2E20]">
-                              {meta.title}
-                            </div>
-                          </div>
-
-                          {/* Status badge */}
-                          <div className={`font-mono
-                            text-[10px] tracking-wider
-                            px-[6px] py-[2px]
-                            border uppercase
-                            flex-shrink-0
-                            ${isDone
-                              ? 'text-[#3F7D4A] border-[#3F7D4A]'
-                              : isReady
-                              ? 'text-[#3D7A66] border-[#3D7A66]'
-                              : 'text-[#8A7857] border-[#8A7857]'
-                            }`}>
-                            {isDone
-                              ? 'COMPLETED / DONE'
-                              : isReady
-                              ? 'UNLOCKED / ACTIVE'
-                              : 'LOCKED'}
-                          </div>
-                        </div>
-
-                        {/* Divider under title row */}
-                        <div className="h-px bg-[#C6A868] mb-3 opacity-60" />
-
-                        {/* Focus description */}
-                        <p className="text-xs
-                          leading-relaxed
-                          text-[#6B5233] mb-4">
-                          {meta.focus}
-                        </p>
-
-                        {/* Progress bar — full width, no bullet */}
-                        <div
-                          className="h-[8px] rounded-none mb-3 overflow-hidden"
-                          style={{ background: isDone ? 'rgba(59,46,32,0.30)' : '#2B3B2C' }}>
-                          <div
-                            className="h-full rounded-none transition-all"
-                            style={{
-                              width: `${100 - getNodeProgress(node.node_id)}%`,
-                              marginLeft: 'auto',
-                              background: isDone ? 'rgba(214,199,154,0.45)' : '#D6C79A',
-                            }} />
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex
-                          justify-between items-end">
-                          <div className="font-mono
-                            text-[10px] text-[#6B5233]
-                            leading-5">
-                            PROGRESS —{' '}
-                            {getNodeProgress(node.node_id)}%
-                            <br />
-                            {Math.round(getNodeProgress(node.node_id) / 100 * 5)}/5 EXERCISES
-                          </div>
-
-                          <div className="flex gap-3 items-end">
-                            {!isDone && getNodeProgress(node.node_id) > 0 && (
-                              <button
-                                onClick={() => handleResetNode(node.node_id)}
-                                className="font-mono text-xs font-bold uppercase tracking-wide text-center leading-snug flex-shrink-0 whitespace-nowrap px-4 py-2.5 rounded-lg border border-[#A2492D]/40 bg-transparent text-[#A2492D] hover:bg-[#A2492D] hover:text-[#FBF6E8] hover:border-[#A2492D] transition-all cursor-pointer"
-                              >
-                                RESET
-                              </button>
-                            )}
-                            <button
-                              disabled={isLocked}
-                              onClick={() => {
-                                if (isDone) {
-                                  handleResetNode(node.node_id)
-                                } else {
-                                  handleStartNode(
-                                    activeTabCfg.route_base,
-                                    node.node_id,
-                                    node.status,
-                                  )
-                                }
-                              }}
-                              className={`font-mono
-                                text-xs font-bold
-                                uppercase tracking-wide
-                                text-center leading-snug
-                                flex-shrink-0
-                                whitespace-nowrap
-                                px-4 py-2.5
-                                rounded-lg
-                                border border-[#C6A868]/40
-                                transition-all
-                                ${isLocked
-                                  ? 'bg-[#E3DAC4] text-[#8A7857] cursor-not-allowed'
-                                  : isDone
-                                  ? 'bg-[#FBF6E8] text-[#3B2E20] cursor-pointer hover:bg-[#DCCFA8]'
-                                  : 'bg-[#FBF6E8] text-[#3B2E20] cursor-pointer hover:bg-[#E6DCC0]'
-                                }`}
-                            >
-                               {isDone
-                                 ? 'RESET NODE'
-                                 : isLocked
-                                 ? 'LOCKED'
-                                 : getNodeProgress(node.node_id) > 0
-                                 ? 'CONTINUE TRAINING'
-                                 : 'PULL PAPER & START TRAINING'}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Completed stamp */}
-                        {isDone && (
-                          <div className="absolute
-                            top-1/2 left-[44%]
-                            -translate-x-1/2
-                            -translate-y-1/2
-                            -rotate-12
-                            pointer-events-none">
-                            <div className="font-mono
-                              text-4xl text-[#3F7D4A]
-                              border-4 border-[#3F7D4A]
-                              px-3 opacity-[0.72]
-                              whitespace-nowrap
-                              tracking-wider">
-                              COMPLETED
-                            </div>
-                          </div>
-                        )}
+                        {isDone
+                          ? <><CircleCheck size={11} aria-hidden /> Case closed</>
+                          : isReady
+                          ? <><ShieldAlert size={11} aria-hidden /> Evidence unlocked</>
+                          : <><Lock size={11} aria-hidden /> Classified</>}
                       </div>
                     </div>
 
+                    {/* Focus description */}
+                    <p className={`text-[13px] leading-snug mb-2 line-clamp-2 ${isLocked ? 'text-[#4a4339]' : 'text-[#1f170f]'}`}>
+                      {meta.focus}
+                    </p>
 
+                    {/* Handwritten note on the first open exhibit */}
+                    {idx === firstOpenIdx && (
+                      <span className={`${desk.handwritten} absolute right-40 top-8 text-xs -rotate-6 pointer-events-none`}>
+                        start here →
+                      </span>
+                    )}
+
+                    {/* Progress gauge + actions */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="h-2 rounded-full bg-[#d9ccad] overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-[var(--lime)] transition-all duration-500"
+                            style={{ width: `${progress}%` }} />
+                        </div>
+                        <div className={`${TYPE} mt-1 text-[10px] text-[var(--ink)]`}>
+                          {progress}% · {Math.round(progress / 100 * 5)}/5 exercises
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 items-center flex-shrink-0">
+                        {!isDone && progress > 0 && (
+                          <button
+                            onClick={() => handleResetNode(node.node_id)}
+                            className={`${TYPE} inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide
+                              whitespace-nowrap px-3 py-1.5 rounded-sm border border-[var(--crimson)]/60 text-[var(--crimson)]
+                              hover:bg-[var(--crimson)] hover:text-[var(--parchment)] transition-all cursor-pointer`}>
+                            <RotateCcw size={12} aria-hidden />
+                            Reset
+                          </button>
+                        )}
+                        <button
+                          disabled={isLocked}
+                          onClick={() => {
+                            if (isDone) {
+                              handleResetNode(node.node_id)
+                            } else {
+                              handleStartNode(
+                                activeTabCfg.route_base,
+                                node.node_id,
+                                node.status,
+                              )
+                            }
+                          }}
+                          className={`${TYPE} inline-flex items-center gap-1.5 text-[11px] font-bold
+                            uppercase tracking-wide whitespace-nowrap px-3.5 py-1.5 rounded-sm transition-all
+                            ${isLocked
+                              ? 'border border-[#9b9384] text-[#6d665a] cursor-not-allowed'
+                              : isDone
+                              ? 'border border-[var(--hat)] text-[var(--hat)] bg-[var(--parchment)] hover:bg-[var(--hat)] hover:text-[var(--parchment)] cursor-pointer'
+                              : 'bg-[var(--hat)] text-[var(--parchment)] hover:bg-[var(--hat-dark)] cursor-pointer shadow-[0_2px_0_rgba(0,0,0,0.35)]'
+                            }`}>
+                          {isDone
+                            ? <><RotateCcw size={12} aria-hidden /> Reopen case</>
+                            : isLocked
+                            ? <><Lock size={12} aria-hidden /> Locked</>
+                            : progress > 0
+                            ? <><Search size={12} aria-hidden /> Continue case</>
+                            : <><FileText size={12} aria-hidden /> Open case file</>}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Stamp overlays */}
+                    {isDone && (
+                      <div className="absolute top-1/2 left-[58%] -translate-y-1/2 -rotate-[8deg] pointer-events-none">
+                        <div className={`${TYPE} ${desk.wornStamp} px-2.5 text-lg font-extrabold tracking-[0.12em] whitespace-nowrap opacity-80`}>
+                          CASE CLOSED
+                        </div>
+                      </div>
+                    )}
+                    {isLocked && (
+                      <div className="absolute top-1/2 left-[58%] -translate-y-1/2 rotate-[6deg] pointer-events-none">
+                        <div className={`${TYPE} ${desk.wornStamp} px-2.5 text-lg font-extrabold tracking-[0.12em] whitespace-nowrap opacity-70`}>
+                          CLASSIFIED
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
+              </div>
 
-
-            </div>
-
-            {/* Scroll dots */}
-            <div className="w-8 flex flex-col
-              items-center justify-between
-              py-[30px] flex-shrink-0 pr-1">
-              {[...Array(7)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-4 h-4 rounded-full
-                    bg-[#9E8E7A]
-                    cursor-pointer
-                    transition-all hover:bg-[#7A6A5A]"
-                  style={{
-                    opacity:
-                      Math.abs(
-                        (i / 7) * 100 - scrollPos
-                      ) < 20 ? 1 : 0.65,
-                  }} />
-              ))}
             </div>
           </div>
         </div>
 
-        {/* ── SIDEBAR ── */}
-        <aside className="w-[240px] flex-shrink-0
-          bg-transparent
-          flex flex-col gap-3 pt-[64px]
-          overflow-y-auto h-full">
+        {/* ── SIDEBAR: EVIDENCE BOARD // CASE TOOLS ── */}
+        <aside className={`${desk.noScrollbar} relative z-10 w-[240px] flex-shrink-0
+          flex flex-col gap-[18px] pt-[14px] overflow-y-auto h-full pb-4`}>
+          <div className={`${TYPE} h-[40px] flex items-start gap-2 text-[12px] font-bold tracking-[0.12em] text-[var(--parchment)] leading-tight`}>
+            <Pin size={15} className="text-[var(--crimson)] mt-0.5 flex-shrink-0" aria-hidden />
+            EVIDENCE BOARD {'//'} CASE TOOLS
+          </div>
           {[
             {
-              icon:    '📋',
+              icon:    Clipboard,
               label:   'LEXICAL\nCLIPBOARD',
+              note:    'Vocabulary evidence log',
+              tilt:    'rotate-[-1.2deg]',
               onClick: () => setShowLexicalModal(true),
             },
             {
-              icon:    '📄',
+              icon:    FileText,
               label:   'QUICK\nREVIEW',
+              note:    'Field manual & 60s drill',
+              tilt:    'rotate-[0.9deg]',
               onClick: () => setShowQuickReviewModal(true),
             },
             {
-              icon:    '📈',
+              icon:    Activity,
               label:   'METRIC\nLOG',
+              note:    'Case performance audit',
+              tilt:    'rotate-[-0.6deg]',
               onClick: () => setShowMetricLogModal(true),
             },
           ].map((item, idx) => (
-            <div
+            <button
               key={idx}
               onClick={item.onClick}
-              className="flex-1 bg-[#E6DCC0]
-                rounded flex flex-row
-                items-start gap-3 px-4 py-4
-                cursor-pointer min-h-[110px]
-                transition-all hover:bg-[#F0E4C8]
-                border border-[#C6A868]">
-              <div className="text-xl text-[#3B2E20]
-                flex-shrink-0 mt-0.5">
-                {item.icon}
-              </div>
-              <div className="font-mono text-xs
-                font-bold uppercase tracking-wider
-                text-[#3B2E20] leading-relaxed
-                text-left whitespace-pre-line">
-                {item.label}
-              </div>
-            </div>
+              className={`${desk.indexCard} ${item.tilt} relative h-[132px] flex-shrink-0
+                rounded-[2px] flex flex-row items-start gap-3 px-3.5 pt-6 pb-3 text-left cursor-pointer
+                transition-all hover:rotate-0 hover:-translate-y-1 hover:scale-[1.02]
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--lime)]`}>
+              {/* Worn tape across the top */}
+              <span className={`${desk.tape} absolute -top-2 left-1/2 -translate-x-1/2 w-20 h-5 -rotate-3`} aria-hidden />
+              {/* Red push pin */}
+              <span
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full ring-1 ring-black/30
+                  bg-[radial-gradient(circle_at_35%_35%,#ff8a8a,#c0392b_45%,#7a1717)]
+                  shadow-[2px_5px_4px_rgba(0,0,0,0.5)]"
+                aria-hidden />
+              <span className="w-9 h-9 rounded-sm bg-[var(--ink)] text-[var(--parchment)] flex items-center justify-center flex-shrink-0 shadow-[0_2px_4px_rgba(0,0,0,0.35)]">
+                <item.icon size={18} aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className={`${TYPE} block text-[13px] font-bold uppercase tracking-wider
+                  text-[var(--ink)] leading-tight whitespace-pre-line`}>
+                  {item.label}
+                </span>
+                <span className={`${desk.handwrittenInk} block mt-1.5 text-[11px] leading-snug -rotate-1`}>
+                  {item.note}
+                </span>
+              </span>
+              {/* Detective pencil scribbles in the empty lined area */}
+              <CaseScribbles variant={idx} />
+            </button>
           ))}
         </aside>
         </div>{/* end center container */}

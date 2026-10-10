@@ -1,0 +1,190 @@
+/* frontend/src/components/dashboard/desk.module.css
+   Detective evidence board on a dark bureau-slate desk, with
+   blueprint lines, scattered forensic papers and push pins. The mascot
+   palette lives here as CSS variables on .desk so the dashboard
+   (Tailwind `[var(--…)]` classes) and the sidebar modals share it. */
+
+.desk {
+  /* ── Palette ── */
+  --lime:        #76b852;  /* mascot green: progress gauges, active cases */
+  --lime-bright: #82c341;
+  --hat:         #4e3629;  /* detective hat brown: default CTAs, borders */
+  --hat-dark:    #3c2d20;
+  --ink:         #2b2016;  /* darkest text */
+  --parchment:   #f9f6ed;  /* index cards, exhibit cards */
+  --manila:      #e9dcbc;  /* folder body */
+  --manila-edge: #c9b48a;  /* folder edges / stacked sheets */
+  --amber:       #f3a712;  /* XP / streak, lamp light */
+  --lens:        #6ba4b8;  /* magnifying-glass blue: blueprint lines, accents */
+  --crimson:     #9e2a2b;  /* CASE CLOSED / stamps */
+  --slate-top:    #282c34;  /* detective bureau slate */
+  --slate-bottom: #1e2227;
+
+  position: relative;
+  isolation: isolate;
+  background-color: var(--slate-bottom);
+  background-image:
+    /* evidence board: polaroids, paperwork, red string, pins, blueprint marks */
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%271920%27%20height%3D%271080%27%20viewBox%3D%270%200%201920%201080%27%3E%20%3Cg%20stroke%3D%27%236ba4b8%27%20stroke-opacity%3D%270.12%27%20fill%3D%27none%27%20stroke-width%3D%271.5%27%3E%20%3Cpath%20d%3D%27M80%20980%20h420%20v-160%20h260%20M760%201050%20v-230%20M1500%20960%20h320%20v-140%27%2F%3E%20%3Ccircle%20cx%3D%271640%27%20cy%3D%27880%27%20r%3D%2760%27%2F%3E%3Ccircle%20cx%3D%271640%27%20cy%3D%27880%27%20r%3D%274%27%2F%3E%20%3Cpath%20d%3D%27M1580%20880%20h120%20M1640%20820%20v120%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-7%20125%20260)%27%3E%20%3Crect%20x%3D%2734%27%20y%3D%27146%27%20width%3D%27190%27%20height%3D%27240%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%2730%27%20y%3D%27140%27%20width%3D%27190%27%20height%3D%27240%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M44%20164%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20178%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20192%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20206%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20220%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20234%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20248%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20262%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20276%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20290%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20304%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20318%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20332%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20346%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20360%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(5%201800%20165)%27%3E%20%3Crect%20x%3D%271704%27%20y%3D%2796%27%20width%3D%27200%27%20height%3D%27150%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271700%27%20y%3D%2790%27%20width%3D%27200%27%20height%3D%27150%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1714%20114%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20128%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20142%20h136%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20156%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20170%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20184%20h136%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20198%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20212%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-4%201785%20770)%27%3E%20%3Crect%20x%3D%271684%27%20y%3D%27646%27%20width%3D%27210%27%20height%3D%27260%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271680%27%20y%3D%27640%27%20width%3D%27210%27%20height%3D%27260%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1694%20664%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20678%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20692%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20706%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20720%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20734%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20748%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20762%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20776%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20790%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20804%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20818%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20832%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20846%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20860%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20874%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(4%20125%20725)%27%3E%20%3Crect%20x%3D%2724%27%20y%3D%27646%27%20width%3D%27210%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%2720%27%20y%3D%27640%27%20width%3D%27210%27%20height%3D%27170%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M34%20664%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20678%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20692%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20706%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20720%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20734%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20748%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20762%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20776%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20790%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(3%20405%2065.5)%27%3E%20%3Crect%20x%3D%27334%27%20y%3D%2724%27%20width%3D%27150%27%20height%3D%2795%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%27330%27%20y%3D%2718%27%20width%3D%27150%27%20height%3D%2795%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M344%2042%20h122%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2056%20h104%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2070%20h86%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2084%20h122%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-2%201290%201040)%27%3E%20%3Crect%20x%3D%271184%27%20y%3D%27986%27%20width%3D%27220%27%20height%3D%27120%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271180%27%20y%3D%27980%27%20width%3D%27220%27%20height%3D%27120%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1194%201004%20h192%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201018%20h174%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201032%20h156%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201046%20h192%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201060%20h174%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201074%20h156%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(6%20130%20505)%27%3E%20%3Crect%20x%3D%2764%27%20y%3D%27426%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%2760%27%20y%3D%27420%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%2770%27%20y%3D%27430%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%233d4a52%27%2F%3E%20%3Cpath%20d%3D%27M70%20525%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M78%20565%20h80%20M78%20576%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-8%201810%20415)%27%3E%20%3Crect%20x%3D%271744%27%20y%3D%27336%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%271740%27%20y%3D%27330%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%271750%27%20y%3D%27340%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%234a3b30%27%2F%3E%20%3Cpath%20d%3D%27M1750%20435%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M1758%20475%20h80%20M1758%20486%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(4%201630%20115)%27%3E%20%3Crect%20x%3D%271564%27%20y%3D%2736%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%271560%27%20y%3D%2730%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%271570%27%20y%3D%2740%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%232f3d36%27%2F%3E%20%3Cpath%20d%3D%27M1570%20135%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M1578%20175%20h80%20M1578%20186%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-5%20290%20945)%27%3E%20%3Crect%20x%3D%27224%27%20y%3D%27866%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%27220%27%20y%3D%27860%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%27230%27%20y%3D%27870%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%2346402f%27%2F%3E%20%3Cpath%20d%3D%27M230%20965%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M238%201005%20h80%20M238%201016%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20stroke%3D%27%23c22b2d%27%20stroke-width%3D%272.4%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20opacity%3D%270.9%27%3E%20%3Cpath%20d%3D%27M125%20150%20Q%20240%20330%20130%20430%27%2F%3E%20%3Cpath%20d%3D%27M130%20430%20Q%2060%20600%20125%20650%27%2F%3E%20%3Cpath%20d%3D%27M125%20150%20Q%20260%2090%20400%2030%27%2F%3E%20%3Cpath%20d%3D%27M1800%20100%20Q%201700%20220%201810%20340%27%2F%3E%20%3Cpath%20d%3D%27M1810%20340%20Q%201880%20520%201785%20650%27%2F%3E%20%3Cpath%20d%3D%27M1630%2040%20Q%201720%2070%201800%20100%27%2F%3E%20%3Cpath%20d%3D%27M290%20870%20Q%20700%201020%201290%20990%27%2F%3E%20%3Cpath%20d%3D%27M1290%20990%20Q%201560%20900%201785%20650%27%2F%3E%20%3C%2Fg%3E%20%3Ccircle%20cx%3D%27127%27%20cy%3D%27153%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27125%27%20cy%3D%27150%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27123%27%20cy%3D%27148%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27132%27%20cy%3D%27433%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27130%27%20cy%3D%27430%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27128%27%20cy%3D%27428%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27127%27%20cy%3D%27653%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27125%27%20cy%3D%27650%27%20r%3D%277%27%20fill%3D%27%23f3a712%27%2F%3E%20%3Ccircle%20cx%3D%27123%27%20cy%3D%27648%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27402%27%20cy%3D%2733%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27400%27%20cy%3D%2730%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27398%27%20cy%3D%2728%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271802%27%20cy%3D%27103%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271800%27%20cy%3D%27100%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271798%27%20cy%3D%2798%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271812%27%20cy%3D%27343%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271810%27%20cy%3D%27340%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271808%27%20cy%3D%27338%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271787%27%20cy%3D%27653%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271785%27%20cy%3D%27650%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271783%27%20cy%3D%27648%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271632%27%20cy%3D%2743%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271630%27%20cy%3D%2740%27%20r%3D%277%27%20fill%3D%27%23f3a712%27%2F%3E%20%3Ccircle%20cx%3D%271628%27%20cy%3D%2738%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27292%27%20cy%3D%27873%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27290%27%20cy%3D%27870%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27288%27%20cy%3D%27868%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271292%27%20cy%3D%27993%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271290%27%20cy%3D%27990%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271288%27%20cy%3D%27988%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3C%2Fsvg%3E"),
+    /* blueprint mapping grid, full width */
+    linear-gradient(rgba(107, 164, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 164, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(107, 164, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 164, 184, 0.035) 1px, transparent 1px),
+    /* surface speckle */
+    radial-gradient(rgba(0, 0, 0, 0.28) 1px, transparent 1.5px),
+    radial-gradient(rgba(180, 190, 200, 0.06) 1px, transparent 1.5px),
+    /* fine brushed texture */
+    repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 11px, rgba(220, 228, 236, 0.015) 11px 13px, transparent 13px 29px),
+    /* base bureau slate gradient */
+    linear-gradient(170deg, var(--slate-top) 0%, var(--slate-bottom) 100%);
+  background-size:
+    cover,
+    96px 96px,
+    96px 96px,
+    24px 24px,
+    24px 24px,
+    5px 5px,
+    9px 9px,
+    100% 100%,
+    100% 100%;
+  background-position: center, 0 0, 0 0, 0 0, 0 0, 0 0, 2px 3px, 0 0, 0 0;
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat;
+  background-attachment: fixed;
+}
+
+/* Deep edge vignette — behind the content, inside .desk's stacking context */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 40%, rgba(6, 3, 1, 0.78) 100%);
+  box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.7);
+}
+
+/* Warm amber desk-lamp light pooling over the centre */
+.lamp {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 30%, rgba(243, 167, 18, 0.16), transparent 70%),
+    radial-gradient(ellipse 30% 25% at 82% 35%, rgba(243, 167, 18, 0.08), transparent 70%);
+  mix-blend-mode: screen;
+}
+
+/* ── Scrollbars: hidden everywhere inside the dashboard, scrolling kept ── */
+.desk,
+.desk :global(*) {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* legacy Edge / IE */
+}
+
+.desk::-webkit-scrollbar,
+.desk :global(*)::-webkit-scrollbar {
+  display: none;              /* Chrome, Safari, Edge */
+}
+
+.noScrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.noScrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Paper surfaces ── */
+.paper {
+  background-image:
+    radial-gradient(rgba(78, 54, 41, 0.05) 1px, transparent 1.2px),
+    radial-gradient(rgba(78, 54, 41, 0.035) 1px, transparent 1.2px);
+  background-size: 7px 7px, 11px 11px;
+  background-position: 0 0, 3px 5px;
+}
+
+/* Manila folder with a stack of sheets peeking out behind it, worn edges */
+.folder {
+  border-radius: 12px 8px 8px 8px;  /* rounded top-left under the active tab */
+  background-color: var(--manila);
+  background-image:
+    /* soft light falling across the sheet */
+    linear-gradient(160deg, rgba(255, 252, 240, 0.35) 0%, transparent 35%, transparent 70%, rgba(120, 90, 50, 0.08) 100%),
+    /* aged, darker corners */
+    radial-gradient(ellipse at 0 0, rgba(120, 90, 50, 0.16), transparent 35%),
+    radial-gradient(ellipse at 100% 100%, rgba(120, 90, 50, 0.2), transparent 40%),
+    /* paper fibre */
+    radial-gradient(rgba(78, 54, 41, 0.06) 1px, transparent 1.2px),
+    radial-gradient(rgba(78, 54, 41, 0.04) 1px, transparent 1.2px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 7px 7px, 11px 11px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 3px 5px;
+  border: 1px solid var(--manila-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),         /* lit top edge */
+    inset 0 0 32px rgba(120, 90, 50, 0.22),          /* worn, shaded edges */
+    5px 5px 0 -1px #efe4c8, 5px 5px 0 0 var(--manila-edge),     /* sheet 1 */
+    10px 9px 0 -1px #e3d4ae, 10px 9px 0 0 #b59c6c,               /* sheet 2 */
+    0 18px 40px rgba(0, 0, 0, 0.5);                  /* lying on the desk */
+}
+
+/* Lined index card (sidebar case tools) */
+.indexCard {
+  background-color: var(--parchment);
+  background-image:
+    linear-gradient(transparent 24px, rgba(158, 42, 43, 0.45) 24px, rgba(158, 42, 43, 0.45) 25px, transparent 25px),
+    repeating-linear-gradient(transparent 0 12px, rgba(107, 164, 184, 0.22) 12px 13px);
+  background-position: 0 0, 0 25px;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.15),
+    0 7px 12px -3px rgba(0, 0, 0, 0.55),
+    0 16px 22px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* Worn masking tape with torn ends */
+.tape {
+  background: rgba(214, 196, 150, 0.82);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  clip-path: polygon(0 8%, 6% 0, 12% 10%, 18% 2%, 82% 0, 88% 9%, 94% 1%, 100% 8%,
+                     100% 92%, 94% 100%, 88% 90%, 82% 99%, 18% 100%, 12% 91%, 6% 100%, 0 92%);
+}
+
+/* Worn crimson stamp: ink speckle eats into the stamp */
+.wornStamp {
+  color: #8f1d1f;                              /* deeper ink for crisp contrast */
+  border: 4px double #8f1d1f;
+  mix-blend-mode: multiply;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  text-shadow: 0 0 0.5px currentColor;          /* slightly bleeding ink edge */
+  -webkit-mask-image:
+    radial-gradient(circle at 20% 30%, transparent 0 2px, #000 3px),
+    radial-gradient(circle at 70% 60%, transparent 0 1.5px, #000 2.5px);
+  -webkit-mask-size: 17px 15px, 13px 19px;   /* sparser wear = bolder stamp */
+  -webkit-mask-composite: source-in;
+  mask-image:
+    radial-gradient(circle at 20% 30%, transparent 0 2px, #000 3px),
+    radial-gradient(circle at 70% 60%, transparent 0 1.5px, #000 2.5px);
+  mask-size: 17px 15px, 13px 19px;
+  mask-composite: intersect;
+}
+
+/* Handwritten pencil/ink annotations */
+.handwritten {
+  font-family: 'Segoe Print', 'Bradley Hand', 'Ink Free', 'Comic Sans MS', cursive;
+  color: var(--crimson);
+  opacity: 0.85;
+}
+
+.handwrittenInk {
+  font-family: 'Segoe Print', 'Bradley Hand', 'Ink Free', 'Comic Sans MS', cursive;
+  color: var(--ink);
+}
+
+/* Messy pencil scribbles on the case-tool index cards */
+.scribble {
+  font-family: 'Segoe Print', 'Bradley Hand', 'Ink Free', 'Comic Sans MS', cursive;
+  color: #4a453f;
+  opacity: 0.7;
+  pointer-events: none;
+}

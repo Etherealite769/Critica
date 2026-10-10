@@ -4,6 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react'
 import styles from './sidebar-modals.module.css'
 import { apiFetch } from '@/lib/api'
 import { subscribeToProgressionUpdates } from '@/lib/realtime-sync'
+import {
+  FileText, Network, Puzzle, RefreshCw, ScanSearch, Search, ShieldCheck, X,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface MetricLogModalProps {
   isOpen: boolean
@@ -47,11 +51,11 @@ interface MetricsData {
   recent_activity: TelemetryEntry[]
 }
 
-const MODULE_DISPLAY_NAMES: Record<string, { name: string; icon: string }> = {
-  logic_thread: { name: 'Text Structure Mastery', icon: '⊕' },
-  snap_gap: { name: 'Snap-in-Gap Transitions', icon: '🧩' },
-  tap_clues: { name: 'Tap The Clues', icon: '🔍' },
-  fact_scanner: { name: 'Fact Scanner (CRAAP)', icon: '🔎' },
+const MODULE_DISPLAY_NAMES: Record<string, { name: string; icon: LucideIcon }> = {
+  logic_thread: { name: 'Text Structure Mastery', icon: Network },
+  snap_gap: { name: 'Snap-in-Gap Transitions', icon: Puzzle },
+  tap_clues: { name: 'Tap The Clues', icon: Search },
+  fact_scanner: { name: 'Fact Scanner (CRAAP)', icon: ScanSearch },
 }
 
 export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps) {
@@ -204,7 +208,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span className={styles.stampBox}>OFFICIAL RECORD</span>
             <button className={styles.closeButton} onClick={onClose} title="Close Audit (Esc)">
-              ✕ CLOSE
+              <X size={14} aria-hidden /> CLOSE
             </button>
           </div>
         </div>
@@ -245,7 +249,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                 className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
                 onClick={fetchMetrics}
                 style={{ marginTop: '1rem' }}>
-                🔄 Retry Telemetry Interrogation
+                <RefreshCw size={14} aria-hidden /> Retry Telemetry Interrogation
               </button>
             </div>
           ) : (
@@ -280,7 +284,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                           fontSize: '1.6rem',
                           color: '#FFF8ED',
                         }}>
-                        🛡️
+                        <ShieldCheck size={26} aria-hidden />
                       </div>
                       <div>
                         <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', color: '#414833', letterSpacing: '0.1em' }}>
@@ -424,12 +428,13 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {Object.entries(metrics.module_stats).map(([modKey, stat]) => {
-                      const meta = MODULE_DISPLAY_NAMES[modKey] || { name: modKey, icon: '📄' }
+                      const meta = MODULE_DISPLAY_NAMES[modKey] || { name: modKey, icon: FileText }
+                      const ModIcon = meta.icon
                       return (
                         <div key={modKey} className={styles.cheatCard} style={{ margin: 0, padding: '1rem 1.25rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                              <span style={{ fontSize: '1.25rem' }}>{meta.icon}</span>
+                              <ModIcon size={18} color="#2D0909" aria-hidden />
                               <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 'bold', fontSize: '0.92rem', color: '#2D0909' }}>
                                 {meta.name}
                               </span>
