@@ -9,6 +9,10 @@ import {
   notifyProgressionUpdated,
   LexicalSyncPayload,
 } from '@/lib/realtime-sync'
+import {
+  BookOpen, CalendarClock, Check, ChevronLeft, ChevronRight, ChevronUp,
+  ClipboardList, FolderOpen, Layers, PartyPopper, Plus, Timer, X, Zap,
+} from 'lucide-react'
 
 export interface LexicalWord {
   word: string
@@ -363,7 +367,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
         {/* ── XP Toast Notification ── */}
         {xpToast && (
           <div className={styles.xpToast}>
-            <span>⚡</span>
+            <Zap size={15} aria-hidden />
             <span>{xpToast.message}</span>
           </div>
         )}
@@ -373,7 +377,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
           <div className={styles.headerLeft}>
             <span className={styles.headerBadge}>DOSSIER // EVIDENCE DECK</span>
             <h2 className={styles.headerTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span>📋</span> Lexical Clipboard
+              <ClipboardList size={18} aria-hidden /> Lexical Clipboard
               <span className={styles.livePulseBadge} title="Realtime cross-tab evidence synchronization active">
                 <span className={styles.liveDot} /> LIVE SYNC ACTIVE
               </span>
@@ -382,7 +386,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span className={styles.stampBox}>EVIDENCE VAULT</span>
             <button className={styles.closeButton} onClick={onClose} title="Close Dossier (Esc)">
-              ✕ CLOSE
+              <X size={14} aria-hidden /> CLOSE
             </button>
           </div>
         </div>
@@ -392,7 +396,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
           <button
             className={`${styles.navTab} ${activeTab === 'index' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('index')}>
-            📁 Word Index ({words.length})
+            <FolderOpen size={14} aria-hidden /> Word Index ({words.length})
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'flashcards' ? styles.navTabActive : ''}`}
@@ -400,12 +404,12 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
               setActiveTab('flashcards')
               setIsFlipped(false)
             }}>
-            ⚡ Flashcard Drill {deckStatus && deckStatus.due_count > 0 && `(${deckStatus.due_count} Due)`}
+            <Layers size={14} aria-hidden /> Flashcard Drill {deckStatus && deckStatus.due_count > 0 && `(${deckStatus.due_count} Due)`}
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'schedule' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('schedule')}>
-            🗓️ Retention Schedule
+            <CalendarClock size={14} aria-hidden /> Retention Schedule
           </button>
         </div>
 
@@ -413,7 +417,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
         <div className={styles.contentBody}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
-              <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>📂 Synchronizing Evidence Files...</div>
+              <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Synchronizing Evidence Files...</div>
               <p style={{ fontSize: '0.8rem', color: '#8C5A3C' }}>Connecting to realtime lexical ledger.</p>
             </div>
           ) : activeTab === 'index' ? (
@@ -422,7 +426,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
               <div className={styles.searchBarRow}>
                 <input
                   type="text"
-                  placeholder="🔍 Search words, definitions, translations, or context..."
+                  placeholder="Search words, definitions, translations, or context..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className={styles.searchInput}
@@ -430,7 +434,9 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                 <button
                   className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
                   onClick={() => setShowAddDrawer(!showAddDrawer)}>
-                  {showAddDrawer ? '▲ Close Form' : '+ Log Evidence Term'}
+                  {showAddDrawer
+                    ? <><ChevronUp size={14} aria-hidden /> Close Form</>
+                    : <><Plus size={14} aria-hidden /> Log Evidence Term</>}
                 </button>
                 <button
                   className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
@@ -439,7 +445,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                     setActiveTab('flashcards')
                     setIsFlipped(false)
                   }}>
-                  ⚡ Drill Today's Due ({deckStatus?.due_count ?? 0})
+                  <Zap size={14} aria-hidden /> Drill Today's Due ({deckStatus?.due_count ?? 0})
                 </button>
               </div>
 
@@ -521,7 +527,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       type="submit"
                       disabled={savingWord}
                       className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}>
-                      {savingWord ? 'Logging Term...' : '✓ Log & Sync Term'}
+                      {savingWord ? 'Logging Term...' : <><Check size={14} aria-hidden /> Log & Sync Term</>}
                     </button>
                   </div>
                 </form>
@@ -650,7 +656,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       color: drillMode === 'daily' ? '#FFF8ED' : '#432818',
                       fontWeight: drillMode === 'daily' ? 'bold' : 'normal',
                     }}>
-                    ⚡ Daily Due Drill ({words.filter(w => w.is_due_today !== false && !w.is_reviewed_today).length})
+                    <Zap size={13} className={styles.inlineIcon} aria-hidden />Daily Due Drill ({words.filter(w => w.is_due_today !== false && !w.is_reviewed_today).length})
                   </button>
                   <button
                     onClick={() => {
@@ -669,7 +675,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       color: drillMode === 'all' ? '#FFF8ED' : '#432818',
                       fontWeight: drillMode === 'all' ? 'bold' : 'normal',
                     }}>
-                    📖 Practice All Cards ({words.length})
+                    <BookOpen size={13} className={styles.inlineIcon} aria-hidden />Practice All Cards ({words.length})
                   </button>
                 </div>
 
@@ -692,7 +698,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       marginTop: '0.75rem',
                       marginBottom: '0.5rem',
                     }}>
-                    🎉 All Evidence Terms Reviewed For Today!
+                    <PartyPopper size={24} className={styles.inlineIcon} aria-hidden />All Evidence Terms Reviewed For Today!
                   </h3>
                   <p style={{ color: '#6A381F', fontSize: '0.88rem', maxWidth: '440px', margin: '0 auto 1.5rem' }}>
                     Excellent work, Agent. You have fulfilled your active spaced repetition quota.
@@ -711,7 +717,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       color: '#2D0909',
                       marginBottom: '1.5rem',
                     }}>
-                    ⏱️ Next Daily Refresh In: <strong>{formatCountdown(remainingSeconds)}</strong>
+                    <Timer size={15} className={styles.inlineIcon} aria-hidden />Next Daily Refresh In: <strong>{formatCountdown(remainingSeconds)}</strong>
                   </div>
 
                   <div>
@@ -722,7 +728,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                         setCurrentCardIndex(0)
                         setIsFlipped(false)
                       }}>
-                      📖 Free Practice ({words.length} Total Cards)
+                      <BookOpen size={14} aria-hidden /> Free Practice ({words.length} Total Cards)
                     </button>
                   </div>
                 </div>
@@ -845,20 +851,20 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       className={styles.tacticalBtn}
                       onClick={handlePrevCard}
                       style={{ flex: '1' }}>
-                      ◀ Previous
+                      <ChevronLeft size={14} aria-hidden /> Previous
                     </button>
                     <button
                       className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
                       onClick={() => handleRecordReview(currentWord.word)}
                       disabled={reviewing}
                       style={{ flex: '2' }}>
-                      <span>✓</span> {reviewing ? 'Recording...' : 'Retained / Mastered (+10 XP)'}
+                      <Check size={14} aria-hidden /> {reviewing ? 'Recording...' : 'Retained / Mastered (+10 XP)'}
                     </button>
                     <button
                       className={styles.tacticalBtn}
                       onClick={handleNextCard}
                       style={{ flex: '1' }}>
-                      Next ▶
+                      Next <ChevronRight size={14} aria-hidden />
                     </button>
                   </div>
                 </>
@@ -927,7 +933,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                                 color: '#2E6B3A',
                                 border: '1px solid #2E6B3A',
                               }}>
-                              ✓ REVIEWED TODAY
+                              <Check size={11} className={styles.inlineIcon} aria-hidden />REVIEWED TODAY
                             </span>
                           ) : w.is_due_today !== false ? (
                             <span
@@ -941,7 +947,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                                 color: '#8C5A3C',
                                 border: '1px solid #8C5A3C',
                               }}>
-                              ⚡ DUE TODAY
+                              <Zap size={11} className={styles.inlineIcon} aria-hidden />DUE TODAY
                             </span>
                           ) : (
                             <span

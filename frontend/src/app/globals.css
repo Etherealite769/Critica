@@ -26,3 +26,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+
+/* Dashboard: no visible page scrollbar (scrolling still works) */
+html:has([data-dashboard]),
+html:has([data-dashboard]) body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html:has([data-dashboard])::-webkit-scrollbar,
+html:has([data-dashboard]) body::-webkit-scrollbar {
+  display: none;
+}
