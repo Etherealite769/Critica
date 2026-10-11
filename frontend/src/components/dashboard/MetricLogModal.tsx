@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import styles from './sidebar-modals.module.css'
+import styles from './metric-log.module.css'
 import { apiFetch } from '@/lib/api'
+import { MODULE_KEYS, MODULE_TITLES, moduleTitle } from '@/lib/modules'
 import { subscribeToProgressionUpdates } from '@/lib/realtime-sync'
 import {
-  FileText, Network, Puzzle, RefreshCw, ScanSearch, Search, ShieldCheck, X,
-  type LucideIcon,
+  BadgeCheck, Crosshair, FileText, FolderCheck, FolderOpen, Footprints, Network, Paperclip, Puzzle,
+  RefreshCw, ScanSearch, Search, ShieldCheck, X, type LucideIcon,
 } from 'lucide-react'
 
 interface MetricLogModalProps {
@@ -51,11 +52,18 @@ interface MetricsData {
   recent_activity: TelemetryEntry[]
 }
 
-const MODULE_DISPLAY_NAMES: Record<string, { name: string; icon: LucideIcon }> = {
-  logic_thread: { name: 'Text Structure Mastery', icon: Network },
-  snap_gap: { name: 'Snap-in-Gap Transitions', icon: Puzzle },
-  tap_clues: { name: 'Tap The Clues', icon: Search },
-  fact_scanner: { name: 'Fact Scanner (CRAAP)', icon: ScanSearch },
+// Titles come from @/lib/modules so they match the dashboard tabs
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  logic_thread: Network,
+  snap_gap:     Puzzle,
+  tap_clues:    Search,
+  fact_scanner: ScanSearch,
+}
+
+/** The four disciplines in case order, then any unknown modules the backend reports. */
+function moduleOrder(stats: Record<string, ModuleStat>): string[] {
+  const known = (MODULE_KEYS as string[]).filter(k => k in stats)
+  return [...known, ...Object.keys(stats).filter(k => !known.includes(k))]
 }
 
 export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps) {
@@ -92,14 +100,14 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
           }
 
           const modStats: Record<string, ModuleStat> = {}
-          const modKeys = ['logic_thread', 'snap_gap', 'tap_clues', 'fact_scanner']
+          const modKeys = MODULE_KEYS
           let totAtt = 0
           let totCor = 0
 
           modKeys.forEach(m => {
             const mStatus = dash.module_status?.[m]
             const completedInMod =
-              mStatus?.nodes?.filter((n: any) => n.status === 'completed')?.length || 0
+              mStatus?.nodes?.filter((n: { status?: string }) => n.status === 'completed')?.length || 0
             const backendStat = dash.module_stats?.[m]
             const attempts = backendStat?.attempts ?? completedInMod
             const correct = backendStat?.correct ?? completedInMod
@@ -194,354 +202,287 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
 
   if (!isOpen) return null
 
+  const tabs: { id: typeof activeTab; label: string; icon: LucideIcon; count?: number }[] = [
+    { id: 'overview',  label: 'Clearance & Overview',      icon: ShieldCheck },
+    { id: 'modules',   label: 'Module Proficiency Matrix', icon: Crosshair },
+    { id: 'telemetry', label: 'Activity Timeline',         icon: Footprints, count: metrics?.recent_activity.length ?? 0 },
+  ]
+
+  // The weakest attempted discipline gets Inspector Crit's red-ink "focus here" note
+  const weakest = metrics
+    ? moduleOrder(metrics.module_stats)
+        .filter(k => metrics.module_stats[k].attempts > 0)
+        .sort((a, b) => metrics.module_stats[a].accuracy - metrics.module_stats[b].accuracy)[0]
+    : undefined
+
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.dossierContainer} onClick={e => e.stopPropagation()}>
-        {/* ── Folder Header ── */}
-        <div className={styles.folderHeader}>
-          <div className={styles.headerLeft}>
-            <span className={styles.headerBadge}>TELEMETRY & AUDIT</span>
-            <h2 className={styles.headerTitle}>
-              Metric Log & Performance Audit
-            </h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className={styles.stampBox}>OFFICIAL RECORD</span>
-            <button className={styles.closeButton} onClick={onClose} title="Close Audit (Esc)">
-              <X size={14} aria-hidden /> CLOSE
-            </button>
-          </div>
-        </div>
+    <div className={styles.overlay} onClick={onClose}>
+      <div
+        className={styles.shell}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="metric-log-title"
+        onClick={e => e.stopPropagation()}>
 
-        {/* ── Sub Navigation ── */}
-        <div className={styles.subNavBar}>
-          <button
-            className={`${styles.navTab} ${activeTab === 'overview' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('overview')}>
-            Clearance & Overview
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'modules' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('modules')}>
-            Module Proficiency Matrix
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'telemetry' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('telemetry')}>
-            Activity Timeline ({metrics?.recent_activity.length || 0})
-          </button>
-        </div>
-
-        {/* ── Content Body ── */}
-        <div className={styles.contentBody}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
-              <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Interrogating Telemetry Ledger...</div>
-              <p style={{ fontSize: '0.8rem', color: '#414833' }}>Aggregating diagnostic case logs.</p>
-            </div>
-          ) : !metrics ? (
-            <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
-              <span className={styles.stampBox}>NO TELEMETRY AVAILABLE</span>
-              <p style={{ marginTop: '1rem', color: '#414833', fontSize: '0.85rem' }}>
-                Failed to retrieve operational metrics. Please verify session authorization.
-              </p>
+        {/* ── Folder tabs ── */}
+        <div className={styles.tabs} role="tablist" aria-label="Audit sections">
+          {tabs.map((t, i) => {
+            const active = activeTab === t.id
+            return (
               <button
-                className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
-                onClick={fetchMetrics}
-                style={{ marginTop: '1rem' }}>
-                <RefreshCw size={14} aria-hidden /> Retry Telemetry Interrogation
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`${styles.tab} ${active ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab(t.id)}>
+                {active && <Paperclip size={18} strokeWidth={1.75} className={styles.tabClip} aria-hidden />}
+                <span className={styles.tabIndex}>[{i + 1}] SECTION {String(i + 1).padStart(2, '0')}:</span>
+                <span className={styles.tabLabel}>
+                  <t.icon size={13} aria-hidden />
+                  {t.label}
+                  {t.count !== undefined && <span className={styles.tabCount}>{t.count}</span>}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Manila folder ── */}
+        <div className={styles.folder}>
+          <Paperclip size={26} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
+
+          {/* Fixed dossier header */}
+          <header className={styles.header}>
+            <div className={styles.headerLeft}>
+              <span className={styles.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} TELEMETRY & AUDIT
+              </span>
+              <h2 id="metric-log-title" className={styles.title}>Metric Log & Performance Audit</h2>
+            </div>
+            <div className={styles.headerRight}>
+              <span className={styles.stamp}>Official Record</span>
+              <button type="button" className={styles.caseBtn} onClick={onClose} title="Close Audit (Esc)">
+                <X size={13} aria-hidden /> Close File
               </button>
             </div>
-          ) : (
-            <>
-              {activeTab === 'overview' && (
-                <div>
-                  {/* Investigator Clearance Header */}
-                  <div
-                    style={{
-                      background: '#FFF8ED',
-                      border: '2px solid #BEA791',
-                      borderRadius: '6px',
-                      padding: '1.25rem',
-                      marginBottom: '1.5rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '1rem',
-                    }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div
-                        style={{
-                          width: '54px',
-                          height: '54px',
-                          borderRadius: '50%',
-                          background: '#414833',
-                          border: '2px solid #BEA791',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1.6rem',
-                          color: '#FFF8ED',
-                        }}>
-                        <ShieldCheck size={26} aria-hidden />
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', color: '#414833', letterSpacing: '0.1em' }}>
-                          INVESTIGATOR DOSSIER // AGENT #{metrics.student_id}
+          </header>
+
+          {/* Scrolling body */}
+          <div
+            className={`${styles.body} ${activeTab === 'overview' ? styles.bodyFit : styles.bodyScroll}`}
+            role="tabpanel">
+            {loading ? (
+              <div className={styles.state}>
+                <div className={styles.stateTitle}>Interrogating Telemetry Ledger...</div>
+                <p className={styles.stateText}>Aggregating diagnostic case logs.</p>
+              </div>
+            ) : !metrics ? (
+              <div className={styles.state}>
+                <span className={styles.stamp}>No Telemetry Available</span>
+                <p className={styles.stateText}>
+                  Failed to retrieve operational metrics. Please verify session authorization.
+                </p>
+                <button type="button" className={styles.caseBtn} onClick={fetchMetrics}>
+                  <RefreshCw size={13} aria-hidden /> Retry Telemetry Interrogation
+                </button>
+              </div>
+            ) : (
+              <>
+                {activeTab === 'overview' && (
+                  <div className={`${styles.pane} ${styles.paneCompact}`}>
+                    {/* Investigator clearance */}
+                    <div className={`${styles.exhibit} ${styles.clearance}`}>
+                      <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                      <div className={styles.clearanceWho}>
+                        <div className={styles.seal}>
+                          <BadgeCheck size={18} aria-hidden />
                         </div>
-                        <div style={{ fontFamily: 'var(--font-serif, serif)', fontSize: '1.4rem', fontWeight: 'bold', color: '#414833' }}>
-                          {metrics.rank_title}
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#414833' }}>
-                          Operational User: <strong>{metrics.username}</strong> • Active Streak: <strong>{metrics.streak} Days</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <span className={styles.stampBoxSuccess} style={{ transform: 'none' }}>
-                        RANK LEVEL {metrics.rank_level}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ── EXP PROGRESSION HUD ── */}
-                  <div
-                    style={{
-                      background: '#FFF8ED',
-                      border: '1.5px solid #BEA791',
-                      borderRadius: '4px',
-                      padding: '1rem 1.25rem',
-                      marginBottom: '1.25rem',
-                      boxShadow: '0 2px 8px rgba(65, 72, 51, 0.08)',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', fontWeight: 'bold', color: '#414833', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        CLEARANCE EXPERIENCE (EXP) PROGRESSION
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#414833' }}>
-                        <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '10px',
-                        backgroundColor: '#E8D8B8',
-                        borderRadius: '9999px',
-                        overflow: 'hidden',
-                        border: '1px solid #BEA791',
-                        position: 'relative',
-                      }}>
-                      <div
-                        style={{
-                          width: `${metrics.level_progress_pct ?? 0}%`,
-                          height: '100%',
-                          background: 'linear-gradient(90deg, #414833 0%, #BEA791 50%, #2E6B3A 100%)',
-                          transition: 'width 0.6s ease-in-out',
-                        }}
-                      />
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.35rem', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.68rem', color: '#8C5A3C' }}>
-                      <span>Tier Floor: {metrics.current_level_min_xp ?? 0} XP</span>
-                      <span>
-                        {metrics.next_level_xp
-                          ? `${Math.max(0, metrics.next_level_xp - (metrics.total_xp ?? 0))} XP to Next Rank Promotion`
-                          : 'Maximum Clearance Achieved'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 4 KPI Cards */}
-                  <div className={styles.kpiGrid}>
-                    <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Overall Accuracy</span>
-                      <span className={styles.kpiValue} style={{ color: metrics.overall_accuracy >= 75 ? '#2E6B3A' : '#8C2424' }}>
-                        {metrics.overall_accuracy}%
-                      </span>
-                      <span className={styles.kpiSubtext}>
-                        {metrics.correct_attempts} / {metrics.total_attempts} verified answers
-                      </span>
-                    </div>
-
-                    <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Hint Independence</span>
-                      <span className={styles.kpiValue}>
-                        {metrics.hint_independence}%
-                      </span>
-                      <span className={styles.kpiSubtext}>
-                        Solved without investigative lifeline
-                      </span>
-                    </div>
-
-                    <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Completed Nodes</span>
-                      <span className={styles.kpiValue}>
-                        {metrics.completed_count}
-                      </span>
-                      <span className={styles.kpiSubtext}>
-                        Full case nodes locked down
-                      </span>
-                    </div>
-
-                    <div className={styles.kpiCard}>
-                      <span className={styles.kpiLabel}>Field Operations</span>
-                      <span className={styles.kpiValue}>
-                        {metrics.total_attempts}
-                      </span>
-                      <span className={styles.kpiSubtext}>
-                        Recorded attempt events
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Operational Summary */}
-                  <div style={{ background: '#FFF8ED', border: '1.5px solid #BEA791', borderRadius: '4px', padding: '1rem' }}>
-                    <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.8rem', fontWeight: 'bold', color: '#414833', marginBottom: '0.35rem' }}>
-                      INTELLIGENCE OFFICER DEBRIEF
-                    </div>
-                    <p style={{ fontSize: '0.82rem', lineHeight: '1.5', color: '#414833', margin: 0 }}>
-                      {metrics.completed_count >= 6
-                        ? `Agent demonstrates advanced proficiency across analytical modules with high hint independence (${metrics.hint_independence}%). Cleared for intermediate and advanced diagnostic operations.`
-                        : metrics.completed_count >= 2
-                        ? `Agent is making steady analytical progress. Continue training in multi-part Definition and Comparison case nodes to reinforce signal word isolation.`
-                        : `Initial training phase active. Use the Field Manual and 60-second drills in Quick Review to accelerate mastery of time markers and transition connectives.`}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'modules' && (
-                <div>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <h3 style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.95rem', fontWeight: 'bold', color: '#2D0909', margin: 0 }}>
-                      4-MODULE FORENSIC COMPETENCY MATRIX
-                    </h3>
-                    <p style={{ fontSize: '0.78rem', color: '#6A381F', margin: '0.25rem 0' }}>
-                      Individual diagnostic tracking across Critica's primary analytical disciplines.
-                    </p>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {Object.entries(metrics.module_stats).map(([modKey, stat]) => {
-                      const meta = MODULE_DISPLAY_NAMES[modKey] || { name: modKey, icon: FileText }
-                      const ModIcon = meta.icon
-                      return (
-                        <div key={modKey} className={styles.cheatCard} style={{ margin: 0, padding: '1rem 1.25rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                              <ModIcon size={18} color="#2D0909" aria-hidden />
-                              <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 'bold', fontSize: '0.92rem', color: '#2D0909' }}>
-                                {meta.name}
-                              </span>
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.78rem', color: '#6A381F' }}>
-                              Completed: <strong>{stat.completed_nodes}</strong> • Attempts: <strong>{stat.attempts}</strong>
-                            </div>
+                        <div>
+                          <div className={styles.label}>INVESTIGATOR DOSSIER {'//'} AGENT #{metrics.student_id}</div>
+                          <div className={styles.rankTitle}>{metrics.rank_title}</div>
+                          <div className={styles.agentMeta}>
+                            Operational User: <strong>{metrics.username}</strong> • Active Streak: <strong>{metrics.streak} Days</strong>
                           </div>
+                        </div>
+                      </div>
+                      <div className={styles.clearanceStamps}>
+                        <span className={styles.stamp}>
+                          <ShieldCheck size={11} aria-hidden /> Rank Level {metrics.rank_level}
+                        </span>
+                        <span className={`${styles.stamp} ${styles.stampSmall}`}>Classified</span>
+                      </div>
+                    </div>
 
-                          {/* Progress Bar Container */}
-                          <div style={{ marginBottom: '0.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', marginBottom: '0.25rem' }}>
-                              <span>Accuracy Rate</span>
-                              <span style={{ fontWeight: 'bold', color: stat.accuracy >= 70 ? '#2E6B3A' : '#8C2424' }}>
-                                {stat.accuracy}% ({stat.correct}/{stat.attempts})
+                    {/* EXP progression */}
+                    <div className={`${styles.exhibit} ${styles.exhibitGood}`}>
+                      <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                      <div className={styles.row}>
+                        <span className={styles.labelStrong}>Clearance Experience (EXP) Progression</span>
+                        <span className={styles.figure}>
+                          <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
+                        </span>
+                      </div>
+                      <div className={styles.gauge}>
+                        <div className={styles.gaugeFill} style={{ width: `${metrics.level_progress_pct ?? 0}%` }} />
+                      </div>
+                      <div className={styles.gaugeFoot}>
+                        <span>Tier Floor: {metrics.current_level_min_xp ?? 0} XP</span>
+                        <span>
+                          {metrics.next_level_xp
+                            ? `${Math.max(0, metrics.next_level_xp - (metrics.total_xp ?? 0))} XP to Next Rank Promotion`
+                            : 'Maximum Clearance Achieved'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* KPIs */}
+                    <div className={styles.kpiGrid}>
+                      {[
+                        { icon: Crosshair,   label: 'Overall Accuracy',  value: `${metrics.overall_accuracy}%`,
+                          sub: `${metrics.correct_attempts} / ${metrics.total_attempts} verified answers`,
+                          tone: metrics.overall_accuracy >= 75 ? styles.good : styles.poor },
+                        { icon: Search,      label: 'Hint Independence', value: `${metrics.hint_independence}%`,
+                          sub: 'Solved without investigative lifeline' },
+                        { icon: FolderCheck, label: 'Completed Nodes',   value: metrics.completed_count,
+                          sub: 'Full case nodes locked down' },
+                        { icon: Footprints,  label: 'Field Operations',  value: metrics.total_attempts,
+                          sub: 'Recorded attempt events' },
+                      ].map(k => (
+                        <div key={k.label} className={`${styles.exhibit} ${styles.kpiCard}`}>
+                          <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                          <div className={styles.kpiHead}>
+                            <span className={styles.iconBox}><k.icon size={13} aria-hidden /></span>
+                            <span className={styles.labelStrong}>{k.label}</span>
+                          </div>
+                          <div className={`${styles.kpiValue} ${k.tone ?? ''}`}>{k.value}</div>
+                          <div className={styles.kpiSub}>{k.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Inspector Crit's debrief, handwritten */}
+                    <div className={`${styles.exhibit} ${styles.exhibitBad}`}>
+                      <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                      <span className={styles.labelStrong}>Intelligence Officer Debrief</span>
+                      <p className={`${styles.note} ${styles.debrief}`}>
+                        {metrics.completed_count >= 6
+                          ? `Advanced proficiency across all four disciplines, with ${metrics.hint_independence}% hint independence. Cleared for intermediate and advanced operations.`
+                          : metrics.completed_count >= 2
+                          ? `Steady progress, Cadet. Keep training on multi-part ${MODULE_TITLES.logic_thread} cases — follow the signal words, they always point to the culprit.`
+                          : `Training phase active. Run the 60-second drills in Quick Review to master time markers and transition connectives.`}
+                        <span className={styles.signature}>— Inspector Crit</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'modules' && (
+                  <div className={styles.pane}>
+                    <div className={styles.sectionHead}>
+                      <div>
+                        <h3 className={styles.sectionTitle}>4-MODULE FORENSIC COMPETENCY MATRIX</h3>
+                        <p className={styles.sectionSub}>Individual diagnostic tracking across Critica&apos;s four detective disciplines.</p>
+                      </div>
+                      <span className={styles.stamp}>Evidence Review</span>
+                    </div>
+
+                    <div className={styles.moduleList}>
+                      {moduleOrder(metrics.module_stats).map(modKey => {
+                        const stat = metrics.module_stats[modKey]
+                        const ModIcon = MODULE_ICONS[modKey] ?? FileText
+                        const caseNo = (MODULE_KEYS as string[]).indexOf(modKey) + 1
+                        const strong = stat.accuracy >= 70
+                        return (
+                          <div key={modKey} className={`${styles.exhibit} ${strong ? styles.exhibitGood : styles.exhibitBad}`}>
+                            <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                            <div className={styles.moduleHead}>
+                              <div className={styles.moduleName}>
+                                <span className={styles.iconBox}><ModIcon size={13} aria-hidden /></span>
+                                <span>
+                                  {caseNo > 0 && <span className={styles.label}>CASE {String(caseNo).padStart(2, '0')}</span>}
+                                  <span className={styles.moduleTitle} style={{ display: 'block' }}>{moduleTitle(modKey)}</span>
+                                </span>
+                              </div>
+                              <div className={styles.moduleStats}>
+                                Completed: <strong>{stat.completed_nodes}</strong> • Attempts: <strong>{stat.attempts}</strong>
+                              </div>
+                            </div>
+                            {modKey === weakest && !strong && (
+                              <span className={`${styles.note} ${styles.noteAside}`} style={{ right: 240, top: 16 }}>
+                                focus here →
+                              </span>
+                            )}
+                            <div className={styles.row}>
+                              <span className={styles.figure}>Accuracy Rate</span>
+                              <span className={`${styles.figure} ${strong ? styles.good : styles.poor}`}>
+                                <strong className={strong ? styles.good : styles.poor}>{stat.accuracy}%</strong> ({stat.correct}/{stat.attempts})
                               </span>
                             </div>
-                            <div style={{ width: '100%', height: '10px', background: '#E2CBA8', borderRadius: '3px', overflow: 'hidden', border: '1px solid #8C5A3C' }}>
+                            <div className={styles.gauge}>
                               <div
-                                style={{
-                                  width: `${Math.min(100, stat.accuracy)}%`,
-                                  height: '100%',
-                                  background: stat.accuracy >= 70 ? '#2E6B3A' : '#C49A5A',
-                                  transition: 'width 0.4s ease',
-                                }}
+                                className={`${styles.gaugeFill} ${strong ? '' : styles.gaugeFillLow}`}
+                                style={{ width: `${Math.min(100, stat.accuracy)}%` }}
                               />
                             </div>
                           </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'telemetry' && (
-                <div>
-                  <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <h3 style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.95rem', fontWeight: 'bold', color: '#2D0909', margin: 0 }}>
-                        RECENT FIELD ACTION TELEMETRY
-                      </h3>
-                      <p style={{ fontSize: '0.78rem', color: '#6A381F', margin: '0.25rem 0' }}>
-                        Chronological transaction log of submitted case node solutions.
-                      </p>
+                        )
+                      })}
                     </div>
-                    <span className={styles.stampBox}>AUDIT TRAIL</span>
                   </div>
+                )}
 
-                  {metrics.recent_activity.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '2rem', fontFamily: 'var(--font-mono, monospace)', color: '#8C5A3C' }}>
-                      No recent operational telemetry recorded. Complete a case exercise to begin logging events.
+                {activeTab === 'telemetry' && (
+                  <div className={styles.pane}>
+                    <div className={styles.sectionHead}>
+                      <div>
+                        <h3 className={styles.sectionTitle}>RECENT FIELD ACTION TELEMETRY</h3>
+                        <p className={styles.sectionSub}>Chronological transaction log of submitted case node solutions.</p>
+                      </div>
+                      <span className={styles.stamp}>Audit Trail</span>
                     </div>
-                  ) : (
-                    <table className={styles.retroTable}>
-                      <thead>
-                        <tr>
-                          <th>TIMESTAMP</th>
-                          <th>MODULE</th>
-                          <th>NODE ID</th>
-                          <th>HINT STATUS</th>
-                          <th>OUTCOME</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {metrics.recent_activity.map((entry, idx) => (
-                          <tr key={idx}>
-                            <td style={{ color: '#6A381F' }}>{entry.timestamp}</td>
-                            <td style={{ fontWeight: 'bold' }}>
-                              {MODULE_DISPLAY_NAMES[entry.module]?.name || entry.module}
-                            </td>
-                            <td><code>{entry.node_id}</code></td>
-                            <td>
-                              {entry.hint_used ? (
-                                <span style={{ color: '#8C2424', fontSize: '0.72rem' }}>
-                                  Tier {entry.hint_tier || 1} Hint
-                                </span>
-                              ) : (
-                                <span style={{ color: '#2E6B3A', fontSize: '0.72rem' }}>
-                                  Independent
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '0.1rem 0.45rem',
-                                  borderRadius: '2px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: 'bold',
-                                  background: entry.is_correct ? '#E2F0D9' : '#FDF4F4',
-                                  color: entry.is_correct ? '#2E6B3A' : '#8C2424',
-                                  border: `1px solid ${entry.is_correct ? '#2E6B3A' : '#8C2424'}`,
-                                }}>
-                                {entry.is_correct ? 'SUCCESS' : 'MISSED'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+
+                    {metrics.recent_activity.length === 0 ? (
+                      <div className={styles.empty}>
+                        No recent operational telemetry recorded. Complete a case exercise to begin logging events.
+                      </div>
+                    ) : (
+                      <div className={styles.tableWrap}>
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th>TIMESTAMP</th>
+                              <th>MODULE</th>
+                              <th>NODE ID</th>
+                              <th>HINT STATUS</th>
+                              <th>OUTCOME</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {metrics.recent_activity.map((entry, idx) => (
+                              <tr key={idx}>
+                                <td className={styles.muted}>{entry.timestamp}</td>
+                                <td className={styles.strong}>{moduleTitle(entry.module)}</td>
+                                <td><code>{entry.node_id}</code></td>
+                                <td className={entry.hint_used ? styles.poor : styles.good}>
+                                  {entry.hint_used ? `Tier ${entry.hint_tier || 1} Hint` : 'Independent'}
+                                </td>
+                                <td>
+                                  <span className={`${styles.stamp} ${styles.stampSmall} ${entry.is_correct ? styles.stampOk : ''}`}>
+                                    {entry.is_correct ? 'Solved' : 'Missed'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

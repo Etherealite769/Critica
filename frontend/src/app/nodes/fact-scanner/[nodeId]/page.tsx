@@ -62,7 +62,7 @@ const CRITERION_QUESTIONS: Record<string, string> = {
 }
 
 const TUTORIAL_STEPS = [
-  { label: 'Overview',       code: 'TUT-FS-001', text: 'Fact Scanner gives you a passage containing flaws, unsupported claims, or false statements. Identify and quarantine the flawed sentences.',    notes: ['Beige = unscanned', 'Red border = quarantined', 'Scan carefully'] },
+  { label: 'Overview',       code: 'TUT-FS-001', text: 'Witness Cross Examination gives you a passage containing flaws, unsupported claims, or false statements. Identify and quarantine the flawed sentences.',    notes: ['Beige = unscanned', 'Red border = quarantined', 'Scan carefully'] },
   { label: 'Read Carefully', code: 'TUT-FS-002', text: 'Read each sentence. Ask: Is this claim supported? Does it contradict evidence? Watch for absolute language: "always," "never," "all," "none."', notes: ['Watch for absolutes', 'Unsupported = flaw', 'Context matters'] },
   { label: 'Mark Flaws',     code: 'TUT-FS-003', text: 'Click a sentence you believe is flawed. The right panel shows the SCAN AND QUARANTINE button. Click it to evaluate your selection.',              notes: ['Select sentence first', 'Then click button', 'Counter updates live'] },
   { label: 'Submit Report',  code: 'TUT-FS-004', text: "When you've quarantined all flaws, hit Submit Report. Stats show your attempts, flaws found, and hints used.",                                   notes: ['Attempts = total taps', 'Flaws found = correct', 'Hints used = scaffold'] },
