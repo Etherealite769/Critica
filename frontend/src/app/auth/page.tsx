@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import InspectorCrit from '@/components/brand/InspectorCrit';
 import { Crosshair, FolderLock, Paperclip } from 'lucide-react';
 import SignUpForm from '@/components/auth/SignUpForm';
 import SignInForm from '@/components/auth/SignInForm';
@@ -17,7 +18,18 @@ const PINS: [number, number, 'red' | 'amber'][] = [
 ];
 
 export default function AuthPage() {
-  const [authMode, setAuthMode] = useState<'signup' | 'signin'>('signup');
+  // useSearchParams needs a Suspense boundary for static prerendering
+  return (
+    <Suspense fallback={null}>
+      <AuthDossier />
+    </Suspense>
+  );
+}
+
+function AuthDossier() {
+  // /auth?mode=signin opens the Sign In tab (e.g. after a passphrase reset)
+  const initialMode = useSearchParams().get('mode') === 'signin' ? 'signin' : 'signup';
+  const [authMode, setAuthMode] = useState<'signup' | 'signin'>(initialMode);
 
   return (
     <main data-auth className={`${desk.desk} ${styles.page}`}>
@@ -26,13 +38,7 @@ export default function AuthPage() {
 
       {/* Bureau header */}
       <div className={styles.brand}>
-        <Image
-          src="/mascot-detective.png"
-          alt="Inspector Crit, the Critica detective caterpillar"
-          width={44}
-          height={44}
-          priority
-        />
+        <InspectorCrit height={48} priority />
         <Crosshair size={17} color="#9e2a2b" aria-hidden />
         CRITICA
         <span className={styles.brandSub}>{'// CADET ENROLLMENT'}</span>

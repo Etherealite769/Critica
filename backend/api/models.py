@@ -28,6 +28,11 @@ class User(Document):
     verification_attempts = IntField(default=0)
     verification_sent_at = DateTimeField()
 
+    # Password reset (single-use token; only its HMAC is stored)
+    password_reset_hash = StringField()
+    password_reset_expires_at = DateTimeField()
+    password_reset_sent_at = DateTimeField()
+
     # Progression tracking
     streak = IntField(default=0)
     total_xp = IntField(default=0)

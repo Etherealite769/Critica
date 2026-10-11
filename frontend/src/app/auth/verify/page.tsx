@@ -1,11 +1,12 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
+import InspectorCrit from '@/components/brand/InspectorCrit';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Crosshair, LoaderCircle, ShieldCheck, ShieldX } from 'lucide-react';
 import { API_BASE } from '@/lib/api';
+import { markInductionPending } from '@/lib/induction';
 import desk from '@/components/dashboard/desk.module.css';
 import styles from '@/components/auth/auth.module.css';
 
@@ -38,6 +39,7 @@ function VerifyToken() {
         localStorage.setItem('accessToken', data.tokens.access);
         localStorage.setItem('refreshToken', data.tokens.refresh);
         localStorage.setItem('user', JSON.stringify(data.user));
+        markInductionPending(); // brand-new cadet → Field Induction on first dashboard visit
         setPhase('success');
         setTimeout(() => router.push('/dashboard'), 1400);
       } catch {
@@ -84,7 +86,7 @@ export default function VerifyPage() {
       <div className={desk.lamp} aria-hidden />
 
       <div className={styles.brand}>
-        <Image src="/mascot-detective.png" alt="Inspector Crit" width={44} height={44} priority />
+        <InspectorCrit height={48} priority />
         <Crosshair size={17} color="#9e2a2b" aria-hidden />
         CRITICA
         <span className={styles.brandSub}>{'// EMAIL VERIFICATION'}</span>

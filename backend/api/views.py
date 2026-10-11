@@ -8,6 +8,7 @@ from .email_verification import (
     normalize_email,
     is_valid_email,
     password_policy_errors,
+    password_policy_message,
     issue_verification_code,
     check_verification_code,
     mark_verified,
@@ -19,17 +20,37 @@ from .email_verification import (
     VerifyEmailThrottle,
     ResendVerificationThrottle,
 )
+from .password_reset import (
+    issue_reset_token,
+    send_password_reset_email,
+    find_user_for_reset,
+    complete_password_reset,
+    reset_cooldown_active,
+    ForgotPasswordThrottle,
+    ResetPasswordThrottle,
+)
+from django.contrib.auth.hashers import make_password, check_password
 from datetime import datetime
 import hashlib
+import hmac
 import json
 
 def hash_password(password):
-    """Simple password hashing - use a proper library in production"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Salted, slow hash via Django's configured hasher (PBKDF2 by default)."""
+    return make_password(password)
+
+def _is_legacy_sha256(hashed_password):
+    """Accounts created before PBKDF2 store a bare 64-char SHA-256 hex digest."""
+    return bool(hashed_password) and '$' not in hashed_password and len(hashed_password) == 64
 
 def verify_password(password, hashed_password):
-    """Verify password against hash"""
-    return hash_password(password) == hashed_password
+    """Verify against Django hashes, falling back to legacy unsalted SHA-256."""
+    if not hashed_password:
+        return False
+    if _is_legacy_sha256(hashed_password):
+        legacy = hashlib.sha256(password.encode()).hexdigest()
+        return hmac.compare_digest(legacy, hashed_password)
+    return check_password(password, hashed_password)
 
 def generate_jwt_token(user_id):
     """Simple JWT token generation"""
@@ -127,7 +148,7 @@ def register(request):
         unmet = password_policy_errors(password)
         if unmet:
             return Response({
-                'error': 'Password must contain ' + ', '.join(unmet),
+                'error': password_policy_message(unmet),
                 'password_requirements': unmet
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -196,6 +217,11 @@ def login(request):
             return Response({
                 'error': 'Invalid email or password'
             }, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Transparent upgrade: re-hash legacy SHA-256 passwords with PBKDF2
+        if _is_legacy_sha256(user.password):
+            user.password = hash_password(data['password'])
+            user.save()
 
         if not user.is_active:
             return Response({
@@ -315,6 +341,100 @@ def resend_verification(request):
             return Response({'error': 'Failed to send clearance code to specified email address', 'code': 'email_send_failed'},
                             status=status.HTTP_502_BAD_GATEWAY)
         return Response(generic, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+FORGOT_PASSWORD_GENERIC = 'If that cadet email is registered, a passphrase reset link is on its way.'
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([ForgotPasswordThrottle])
+def forgot_password(request):
+    """
+    POST /api/auth/forgot-password/  { email }
+    Always answers 200 with the same message (no account enumeration).
+    If the account exists, emails a single-use reset link (30 min expiry).
+    """
+    email = normalize_email(request.data.get('email'))
+    if not is_valid_email(email):
+        return Response({'error': 'Please enter a valid email address'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.conf import settings
+    import logging
+    log = logging.getLogger(__name__)
+
+    sent = True
+    try:
+        user = _find_user_by_email(email)
+        # Silently skip unknown/inactive accounts and rapid repeats (per-account cooldown)
+        if user and user.is_active and not reset_cooldown_active(user):
+            token = issue_reset_token(user)
+            try:
+                sent = send_password_reset_email(user, token)
+            except Exception:
+                log.exception('Password reset email failed for %s', email)
+                sent = False
+    except Exception:
+        log.exception('forgot_password failed for %s', email)
+        sent = False
+
+    if not sent:
+        # Development: surface SMTP problems. Production: stay generic so a mail
+        # failure (which only happens for real accounts) can't reveal which
+        # emails are registered.
+        if settings.DEBUG:
+            return Response({'detail': 'Failed to send reset email. Check SMTP settings.'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        log.error('Password reset email not delivered for %s (SMTP failure)', email)
+
+    return Response({'message': FORGOT_PASSWORD_GENERIC}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([ResetPasswordThrottle])
+def reset_password(request):
+    """
+    POST /api/auth/reset-password/  { uid, token, new_password }
+    Validates the link, enforces the password policy, stores a PBKDF2 hash and
+    invalidates the token.
+    """
+    try:
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password') or ''
+
+        user, err = find_user_for_reset(User, uid, token)
+        if err == 'expired':
+            return Response({'error': 'This reset link has expired. Request a new one.', 'code': 'expired'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if err:
+            return Response({'error': 'This reset link is invalid or has already been used.', 'code': 'invalid_link'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Old password prevention — evaluated before anything is updated.
+        # Django hashes go through check_password; legacy SHA-256 accounts
+        # (not yet upgraded on login) are compared via verify_password.
+        if _is_legacy_sha256(user.password):
+            reused = verify_password(new_password, user.password)
+        else:
+            reused = check_password(new_password, user.password)
+        if reused:
+            return Response({
+                'error': 'New passphrase cannot be the same as your previous passphrase.',
+                'code': 'password_reused',
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        unmet = password_policy_errors(new_password)
+        if unmet:
+            return Response({
+                'error': password_policy_message(unmet),
+                'password_requirements': unmet,
+                'code': 'weak_password',
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        complete_password_reset(user, hash_password(new_password))
+        return Response({'message': 'Passphrase updated. You can now sign in.'}, status=status.HTTP_200_OK)
 
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

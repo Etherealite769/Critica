@@ -2,7 +2,9 @@
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const PASSWORD_SPECIALS = '@$!%*?&';
+// Same symbol set the backend accepts
+export const PASSWORD_SPECIALS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/;
 
 export interface PasswordRule {
   id: string;
@@ -15,7 +17,7 @@ export const PASSWORD_RULES: PasswordRule[] = [
   { id: 'upper',   label: 'Uppercase',             test: (pw) => /[A-Z]/.test(pw) },
   { id: 'lower',   label: 'Lowercase',             test: (pw) => /[a-z]/.test(pw) },
   { id: 'number',  label: 'Number',                test: (pw) => /\d/.test(pw) },
-  { id: 'special', label: `Symbol (${PASSWORD_SPECIALS})`, test: (pw) => /[@$!%*?&]/.test(pw) },
+  { id: 'special', label: 'Symbol (!@#$%^&*…)',    test: (pw) => SPECIAL_RE.test(pw) },
 ];
 
 export type StrengthLevel = 'weak' | 'medium' | 'strong';

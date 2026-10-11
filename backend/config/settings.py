@@ -261,7 +261,11 @@ REST_FRAMEWORK = {
         'auth_check_email': '30/min',
         'auth_verify_email': '10/min',
         'auth_resend_verification': '5/hour',
+        'auth_forgot_password': '5/hour',
+        'auth_reset_password': '10/hour',
     },
+    # Unhandled errors (incl. configuration errors) come back as JSON, not HTML
+    'EXCEPTION_HANDLER': 'api.exceptions.json_exception_handler',
 }
 
 # Email (verification codes) — Gmail SMTP by default.

@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ── Policies ────────────────────────────────────────────────────────────────
 EMAIL_RE = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 
-PASSWORD_SPECIALS = '@$!%*?&'
+PASSWORD_SPECIALS = '!@#$%^&*()_+-=[]{}|;:,.<>?'
 PASSWORD_RULES = [
     (re.compile(r'.{8,}'), 'at least 8 characters'),
     (re.compile(r'[A-Z]'), 'an uppercase letter'),
@@ -51,9 +51,47 @@ def is_valid_email(email: str) -> bool:
     return bool(EMAIL_RE.match(email)) and len(email) <= 254
 
 
+COMMON_PASSWORD_LABEL = 'not be a commonly used password'
+
+
+def is_common_password(password: str) -> bool:
+    """
+    Django's built-in list of ~20k breached/common passwords (case-insensitive).
+    Also checks the password with symbols stripped, so decorating a common
+    password (e.g. 'Password123!') doesn't sneak it past the list.
+    """
+    from django.contrib.auth.password_validation import CommonPasswordValidator
+    from django.core.exceptions import ValidationError
+    pw = password or ''
+    candidates = {pw, re.sub(r'[^A-Za-z0-9]', '', pw)}
+    validator = CommonPasswordValidator()
+    for candidate in candidates:
+        if not candidate:
+            continue
+        try:
+            validator.validate(candidate)
+        except ValidationError:
+            return True
+    return False
+
+
 def password_policy_errors(password: str) -> list[str]:
     """Returns the unmet requirements (empty list = password is acceptable)."""
-    return [label for rule, label in PASSWORD_RULES if not rule.search(password or '')]
+    unmet = [label for rule, label in PASSWORD_RULES if not rule.search(password or '')]
+    if is_common_password(password):
+        unmet.append(COMMON_PASSWORD_LABEL)
+    return unmet
+
+
+def password_policy_message(unmet: list[str]) -> str:
+    """Human-readable error for a list of unmet requirements."""
+    must_have = [u for u in unmet if u != COMMON_PASSWORD_LABEL]
+    parts = []
+    if must_have:
+        parts.append('contain ' + ', '.join(must_have))
+    if COMMON_PASSWORD_LABEL in unmet:
+        parts.append(COMMON_PASSWORD_LABEL)
+    return 'Password must ' + ' and '.join(parts) + '.'
 
 
 # ── Verification codes ──────────────────────────────────────────────────────
