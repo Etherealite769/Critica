@@ -538,7 +538,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', fontFamily: 'var(--font-mono, monospace)' }}>
                   <span className={styles.stampBox} style={{ marginBottom: '1rem' }}>NO EVIDENCE RECORDS</span>
                   <p style={{ marginTop: '1rem', color: '#6A381F', fontSize: '0.9rem' }}>
-                    Your lexical clipboard is empty. Solve clues in Tap the Clues or use "+ Log Evidence Term" above.
+                    Your lexical clipboard is empty. Solve clues in Clue Extraction or use "+ Log Evidence Term" above.
                   </p>
                 </div>
               ) : (

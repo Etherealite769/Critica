@@ -54,7 +54,7 @@ function getCardTypography(text: string, cardCount: number) {
 const TEXT_STRUCTURE_TUTORIAL_KEY = 'critica_tutorial_seen_logic_thread_first_node'
 
 const TUTORIAL_STEPS = [
-  { stepLabel: 'Overview',     bubble: "Welcome to Text Structure Mastery. You will see paragraph cards pinned to a cork bulletin board all out of order.\n\nYour mission: connect them in the correct logical sequence by drawing a red thread between them, just like a detective's case board." },
+  { stepLabel: 'Overview',     bubble: "Welcome to Forensic Textual Analysis. You will see paragraph cards pinned to a cork bulletin board all out of order.\n\nYour mission: connect them in the correct logical sequence by drawing a red thread between them, just like a detective's case board." },
   { stepLabel: 'Select Card',  bubble: 'Click any card to select it. It will glow with a gold outline and the node dot turns red. Read its content carefully before connecting. You can click the same card again to deselect it.' },
   { stepLabel: 'Draw thread',  bubble: "After selecting the first card, click a second card. A red thread is drawn between them with a numbered circle showing the connection order. Keep going until all cards form a complete sequence." },
   { stepLabel: 'Submit',       bubble: "Once you've connected all cards, hit Submit. Correct connections turn teal. Wrong ones turn red — those connections are cleared so you can try again." },

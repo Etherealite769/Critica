@@ -181,22 +181,22 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
           <button
             className={`${styles.navTab} ${activeTab === 'text_structure' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('text_structure')}>
-            1. Text Structure
+            1. Forensic Textual Analysis
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'snap_gap' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('snap_gap')}>
-            2. Snap-in-Gap Matrix
+            2. Scene Reconstruction
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'tap_clues' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('tap_clues')}>
-            3. Context Clues
+            3. Clue Extraction
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'craap' ? styles.navTabActive : ''}`}
             onClick={() => setActiveTab('craap')}>
-            4. CRAAP Scanner
+            4. Witness Cross Examination
           </button>
           <button
             className={`${styles.navTab} ${activeTab === 'drill' ? styles.navTabActive : ''}`}

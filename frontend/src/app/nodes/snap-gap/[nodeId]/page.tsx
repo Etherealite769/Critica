@@ -52,7 +52,7 @@ const TUTORIAL_STEPS = [
   {
     label: 'Read the passage',
     code: 'TUT-SIG-001',
-    text: 'In Snap-in-Gap, you will see a passage with blank gaps missing transition words. A tile bank on the right holds word options.\n\nYour mission: drag or click the correct tile into each gap to restore the paragraph\'s logical flow.',
+    text: 'In Scene Reconstruction, you will see a passage with blank gaps missing transition words. A tile bank on the right holds word options.\n\nYour mission: drag or click the correct tile into each gap to restore the paragraph\'s logical flow.',
     board: 'passage',
     notes: [
       'Drag a tile to fill the gap',

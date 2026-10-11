@@ -57,7 +57,7 @@ const STEPS: TourStep[] = [
   {
     targets: ['game-mode-tabs'],
     title: 'The Four Disciplines',
-    text: 'Each folder tab is a discipline: Text Structure, Snap-in-Gap transitions, Tap the Clues and the Fact Scanner. Flip between them whenever you like.',
+    text: 'Each folder tab is a discipline: Forensic Textual Analysis, Scene Reconstruction, Clue Extraction and Witness Cross Examination. Flip between them whenever you like.',
   },
   {
     targets: ['case-exhibits'],

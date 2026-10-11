@@ -5,6 +5,7 @@ import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
 import { isInductionPending, markInductionComplete, shouldAutoOpenInduction } from '@/lib/induction'
 import TourGuide, { hasSeenDashboardTour } from '@/components/TourGuide'
+import { MODULE_TITLES } from '@/lib/modules'
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
@@ -337,30 +338,30 @@ const NODE_META: Record<string, {
 const TABS = [
   {
     id:         'logic_thread',
-    label:      '[1] CASE 01: FORENSIC TEXTUAL ANALYSIS',
+    label:      `[1] CASE 01: ${MODULE_TITLES.logic_thread.toUpperCase()}`,
     route_base: '/nodes/logic-thread',
-    header:     'FORENSIC TEXTUAL ANALYSIS',
+    header:     MODULE_TITLES.logic_thread.toUpperCase(),
     note:       'Follow the signal words — they always point to the culprit.',
   },
   {
     id:         'snap_gap',
-    label:      '[2] CASE 02: SCENE RECONSTRUCTION',
+    label:      `[2] CASE 02: ${MODULE_TITLES.snap_gap.toUpperCase()}`,
     route_base: '/nodes/snap-gap',
-    header:     'SCENE RECONSTRUCTION',
+    header:     MODULE_TITLES.snap_gap.toUpperCase(),
     note:       'Bridge the missing evidence gaps to rebuild the sequence of events.',
   },
   {
     id:         'tap_clues',
-    label:      '[3] CASE 03: CLUE EXTRACTION',
+    label:      `[3] CASE 03: ${MODULE_TITLES.tap_clues.toUpperCase()}`,
     route_base: '/nodes/tap-clues',
-    header:     'CLUE EXTRACTION',
+    header:     MODULE_TITLES.tap_clues.toUpperCase(),
     note:       "Scan for key facts — don't let red herrings distract you.",
   },
   {
     id:         'fact_scanner',
-    label:      '[4] CASE 04: WITNESS CROSS-EXAMINATION',
+    label:      `[4] CASE 04: ${MODULE_TITLES.fact_scanner.toUpperCase()}`,
     route_base: '/nodes/fact-scanner',
-    header:     'WITNESS CROSS-EXAMINATION',
+    header:     MODULE_TITLES.fact_scanner.toUpperCase(),
     note:       'Cross-examine every statement with cold, hard evidence.',
   },
 ]
