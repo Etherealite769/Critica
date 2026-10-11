@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
-import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModal'
-import { shouldAutoOpenInduction } from '@/lib/induction'
+import { isInductionPending, markInductionComplete, shouldAutoOpenInduction } from '@/lib/induction'
+import TourGuide, { hasSeenDashboardTour } from '@/components/TourGuide'
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
@@ -459,11 +459,11 @@ export default function StudentDashboard() {
   const [loading, setLoading]     = useState(true)
   const [error, setError]         = useState('')
   const [showMenu, setShowMenu]   = useState(false)
-  const [showOnboardingGuide, setShowOnboardingGuide] = useState(false)
   const [showLexicalModal, setShowLexicalModal] = useState(false)
   const [showQuickReviewModal, setShowQuickReviewModal] = useState(false)
   const [showMetricLogModal, setShowMetricLogModal] = useState(false)
   const [streakPulse, setStreakPulse] = useState(false)
+  const [showTour, setShowTour] = useState(false)
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -471,11 +471,12 @@ export default function StudentDashboard() {
       const d = await apiFetch('/progression/dashboard/')
       setDashboard(d)
 
-      // Auto-open the Field Induction on the first sign-in after registration,
-      // or whenever neither the profile nor this browser recorded completion
+      // Inspector Crit's tour starts by itself on the first sign-in after registration
+      // (or when neither the profile nor this browser recorded the induction)
       const studentId = d?.student_id || 'user'
-      if (d && shouldAutoOpenInduction(studentId, d.onboarding_completed)) {
-        setShowOnboardingGuide(true)
+      if (d && shouldAutoOpenInduction(studentId, d.onboarding_completed)
+          && (isInductionPending() || !hasSeenDashboardTour())) {
+        setShowTour(true)
       }
     } catch (e: unknown) {
       const err = e as { code?: string; detail?: string | { code?: string; detail?: string }; status?: number }
@@ -694,7 +695,9 @@ export default function StudentDashboard() {
         shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
 
         {/* ── LEFT: mascot + brand ── */}
-        <div className={`${TYPE} flex items-center gap-2 flex-shrink-0 whitespace-nowrap text-[15px] font-bold tracking-[0.16em] text-[var(--parchment)]`}>
+        <div
+          data-tour="brand-logo"
+          className={`${TYPE} flex items-center gap-2 flex-shrink-0 whitespace-nowrap text-[15px] font-bold tracking-[0.16em] text-[var(--parchment)]`}>
           {/* Mascot logo — Inspector Crit, inline with the wordmark */}
           <InspectorCrit
             height={34}
@@ -710,6 +713,7 @@ export default function StudentDashboard() {
 
         {/* ── CENTER: stat badges + field guide ── */}
         <div className="flex flex-1 min-w-0 items-center justify-center gap-3 whitespace-nowrap">
+          <div data-tour="cadet-stats" className="flex items-center gap-3">
           {/* ── REALTIME STREAK ── */}
           <div
             className={`${TOPBAR_BADGE} duration-300 ${
@@ -740,12 +744,17 @@ export default function StudentDashboard() {
               />
             </span>
           </button>
+          </div>
 
           {/* ── FIELD GUIDE BUTTON ── */}
           <button
-            onClick={() => setShowOnboardingGuide(true)}
+            data-tour="field-guide-btn"
+            onClick={() => {
+              setShowMenu(false)
+              setShowTour(true)
+            }}
             className={`${TOPBAR_BADGE} text-[#e3d6bd] hover:text-[var(--parchment)] hover:border-white/25 cursor-pointer`}
-            title="Open the Field Manual & Interactive Demo">
+            title="Tour the Bureau with Inspector Crit">
             <BookOpen size={14} aria-hidden />
             <span className="hidden xl:inline">Field Guide</span>
           </button>
@@ -753,6 +762,7 @@ export default function StudentDashboard() {
 
         {/* ── RIGHT: user profile (mascot avatar) ── */}
         <button
+          data-tour="user-profile"
           onClick={() => setShowMenu(!showMenu)}
           aria-expanded={showMenu}
           aria-haspopup="menu"
@@ -779,11 +789,11 @@ export default function StudentDashboard() {
             role="menuitem"
             onClick={() => {
               setShowMenu(false)
-              setShowOnboardingGuide(true)
+              setShowTour(true)
             }}
             className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--ink)]
               hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
-            <BookOpen size={14} aria-hidden /> Field Manual & Demo
+            <BookOpen size={14} aria-hidden /> Tour with Inspector Crit
           </button>
           <button
             role="menuitem"
@@ -826,7 +836,7 @@ export default function StudentDashboard() {
           <div className="relative z-10 flex-1 flex flex-col min-w-0 h-full">
 
           {/* ── FOLDER TABS ── */}
-          <div className={`${desk.noScrollbar} flex items-end gap-1 flex-shrink-0 pl-2`}>
+          <div data-tour="game-mode-tabs" className={`${desk.noScrollbar} flex items-end gap-1 flex-shrink-0 pl-2`}>
             {TABS.map((tab, i) => {
               const isActive = activeTab === tab.id
               const TabIcon = MODULE_ICONS[tab.id] ?? Network
@@ -895,6 +905,7 @@ export default function StudentDashboard() {
                 </div>
                 <p
                   key={activeTabCfg.id}
+                  data-tour="inspector-note"
                   className={`${desk.handwritten} hidden xl:block col-start-3 justify-self-end self-start max-w-[240px] text-[12.5px] leading-snug -rotate-3`}>
                   {activeTabCfg.note}
                   <span className="block text-right">— Inspector Crit</span>
@@ -903,7 +914,7 @@ export default function StudentDashboard() {
             </div>
 
             {/* ── SCROLLING EXHIBITS ── */}
-            <div className={`${desk.noScrollbar} flex-1 min-h-0 overflow-y-auto px-8 pt-5 pb-8 text-[var(--ink)]`}>
+            <div data-tour="case-exhibits" className={`${desk.noScrollbar} flex-1 min-h-0 overflow-y-auto px-8 pt-5 pb-8 text-[var(--ink)]`}>
 
               {/* Empty state */}
               {activeNodes.length === 0 && (
@@ -1079,6 +1090,7 @@ export default function StudentDashboard() {
           </div>
           {[
             {
+              tour:    'lexical-clipboard',
               icon:    Clipboard,
               label:   'LEXICAL\nCLIPBOARD',
               note:    'Vocabulary evidence log',
@@ -1086,6 +1098,7 @@ export default function StudentDashboard() {
               onClick: () => setShowLexicalModal(true),
             },
             {
+              tour:    'quick-review',
               icon:    FileText,
               label:   'QUICK\nREVIEW',
               note:    'Field manual & 60s drill',
@@ -1093,6 +1106,7 @@ export default function StudentDashboard() {
               onClick: () => setShowQuickReviewModal(true),
             },
             {
+              tour:    'metric-log',
               icon:    Activity,
               label:   'METRIC\nLOG',
               note:    'Case performance audit',
@@ -1102,6 +1116,7 @@ export default function StudentDashboard() {
           ].map((item, idx) => (
             <button
               key={idx}
+              data-tour={item.tour}
               onClick={item.onClick}
               className={`${desk.indexCard} ${item.tilt} relative h-[132px] flex-shrink-0
                 rounded-[2px] flex flex-row items-start gap-3 px-3.5 pt-6 pb-3 text-left cursor-pointer
@@ -1135,18 +1150,14 @@ export default function StudentDashboard() {
         </div>{/* end center container */}
       </div>{/* end body */}
 
-      {/* ── ONBOARDING GUIDE & INTERACTIVE DEMO MODAL ── */}
-      <OnboardingGuideModal
-        isOpen={showOnboardingGuide}
-        onClose={() => setShowOnboardingGuide(false)}
-        studentName={
-          dashboard?.first_name
-            ? `${dashboard.first_name} ${dashboard.last_name || ''}`.trim()
-            : dashboard?.username || 'Investigator'
-        }
-        studentId={dashboard?.student_id || 'user'}
-        onStartFirstNode={() => {
-          handleStartNode('/nodes/logic-thread', 'log_node_01', 'unlocked')
+      {/* ── INSPECTOR CRIT'S DASHBOARD TOUR ── */}
+      <TourGuide
+        isOpen={showTour}
+        onClose={() => {
+          setShowTour(false)
+          // The tour is the induction now: record it locally and on the profile
+          markInductionComplete(dashboard?.student_id || 'user')
+          apiFetch('/progression/onboarding/complete/', { method: 'POST' }).catch(() => {})
         }}
       />
 
