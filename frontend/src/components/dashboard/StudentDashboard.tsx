@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
 import OnboardingGuideModal    from '@/components/onboarding/OnboardingGuideModal'
+import { shouldAutoOpenInduction } from '@/lib/induction'
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
@@ -12,7 +13,7 @@ import {
   subscribeToProgressionUpdates,
   subscribeToLexicalUpdates,
 } from '@/lib/realtime-sync'
-import Image                  from 'next/image'
+import InspectorCrit          from '@/components/brand/InspectorCrit'
 import {
   Activity, BookOpen, CircleCheck, Clipboard, Crosshair, FileText, Flame,
   FolderOpen, Lock, LogOut, Network, Paperclip, Pin, Puzzle, RotateCcw,
@@ -470,13 +471,10 @@ export default function StudentDashboard() {
       const d = await apiFetch('/progression/dashboard/')
       setDashboard(d)
 
-      // Auto-trigger Onboarding Guide for new users or if not completed
+      // Auto-open the Field Induction on the first sign-in after registration,
+      // or whenever neither the profile nor this browser recorded completion
       const studentId = d?.student_id || 'user'
-      const localCompleted = typeof window !== 'undefined'
-        ? localStorage.getItem(`critica_onboarding_completed_${studentId}`) === 'true'
-        : false
-
-      if (d && d.onboarding_completed === false && !localCompleted) {
+      if (d && shouldAutoOpenInduction(studentId, d.onboarding_completed)) {
         setShowOnboardingGuide(true)
       }
     } catch (e: unknown) {
@@ -697,13 +695,10 @@ export default function StudentDashboard() {
 
         {/* ── LEFT: mascot + brand ── */}
         <div className={`${TYPE} flex items-center gap-2 flex-shrink-0 whitespace-nowrap text-[15px] font-bold tracking-[0.16em] text-[var(--parchment)]`}>
-          {/* Mascot logo — transparent PNG, inline with the wordmark */}
-          <Image
-            src="/mascot-detective.png"
-            alt="Critica detective caterpillar"
-            width={32}
-            height={32}
-            className="w-8 h-8 flex-shrink-0 object-contain drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]"
+          {/* Mascot logo — Inspector Crit, inline with the wordmark */}
+          <InspectorCrit
+            height={34}
+            className="flex-shrink-0 drop-shadow-[0_2px_3px_rgba(0,0,0,0.6)]"
             priority
           />
           <Crosshair size={15} className="flex-shrink-0 text-[var(--crimson)]" aria-hidden />
@@ -764,7 +759,8 @@ export default function StudentDashboard() {
           className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap font-mono text-xs text-[var(--parchment)]
             hover:text-white cursor-pointer transition-colors">
           <span className="w-8 h-8 flex-shrink-0 rounded-full bg-[var(--parchment)] border-2 border-[var(--lime)] overflow-hidden flex items-center justify-center">
-            <Image src="/mascot-detective.png" alt="" width={30} height={30} />
+            {/* decorative: the visible name labels this button */}
+            <InspectorCrit height={26} decorative />
           </span>
           <span className="max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap">
             {dashboard?.first_name && dashboard?.last_name

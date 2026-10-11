@@ -6,6 +6,7 @@ import { API_BASE } from '@/lib/api';
 import { IdCard, KeyRound, MailWarning, ShieldCheck } from 'lucide-react';
 import PasswordField from './PasswordField';
 import VerificationModal from './VerificationModal';
+import ForgotPasswordModal from './ForgotPasswordModal';
 import styles from './auth.module.css';
 
 export default function SignInForm() {
@@ -20,6 +21,7 @@ export default function SignInForm() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [resendOnOpen, setResendOnOpen] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +138,7 @@ export default function SignInForm() {
 
         {/* Forgot password — right aligned */}
         <div className={styles.fgtRow}>
-          <button type="button" className={styles.fgt} onClick={() => alert('Password recovery coming soon!')}>
+          <button type="button" className={styles.fgt} onClick={() => setForgotOpen(true)}>
             Forgot Password?
           </button>
         </div>
@@ -149,6 +151,11 @@ export default function SignInForm() {
         </div>
       </form>
 
+      <ForgotPasswordModal
+        open={forgotOpen}
+        initialEmail={email}
+        onClose={() => setForgotOpen(false)}
+      />
       <VerificationModal
         open={verifyOpen && pendingEmail !== null}
         email={pendingEmail ?? ''}

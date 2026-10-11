@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { MailCheck, RotateCcw, ShieldCheck, X } from 'lucide-react';
 import { API_BASE } from '@/lib/api';
+import { markInductionPending } from '@/lib/induction';
 import styles from './auth.module.css';
 
 interface VerificationModalProps {
@@ -99,6 +100,7 @@ function VerificationDialog({ email, onClose, resendOnOpen, notice }: Verificati
       localStorage.setItem('accessToken', data.tokens.access);
       localStorage.setItem('refreshToken', data.tokens.refresh);
       localStorage.setItem('user', JSON.stringify(data.user));
+      markInductionPending(); // brand-new cadet → Field Induction on first dashboard visit
       setInfo('CLEARANCE GRANTED — REDIRECTING...');
       setTimeout(() => router.push('/dashboard'), 1000);
     } catch {

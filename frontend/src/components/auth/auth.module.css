@@ -783,6 +783,7 @@
 .strengthText_medium { color: #9a6b12; }
 .strengthText_strong { color: #2f6418; }
 
+
 .rules {
   display: flex;
   flex-wrap: wrap;
@@ -920,3 +921,4 @@
   font-style: italic;
   color: #6b5a44;
 }
+

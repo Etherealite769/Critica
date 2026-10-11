@@ -95,7 +95,7 @@ class AuthVerificationTests(TestCase):
     def test_policy_helper(self):
         self.assertEqual(ev.password_policy_errors(STRONG), [])
         self.assertIn('an uppercase letter', ev.password_policy_errors('sleuth$2024'))
-        self.assertIn('a special character (@$!%*?&)', ev.password_policy_errors('Sleuth2024x'))
+        self.assertIn(f'a special character ({ev.PASSWORD_SPECIALS})', ev.password_policy_errors('Sleuth2024x'))
         self.assertIn('at least 8 characters', ev.password_policy_errors('Ab1$'))
 
     def test_register_rejects_weak_password(self):
