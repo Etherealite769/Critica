@@ -1,0 +1,389 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Node Evaluation Report — Post-Node Accuracy & Clearance Modal
+   Detective Bureau Classified Report Card Styling
+   ═══════════════════════════════════════════════════════════════════ */
+
+.reportOverlay {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.reportCard {
+  width: 100%;
+  max-width: 620px;
+  background: #14110E;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(196, 168, 130, 0.08) 0%, transparent 70%),
+    radial-gradient(circle at 85% 90%, rgba(60, 45, 30, 0.2) 0%, transparent 60%);
+  border: 1.5px solid #BEA791;
+  border-radius: 12px;
+  padding: 36px 32px 32px;
+  position: relative;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.75),
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-family: 'Courier New', Courier, monospace;
+  color: #EDE3D2;
+  box-sizing: border-box;
+  animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header Tape / Confidential Banner */
+.confidentialBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px dashed rgba(190, 167, 145, 0.4);
+  padding-bottom: 14px;
+  margin-bottom: 22px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: #C4A882;
+  text-transform: uppercase;
+}
+
+.bannerTag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stampBadge {
+  display: inline-block;
+  padding: 5px 14px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  border-radius: 4px;
+  text-transform: uppercase;
+  transform: rotate(-1.5deg);
+  border: 2px solid currentColor;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  animation: stampSlam 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28) 0.15s both;
+}
+
+@keyframes stampSlam {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-8deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-1.5deg);
+  }
+}
+
+.stampS {
+  color: #FFD700;
+  border-color: #FFD700;
+  background: rgba(255, 215, 0, 0.1);
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+.stampA {
+  color: #4DDD94;
+  border-color: #4DDD94;
+  background: rgba(77, 221, 148, 0.1);
+  text-shadow: 0 0 12px rgba(77, 221, 148, 0.4);
+}
+
+.stampB {
+  color: #F3A712;
+  border-color: #F3A712;
+  background: rgba(243, 167, 18, 0.1);
+  text-shadow: 0 0 12px rgba(243, 167, 18, 0.3);
+}
+
+.stampC {
+  color: #EF4444;
+  border-color: #EF4444;
+  background: rgba(239, 68, 68, 0.1);
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Title Section */
+.titleArea {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.nodeTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: #FFF8ED;
+  letter-spacing: 0.08em;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+}
+
+.nodeSubtitle {
+  font-size: 12px;
+  color: #A89582;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+/* Centerpiece: Gauge & Summary Row */
+.gaugeRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 28px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(190, 167, 145, 0.2);
+  border-radius: 8px;
+  padding: 20px 24px;
+}
+
+.gaugeWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.gaugeSvg {
+  width: 130px;
+  height: 130px;
+  transform: rotate(-90deg);
+}
+
+.gaugeBgTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 9;
+}
+
+.gaugeFillTrack {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gaugeCenterContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.gaugePercent {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.gaugeLabel {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: #A89582;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Quick Metrics Column */
+.quickMetrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+.metricItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px dotted rgba(190, 167, 145, 0.25);
+  padding-bottom: 6px;
+  font-size: 12px;
+}
+
+.metricName {
+  color: #C4A882;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.metricVal {
+  font-weight: 700;
+  color: #FFF8ED;
+  font-size: 13px;
+}
+
+/* Per-Case Breakdown */
+.casesSection {
+  margin-bottom: 28px;
+}
+
+.casesSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: #A89582;
+  text-transform: uppercase;
+}
+
+.casePillsGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.casePill {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(190, 167, 145, 0.25);
+  border-radius: 6px;
+  padding: 10px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.casePill:hover {
+  transform: translateY(-2px);
+  border-color: #BEA791;
+}
+
+.casePillSuccess {
+  border-color: rgba(77, 221, 148, 0.5);
+  background: rgba(77, 221, 148, 0.06);
+}
+
+.casePillWarning {
+  border-color: rgba(243, 167, 18, 0.5);
+  background: rgba(243, 167, 18, 0.06);
+}
+
+.casePillTitle {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #A89582;
+}
+
+.casePillIcon {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.casePillDetail {
+  font-size: 8px;
+  color: #8C7A68;
+}
+
+/* Actions Bar */
+.actionsBar {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(190, 167, 145, 0.3);
+}
+
+.btnNext {
+  background: #BEA791;
+  color: #1A1209;
+  border: 1.5px solid #BEA791;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 12px 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  box-shadow: 0 4px 14px rgba(190, 167, 145, 0.25);
+}
+
+.btnNext:hover {
+  background: #D4B896;
+  border-color: #D4B896;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(190, 167, 145, 0.35);
+}
+
+.btnReplay {
+  background: rgba(34, 170, 85, 0.2);
+  color: #4DDD94;
+  border: 1.5px solid #4DDD94;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.btnReplay:hover {
+  background: rgba(34, 170, 85, 0.35);
+  transform: translateY(-1px);
+}
+
+.btnDashboard {
+  background: transparent;
+  color: #BEA791;
+  border: 1.5px solid rgba(190, 167, 145, 0.4);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 12px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.btnDashboard:hover {
+  border-color: #BEA791;
+  color: #FFF8ED;
+  background: rgba(190, 167, 145, 0.08);
+}
+
+@media (max-width: 600px) {
+  .gaugeRow {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .casePillsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

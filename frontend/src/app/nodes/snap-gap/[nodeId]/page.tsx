@@ -11,6 +11,9 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
   fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
+import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
+import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
+import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import styles from './page.module.css'
 
 
@@ -212,54 +215,8 @@ const S = {
 }
 
 // ── Sub-screens ───────────────────────────────────
-function BriefingGenerationScreen({ title }: { title?: string }) {
-  const [stepIndex, setStepIndex] = useState(0)
-  const steps = [
-    'Calibrating coherence & transition markers...',
-    'Synthesizing novel academic sentence pairs...',
-    'Calibrating transition tiles & distractor logic...',
-    'Finalizing dynamic 5-case session...',
-  ]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStepIndex(prev => (prev + 1) % steps.length)
-    }, 1200)
-    return () => clearInterval(timer)
-  }, [steps.length])
-
-  return (
-    <div className={styles.loadingWrap} style={{
-      minHeight: '100vh', background: C.pageBg,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      fontFamily: F, padding: 24, textAlign: 'center',
-    }}>
-      <div className={styles.screenCard} style={{
-        maxWidth: 500, width: '100%', background: '#F2DEC1',
-        border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-      }}>
-        <div style={S.stamp}>CRITICA PEDAGOGICAL ENGINE</div>
-        <h3 style={{ fontSize: 17, color: C.btnDark, margin: '8px 0 14px', fontFamily: F }}>
-          {title ? title.toUpperCase() : 'GENERATING SNAP-IN GAP CASE FILE'}
-        </h3>
-        <div style={{
-          background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6,
-          padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <p style={{ margin: 0, fontSize: 12, color: C.textDark, fontFamily: F, fontWeight: 600 }}>
-            {steps[stepIndex]}
-          </p>
-        </div>
-        <div className={styles.loadingDots} style={{ justifyContent: 'center' }}>
-          <div className={styles.dot} />
-          <div className={styles.dot} />
-          <div className={styles.dot} />
-        </div>
-      </div>
-    </div>
-  )
+function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCancel?: () => void }) {
+  return <CaseLoadingLobby moduleKey="snap_gap" title={title} onCancel={onCancel} />
 }
 
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
@@ -273,77 +230,61 @@ function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   )
 }
 
-function LessonScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
+function LessonScreen({ node, onContinue, onDashboard }: { node: SnapNodeData; onContinue: () => void; onDashboard?: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
-      <div className={styles.screenCard} style={{ maxWidth: 720, width: '100%',
-        background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
-        <div style={S.stamp}>MICRO-LESSON</div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 6px', fontFamily: F }}>
-          {node.title}
-        </h2>
-        <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: F }}>{node.focus}</p>
-        <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 15, lineHeight: 1.85, color: C.textDark, margin: '0 0 32px', fontFamily: F, fontWeight: 700 }}>
-          {node.micro_lesson_text}
-        </p>
-        <button onClick={onContinue} style={{ ...S.btnPrimary, fontSize: 12, padding: '12px 28px' }}>Continue →</button>
-      </div>
-    </div>
+    <CaseLessonScreen
+      moduleKey="snap_gap"
+      nodeId={node.node_id}
+      phase="micro_lesson"
+      title={node.title}
+      focus={node.focus}
+      microLessonText={node.micro_lesson_text}
+      readingPassage={node.reading_passage}
+      deepDiveRequired={!!node.deep_dive_required}
+      difficulty={node.difficulty}
+      onContinue={onContinue}
+      onBackToDashboard={onDashboard}
+    />
   )
 }
 
-function DeepDiveScreen({ node, onContinue }: { node: SnapNodeData; onContinue: () => void }) {
+function DeepDiveScreen({ node, onContinue, onDashboard }: { node: SnapNodeData; onContinue: () => void; onDashboard?: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: F }}>
-      <div className={styles.screenCard} style={{ maxWidth: 700, width: '100%',
-        background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48 }}>
-        <div style={S.stamp}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7, fontFamily: F }}>
-          Read the full passage carefully. Do not skip — cognitive endurance is part of the exercise.
-        </p>
-        <p style={{ fontSize: 14, lineHeight: 1.95, color: C.canvas, background: C.pageBg,
-          border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: 28, margin: '0 0 32px', fontFamily: F }}>
-          {node.reading_passage}
-        </p>
-        <button onClick={onContinue} style={S.btnPrimary}>I have finished reading →</button>
-      </div>
-    </div>
+    <CaseLessonScreen
+      moduleKey="snap_gap"
+      nodeId={node.node_id}
+      phase="deep_dive"
+      title={node.title}
+      focus={node.focus}
+      microLessonText={node.micro_lesson_text}
+      readingPassage={node.reading_passage}
+      deepDiveRequired={!!node.deep_dive_required}
+      difficulty={node.difficulty}
+      onContinue={onContinue}
+      onBackToDashboard={onDashboard}
+    />
   )
 }
 
 function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
   { node: SnapNodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
-      <div className={styles.screenCard} style={{ maxWidth: 520, width: '100%',
-        background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 8,
-        padding: 48, textAlign: 'center' }}>
-        <div style={{ ...S.stamp, color: '#4ddd94', borderColor: '#4ddd94',
-          fontSize: 16, padding: '8px 24px' }}>
-          ✓ NODE MASTERED
-        </div>
-        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: F }}>
-          {node.title}
-        </h2>
-        <p style={{ fontSize: 12, color: C.textLight, margin: '0 0 28px', fontFamily: F }}>
-          Streak: {data?.streak ?? 0} days
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {data?.next_node && (
-            <button onClick={onNext} style={S.btnPrimary}>NEXT NODE →</button>
-          )}
-          {onReplay && (
-            <button onClick={onReplay} style={{ ...S.btnPrimary, background: '#22aa55', color: '#fff', borderColor: '#4ddd94' }}>
-              REPLAY WITH FRESH QUESTIONS ↻
-            </button>
-          )}
-          <button onClick={onDashboard} style={S.btnSm}>← DASHBOARD</button>
-        </div>
-      </div>
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+      <NodeEvaluationReport
+        moduleKey="snap_gap"
+        title={node.title}
+        accuracy={data?.accuracy ?? 100}
+        totalCases={data?.totalCases ?? 5}
+        correctCases={data?.correctCases ?? 5}
+        hintsUsed={data?.hintsUsed ?? 0}
+        timeTakenSeconds={data?.timeTakenSeconds ?? 0}
+        streak={data?.streak ?? 0}
+        caseResults={data?.caseResults}
+        nextNodeId={data?.next_node}
+        onNext={onNext}
+        onReplay={onReplay}
+        onDashboard={onDashboard}
+      />
     </div>
   )
 }
@@ -575,6 +516,10 @@ export default function SnapInGapPage() {
   const [savedNextNode,  setSavedNextNode]  = useState<string | null>(null)
   const [savedStreak,    setSavedStreak]    = useState<number | null>(null)
 
+  // session accuracy evaluation state
+  const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
+  const sessionStartTimeRef = useRef<number>(Date.now())
+
   // ── Load a question inline ──────────────────
   const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
     setPhase('loading')
@@ -668,6 +613,10 @@ export default function SnapInGapPage() {
       setHintText('')
       setDrawer(false)
       setHintOverlay(false)
+      if (forceFresh || resumeIdx === 0) {
+        setSessionResults([])
+        sessionStartTimeRef.current = Date.now()
+      }
 
       saveSession('snap_gap', start, {
         sessionQueue: queue,
@@ -941,6 +890,17 @@ export default function SnapInGapPage() {
       }).catch(() => {})
 
       if (isCorrect) {
+        const currentHints = (hintTier || 0) + (hintOverlay ? 1 : 0)
+        const currentCaseRes: CaseResult = {
+          caseNumber: questionIndex + 1,
+          correct: true,
+          firstTry: wrongs === 0,
+          hintsUsed: currentHints,
+          attempts: wrongs + 1,
+        }
+        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
+        setSessionResults(updatedCases)
+
         const nextIdx = questionIndex + 1
         if (sessionId) {
           updateSessionProgress(sessionId, nextIdx).catch(() => {})
@@ -962,9 +922,22 @@ export default function SnapInGapPage() {
           try {
             const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
             if (sessionStartId) clearSession('snap_gap', sessionStartId)
+            const totalCases = sessionExercises.length || sessionQueue.length || 5
+            const correctCases = updatedCases.filter(r => r.correct).length
+            const firstTryCases = updatedCases.filter(r => r.firstTry).length
+            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
+            const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+            const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+
             setMasteryData({
               next_node: finalRes.next_node,
               streak: finalRes.streak ?? 1,
+              accuracy,
+              totalCases,
+              correctCases,
+              hintsUsed: totalHints,
+              timeTakenSeconds,
+              caseResults: updatedCases,
             })
             setPhase('mastery')
           } catch {
@@ -991,6 +964,17 @@ export default function SnapInGapPage() {
         }),
       })
       if (res.status === 'mastered') {
+        const currentHints = (hintTier || 0) + (hintOverlay ? 1 : 0)
+        const currentCaseRes: CaseResult = {
+          caseNumber: questionIndex + 1,
+          correct: true,
+          firstTry: wrongs === 0,
+          hintsUsed: currentHints,
+          attempts: wrongs + 1,
+        }
+        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
+        setSessionResults(updatedCases)
+
         const nextIdx = questionIndex + 1
 
         if (nextIdx < sessionQueue.length) {
@@ -1025,9 +1009,22 @@ export default function SnapInGapPage() {
           const newStreak = savedStreak !== null ? savedStreak : (finalRes.streak ?? null)
 
           if (sessionStartId) clearSession('snap_gap', sessionStartId)
+          const totalCases = sessionQueue.length || 5
+          const correctCases = updatedCases.filter(r => r.correct).length
+          const firstTryCases = updatedCases.filter(r => r.firstTry).length
+          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
+          const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+          const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+
           setMasteryData({
             next_node: newNextNode,
             streak: newStreak,
+            accuracy,
+            totalCases,
+            correctCases,
+            hintsUsed: totalHints,
+            timeTakenSeconds,
+            caseResults: updatedCases,
           })
           setPhase('mastery')
         }
@@ -1042,10 +1039,22 @@ export default function SnapInGapPage() {
   }
 
   // ── phase guards ──────────────────────────────────
-  if (phase === 'loading')      return <BriefingGenerationScreen title={snapNode?.title} />
+  if (phase === 'loading')      return <BriefingGenerationScreen title={snapNode?.title} onCancel={() => router.push('/dashboard')} />
   if (phase === 'error')        return <ErrorScreen msg={errorMsg} onBack={() => router.push('/dashboard')} />
-  if (phase === 'micro_lesson') return <LessonScreen node={snapNode!} onContinue={() => setPhase(snapNode!.deep_dive_required ? 'deep_dive' : 'task')} />
-  if (phase === 'deep_dive')    return <DeepDiveScreen node={snapNode!} onContinue={() => setPhase('task')} />
+  if (phase === 'micro_lesson') return (
+    <LessonScreen
+      node={snapNode!}
+      onContinue={() => setPhase(snapNode!.deep_dive_required ? 'deep_dive' : 'task')}
+      onDashboard={() => router.push('/dashboard')}
+    />
+  )
+  if (phase === 'deep_dive')    return (
+    <DeepDiveScreen
+      node={snapNode!}
+      onContinue={() => setPhase('task')}
+      onDashboard={() => router.push('/dashboard')}
+    />
+  )
   if (phase === 'mastery')      return (
     <MasteryScreen
       node={snapNode!} data={masteryData}

@@ -195,11 +195,25 @@ class StudentMetricsView(APIView):
                 m_cor = comp_len
                 m_acc = 100 if comp_len > 0 else 0
 
+            # Forensic Competency Level
+            if m_acc >= 95:
+                c_level = "Master"
+            elif m_acc >= 80:
+                c_level = "Expert"
+            elif m_acc >= 60:
+                c_level = "Investigator"
+            elif m_acc >= 40:
+                c_level = "Apprentice"
+            else:
+                c_level = "Novice"
+
             module_stats[m] = {
                 'attempts': m_tot,
                 'correct': m_cor,
                 'accuracy': m_acc,
                 'completed_nodes': comp_len,
+                'total_nodes': len(valid_nodes),
+                'competency_level': c_level,
             }
 
         # Recent timeline
@@ -234,6 +248,18 @@ class StudentMetricsView(APIView):
         # Clearance rank based on calculated total_xp and level engine
         rank_info = ProgressionManagementService.calculate_rank_and_level(getattr(profile, 'total_xp', 0))
 
+        # Overall forensic clearance grade
+        if overall_accuracy >= 95 and completed_count >= 10:
+            overall_grade = {'tier': 'S', 'title': 'CHIEF INSPECTOR CLEARANCE', 'color': '#FFD700'}
+        elif overall_accuracy >= 80:
+            overall_grade = {'tier': 'A', 'title': 'SENIOR INVESTIGATOR', 'color': '#4DDD94'}
+        elif overall_accuracy >= 60:
+            overall_grade = {'tier': 'B', 'title': 'FIELD DETECTIVE', 'color': '#BEA791'}
+        elif overall_accuracy >= 40:
+            overall_grade = {'tier': 'C', 'title': 'JUNIOR OPERATIVE', 'color': '#F3A712'}
+        else:
+            overall_grade = {'tier': 'D', 'title': 'PROBATIONARY CADET', 'color': '#EF4444'}
+
         return Response({
             'student_id': student_id,
             'username': profile.username,
@@ -250,6 +276,7 @@ class StudentMetricsView(APIView):
             'total_attempts': total_attempts,
             'correct_attempts': correct_attempts,
             'overall_accuracy': overall_accuracy,
+            'overall_grade': overall_grade,
             'hint_independence': hint_independence,
             'module_stats': module_stats,
             'recent_activity': recent_activity,

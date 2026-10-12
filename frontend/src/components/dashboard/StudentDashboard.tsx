@@ -10,6 +10,7 @@ import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
 import desk                   from './desk.module.css'
+import CaseLoadingLobby       from '@/components/shared/CaseLoadingLobby'
 import {
   subscribeToProgressionUpdates,
   subscribeToLexicalUpdates,
@@ -655,10 +656,17 @@ export default function StudentDashboard() {
 
   // ── Loading state ─────────────────────────
   if (loading) return (
-    <div
-      className={`${desk.desk} min-h-screen flex items-center justify-center font-mono text-[#C4A882] text-sm`}>
-      Loading...
-    </div>
+    <CaseLoadingLobby
+      moduleKey="logic_thread"
+      title="DETECTIVE BUREAU HEADQUARTERS"
+      subtitle="Accessing forensic student records & evidence dossiers…"
+      steps={[
+        'Decrypting agent dossier & clearance credentials...',
+        'Retrieving forensic competency records...',
+        'Calibrating reading diagnostic telemetry...',
+        'Opening investigation bureau...',
+      ]}
+    />
   )
 
   // ── Error state ───────────────────────────

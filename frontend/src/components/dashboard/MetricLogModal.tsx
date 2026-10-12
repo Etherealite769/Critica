@@ -5,9 +5,11 @@ import styles from './metric-log.module.css'
 import { apiFetch } from '@/lib/api'
 import { MODULE_KEYS, MODULE_TITLES, moduleTitle } from '@/lib/modules'
 import { subscribeToProgressionUpdates } from '@/lib/realtime-sync'
+import AccuracyGauge from '@/components/shared/AccuracyGauge'
+import CompetencyRadar, { getCompetencyLevel } from '@/components/shared/CompetencyRadar'
 import {
   BadgeCheck, Crosshair, FileText, FolderCheck, FolderOpen, Footprints, Network, Paperclip, Puzzle,
-  RefreshCw, ScanSearch, Search, ShieldCheck, X, type LucideIcon,
+  RefreshCw, ScanSearch, Search, ShieldCheck, X, TrendingUp, TrendingDown, Minus, Award, type LucideIcon,
 } from 'lucide-react'
 
 interface MetricLogModalProps {
@@ -20,6 +22,8 @@ interface ModuleStat {
   correct: number
   accuracy: number
   completed_nodes: number
+  total_nodes?: number
+  competency_level?: string
 }
 
 interface TelemetryEntry {
@@ -47,6 +51,11 @@ interface MetricsData {
   total_attempts: number
   correct_attempts: number
   overall_accuracy: number
+  overall_grade?: {
+    tier: string
+    title: string
+    color: string
+  }
   hint_independence: number
   module_stats: Record<string, ModuleStat>
   recent_activity: TelemetryEntry[]
@@ -291,6 +300,41 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
               <>
                 {activeTab === 'overview' && (
                   <div className={`${styles.pane} ${styles.paneCompact}`}>
+                    {/* Overall Grade Banner */}
+                    {(() => {
+                      const grade = metrics.overall_grade || (
+                        metrics.overall_accuracy >= 95 && metrics.completed_count >= 10
+                          ? { tier: 'S', title: 'CHIEF INSPECTOR CLEARANCE', color: '#FFD700' }
+                          : metrics.overall_accuracy >= 80
+                          ? { tier: 'A', title: 'SENIOR INVESTIGATOR', color: '#4DDD94' }
+                          : metrics.overall_accuracy >= 60
+                          ? { tier: 'B', title: 'FIELD DETECTIVE', color: '#BEA791' }
+                          : metrics.overall_accuracy >= 40
+                          ? { tier: 'C', title: 'JUNIOR OPERATIVE', color: '#F3A712' }
+                          : { tier: 'D', title: 'PROBATIONARY CADET', color: '#EF4444' }
+                      )
+                      return (
+                        <div className={styles.overallGradeBanner} style={{ borderLeftColor: grade.color }}>
+                          <div className={styles.gradeLeft}>
+                            <div className={styles.gradeStamp} style={{ color: grade.color, borderColor: grade.color }}>
+                              {grade.tier}
+                            </div>
+                            <div className={styles.gradeInfo}>
+                              <div className={styles.gradeTitle}>
+                                TIER {grade.tier} // {grade.title}
+                              </div>
+                              <div className={styles.gradeSub}>
+                                Forensic Reading Clearance Evaluation • {metrics.overall_accuracy}% Cumulative Accuracy
+                              </div>
+                            </div>
+                          </div>
+                          <span className={styles.stamp} style={{ color: grade.color, borderColor: grade.color }}>
+                            VERIFIED DOSSIER
+                          </span>
+                        </div>
+                      )
+                    })()}
+
                     {/* Investigator clearance */}
                     <div className={`${styles.exhibit} ${styles.clearance}`}>
                       <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
@@ -314,34 +358,42 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                       </div>
                     </div>
 
-                    {/* EXP progression */}
-                    <div className={`${styles.exhibit} ${styles.exhibitGood}`}>
-                      <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
-                      <div className={styles.row}>
-                        <span className={styles.labelStrong}>Clearance Experience (EXP) Progression</span>
-                        <span className={styles.figure}>
-                          <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
-                        </span>
+                    {/* Visual Accuracy Gauge + EXP Row */}
+                    <div className={styles.overviewVisualRow}>
+                      <div className={`${styles.exhibit} ${styles.gaugeCard}`}>
+                        <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                        <AccuracyGauge
+                          value={metrics.overall_accuracy}
+                          size={135}
+                          label="OVERALL ACCURACY"
+                          subtext={`${metrics.correct_attempts} / ${metrics.total_attempts} verified`}
+                        />
                       </div>
-                      <div className={styles.gauge}>
-                        <div className={styles.gaugeFill} style={{ width: `${metrics.level_progress_pct ?? 0}%` }} />
-                      </div>
-                      <div className={styles.gaugeFoot}>
-                        <span>Tier Floor: {metrics.current_level_min_xp ?? 0} XP</span>
-                        <span>
-                          {metrics.next_level_xp
-                            ? `${Math.max(0, metrics.next_level_xp - (metrics.total_xp ?? 0))} XP to Next Rank Promotion`
-                            : 'Maximum Clearance Achieved'}
-                        </span>
+                      <div className={`${styles.exhibit} ${styles.exhibitGood}`} style={{ flex: 2, minWidth: 260 }}>
+                        <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                        <div className={styles.row}>
+                          <span className={styles.labelStrong}>Clearance Experience (EXP) Progression</span>
+                          <span className={styles.figure}>
+                            <strong>{metrics.total_xp ?? 0}</strong> / {metrics.next_level_xp ?? 800} XP ({metrics.level_progress_pct ?? 0}%)
+                          </span>
+                        </div>
+                        <div className={styles.gauge}>
+                          <div className={styles.gaugeFill} style={{ width: `${metrics.level_progress_pct ?? 0}%` }} />
+                        </div>
+                        <div className={styles.gaugeFoot}>
+                          <span>Tier Floor: {metrics.current_level_min_xp ?? 0} XP</span>
+                          <span>
+                            {metrics.next_level_xp
+                              ? `${Math.max(0, metrics.next_level_xp - (metrics.total_xp ?? 0))} XP to Next Rank Promotion`
+                              : 'Maximum Clearance Achieved'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     {/* KPIs */}
                     <div className={styles.kpiGrid}>
                       {[
-                        { icon: Crosshair,   label: 'Overall Accuracy',  value: `${metrics.overall_accuracy}%`,
-                          sub: `${metrics.correct_attempts} / ${metrics.total_attempts} verified answers`,
-                          tone: metrics.overall_accuracy >= 75 ? styles.good : styles.poor },
                         { icon: Search,      label: 'Hint Independence', value: `${metrics.hint_independence}%`,
                           sub: 'Solved without investigative lifeline' },
                         { icon: FolderCheck, label: 'Completed Nodes',   value: metrics.completed_count,
@@ -355,10 +407,33 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                             <span className={styles.iconBox}><k.icon size={13} aria-hidden /></span>
                             <span className={styles.labelStrong}>{k.label}</span>
                           </div>
-                          <div className={`${styles.kpiValue} ${k.tone ?? ''}`}>{k.value}</div>
+                          <div className={styles.kpiValue}>{k.value}</div>
                           <div className={styles.kpiSub}>{k.sub}</div>
                         </div>
                       ))}
+                    </div>
+
+                    {/* 4-Module Forensic Competency Radar */}
+                    <div className={`${styles.exhibit} ${styles.radarExhibit}`}>
+                      <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
+                      <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div>
+                          <span className={styles.labelStrong}>4-MODULE FORENSIC COMPETENCY RADAR</span>
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#5c4a36' }}>
+                            Diagnostic accuracy spread across the four reading disciplines.
+                          </p>
+                        </div>
+                        <span className={styles.stamp}>DIAGNOSTIC RADAR</span>
+                      </div>
+                      <CompetencyRadar
+                        data={{
+                          logic_thread: metrics.module_stats.logic_thread?.accuracy ?? 0,
+                          snap_gap: metrics.module_stats.snap_gap?.accuracy ?? 0,
+                          tap_clues: metrics.module_stats.tap_clues?.accuracy ?? 0,
+                          fact_scanner: metrics.module_stats.fact_scanner?.accuracy ?? 0,
+                        }}
+                        size={280}
+                      />
                     </div>
 
                     {/* Inspector Crit's debrief, handwritten */}
@@ -393,26 +468,43 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                         const ModIcon = MODULE_ICONS[modKey] ?? FileText
                         const caseNo = (MODULE_KEYS as string[]).indexOf(modKey) + 1
                         const strong = stat.accuracy >= 70
+                        const compTier = getCompetencyLevel(stat.accuracy)
+                        const totalNodes = stat.total_nodes || 12
+
                         return (
                           <div key={modKey} className={`${styles.exhibit} ${strong ? styles.exhibitGood : styles.exhibitBad}`}>
                             <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
                             <div className={styles.moduleHead}>
                               <div className={styles.moduleName}>
                                 <span className={styles.iconBox}><ModIcon size={13} aria-hidden /></span>
-                                <span>
-                                  {caseNo > 0 && <span className={styles.label}>CASE {String(caseNo).padStart(2, '0')}</span>}
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {caseNo > 0 && <span className={styles.label}>CASE {String(caseNo).padStart(2, '0')}</span>}
+                                    <span className={styles.competencyBadge} style={{ color: compTier.color }}>
+                                      ★ {stat.competency_level || compTier.label}
+                                    </span>
+                                  </div>
                                   <span className={styles.moduleTitle} style={{ display: 'block' }}>{moduleTitle(modKey)}</span>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div className={styles.moduleStats}>
+                                  Completed: <strong>{stat.completed_nodes}</strong> • Attempts: <strong>{stat.attempts}</strong>
+                                </div>
+                                <span className={`${styles.trendBadge} ${stat.accuracy >= 80 ? styles.trendGood : stat.accuracy >= 60 ? styles.trendNeutral : styles.trendAlert}`}>
+                                  {stat.accuracy >= 80 ? <TrendingUp size={12} /> : stat.accuracy >= 60 ? <Minus size={12} /> : <TrendingDown size={12} />}
+                                  {stat.accuracy >= 80 ? 'Trending Strong' : stat.accuracy >= 60 ? 'Stable Record' : 'Priority Focus'}
                                 </span>
                               </div>
-                              <div className={styles.moduleStats}>
-                                Completed: <strong>{stat.completed_nodes}</strong> • Attempts: <strong>{stat.attempts}</strong>
-                              </div>
                             </div>
+
                             {modKey === weakest && !strong && (
                               <span className={`${styles.note} ${styles.noteAside}`} style={{ right: 240, top: 16 }}>
                                 focus here →
                               </span>
                             )}
+
                             <div className={styles.row}>
                               <span className={styles.figure}>Accuracy Rate</span>
                               <span className={`${styles.figure} ${strong ? styles.good : styles.poor}`}>
@@ -424,6 +516,35 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                                 className={`${styles.gaugeFill} ${strong ? '' : styles.gaugeFillLow}`}
                                 style={{ width: `${Math.min(100, stat.accuracy)}%` }}
                               />
+                            </div>
+
+                            {/* Node Dots Grid */}
+                            <div className={styles.moduleNodeSection}>
+                              <div className={styles.nodeSectionHeader}>
+                                <span>Case Node Clearance Docket</span>
+                                <span>{stat.completed_nodes} / {totalNodes} Cases Mastered</span>
+                              </div>
+                              <div className={styles.nodeDotsGrid}>
+                                {Array.from({ length: totalNodes }, (_, i) => {
+                                  const isCompleted = i < stat.completed_nodes
+                                  const isActive = i === stat.completed_nodes
+                                  return (
+                                    <div
+                                      key={i}
+                                      title={isCompleted ? `Case #${i + 1} Cleared` : isActive ? `Case #${i + 1} In Progress` : `Case #${i + 1} Locked`}
+                                      className={`${styles.nodeDot} ${
+                                        isCompleted
+                                          ? styles.nodeDotCompleted
+                                          : isActive
+                                          ? styles.nodeDotActive
+                                          : styles.nodeDotLocked
+                                      }`}
+                                    >
+                                      {isCompleted ? '✓' : isActive ? '●' : ''}
+                                    </div>
+                                  )
+                                })}
+                              </div>
                             </div>
                           </div>
                         )

@@ -11,6 +11,9 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
   fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
+import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
+import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
+import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import styles from './page.module.css'
 
 interface ArticleSentence {
@@ -163,52 +166,8 @@ function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
   )
 }
 
-function BriefingGenerationScreen({ title }: { title?: string }) {
-  const [stepIndex, setStepIndex] = useState(0)
-  const steps = [
-    'Scanning CRAAP bias & factual distortion markers...',
-    'Synthesizing novel deceptive & scholarly articles...',
-    'Calibrating subtle epistemological flaws & sentence bounds...',
-    'Finalizing dynamic 5-case session...',
-  ]
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setStepIndex(prev => (prev + 1) % steps.length)
-    }, 1200)
-    return () => clearInterval(timer)
-  }, [steps.length])
-
-  return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
-      flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, padding: 24, textAlign: 'center' }}>
-      <div className={styles.screenCard} style={{
-        maxWidth: 500, width: '100%', background: '#F2DEC1',
-        border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: '36px 30px',
-        boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
-      }}>
-        <div style={stampS}>CRITICA PEDAGOGICAL ENGINE</div>
-        <h3 style={{ fontSize: 17, color: C.btnDark, margin: '8px 0 14px', fontFamily: FONT }}>
-          {title ? title.toUpperCase() : 'GENERATING FACT SCANNER DOSSIER'}
-        </h3>
-        <div style={{
-          background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6,
-          padding: '14px 18px', margin: '0 0 20px', minHeight: 52,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <p style={{ margin: 0, fontSize: 12, color: C.textDark, fontFamily: FONT, fontWeight: 600 }}>
-            {steps[stepIndex]}
-          </p>
-        </div>
-        <div className={styles.loadingDots}>
-          <div className={styles.dot} />
-          <div className={styles.dot} />
-          <div className={styles.dot} />
-        </div>
-      </div>
-    </div>
-  )
+function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCancel?: () => void }) {
+  return <CaseLoadingLobby moduleKey="fact_scanner" title={title} onCancel={onCancel} />
 }
 
 // ── Main component ────────────────────────────────────────────
@@ -226,6 +185,10 @@ export default function FactScannerPage() {
   const [sessionStartId, setSessionStartId] = useState<string | null>(null)
   const [savedNextNode,  setSavedNextNode]  = useState<string | null>(null)
   const [savedStreak,    setSavedStreak]    = useState<number | null>(null)
+
+  // session accuracy evaluation state
+  const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
+  const sessionStartTimeRef = useRef<number>(Date.now())
 
   const [selected,    setSelected]    = useState<string | null>(null)
   const [quarantined, setQuarantined] = useState<string[]>([])
@@ -331,6 +294,10 @@ export default function FactScannerPage() {
       setDrawer(false)
       setHintOverlay(false)
       setSocraticAdvice(null)
+      if (forceFresh || resumeIdx === 0) {
+        setSessionResults([])
+        sessionStartTimeRef.current = Date.now()
+      }
 
       saveSession('fact_scanner', start, {
         sessionQueue: queue,
@@ -539,6 +506,16 @@ export default function FactScannerPage() {
       }).catch(() => {})
 
       if (isMastered) {
+        const currentCaseRes: CaseResult = {
+          caseNumber: questionIndex + 1,
+          correct: true,
+          firstTry: attempts === 0,
+          hintsUsed: hintsUsed + (hintOverlay ? 1 : 0),
+          attempts: attempts + 1,
+        }
+        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
+        setSessionResults(updatedCases)
+
         const nextIdx = questionIndex + 1
         if (sessionId) {
           updateSessionProgress(sessionId, nextIdx).catch(() => {})
@@ -559,9 +536,22 @@ export default function FactScannerPage() {
           try {
             const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
             if (sessionStartId) clearSession('fact_scanner', sessionStartId)
+            const totalCases = sessionExercises.length || sessionQueue.length || 5
+            const correctCases = updatedCases.filter(r => r.correct).length
+            const firstTryCases = updatedCases.filter(r => r.firstTry).length
+            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
+            const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+            const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+
             setMasteryData({
               next_node: finalRes.next_node,
               streak: finalRes.streak ?? 1,
+              accuracy,
+              totalCases,
+              correctCases,
+              hintsUsed: totalHints,
+              timeTakenSeconds,
+              caseResults: updatedCases,
             })
             setPhase('mastery')
           } catch {
@@ -570,6 +560,7 @@ export default function FactScannerPage() {
         }
         return
       } else {
+        setAttempts(prev => prev + 1)
         setFbText('Some flawed sentences were missed or extra sentences quarantined. Review carefully.')
         setDrawer(true)
         setSubmitting(false)
@@ -584,6 +575,16 @@ export default function FactScannerPage() {
         { method: 'POST', body: JSON.stringify({ quarantined_ids: quarantined, save_progression: false }) },
       )
       if (res.status === 'mastered') {
+        const currentCaseRes: CaseResult = {
+          caseNumber: questionIndex + 1,
+          correct: true,
+          firstTry: attempts === 0,
+          hintsUsed: hintsUsed + (hintOverlay ? 1 : 0),
+          attempts: attempts + 1,
+        }
+        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
+        setSessionResults(updatedCases)
+
         const nextIdx = questionIndex + 1
         if (nextIdx < sessionQueue.length) {
           if (sessionStartId) saveSession('fact_scanner', sessionStartId, {
@@ -601,14 +602,28 @@ export default function FactScannerPage() {
             )
           }
           if (sessionStartId) clearSession('fact_scanner', sessionStartId)
+          const totalCases = sessionQueue.length || 5
+          const correctCases = updatedCases.filter(r => r.correct).length
+          const firstTryCases = updatedCases.filter(r => r.firstTry).length
+          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
+          const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+          const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+
           setMasteryData({
             next_node: savedNextNode || finalRes.next_node,
             streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
+            accuracy,
+            totalCases,
+            correctCases,
+            hintsUsed: totalHints,
+            timeTakenSeconds,
+            caseResults: updatedCases,
           })
           setPhase('mastery')
         }
       }
     } catch (e) {
+      setAttempts(prev => prev + 1)
       setFbText((e as any)?.status === 'incomplete'
         ? 'Some flawed sentences were missed. Keep scanning.'
         : 'Submission failed. Please try again.')
@@ -617,7 +632,7 @@ export default function FactScannerPage() {
   }
 
   // ── Loading ───────────────────────────────────────────────
-  if (phase === 'loading') return <BriefingGenerationScreen title={factNode?.title} />
+  if (phase === 'loading') return <BriefingGenerationScreen title={factNode?.title} onCancel={() => router.push('/dashboard')} />
 
   if (phase === 'error') return (
     <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
@@ -628,54 +643,58 @@ export default function FactScannerPage() {
 
   // ── Micro lesson ──────────────────────────────────────────
   if (phase === 'micro_lesson') return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div className={styles.screenCard} style={{ maxWidth: 660, width: '100%', background: '#F2DEC1', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
-        <div style={stampS}>FACT SCANNER — MICRO-LESSON</div>
-        <div style={{ display: 'inline-block', background: C.btnGold, color: C.textDark, fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', padding: '4px 14px', borderRadius: 3, marginBottom: 16 }}>
-          CRAAP — {factNode!.craap_criterion}
-        </div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: C.btnDark, margin: '0 0 8px', fontFamily: FONT }}>{factNode!.title}</h2>
-        <p style={{ fontSize: 12, color: C.textMid, margin: '0 0 16px', fontFamily: FONT }}>{factNode!.focus}</p>
-        <hr style={{ border: 'none', borderTop: `1px solid ${C.btnGoldBdr}`, margin: '16px 0' }} />
-        <p style={{ fontSize: 15, lineHeight: 1.9, color: C.textDark, margin: '0 0 32px', fontFamily: FONT, fontWeight: 700 }}>{factNode!.micro_lesson_text}</p>
-        <button onClick={() => setPhase(factNode!.deep_dive_required ? 'deep_dive' : 'task')} style={{ ...btnPrimary, fontSize: 12, padding: '12px 28px' }}>CONTINUE →</button>
-      </div>
-    </div>
+    <CaseLessonScreen
+      moduleKey="fact_scanner"
+      nodeId={factNode!.node_id}
+      phase="micro_lesson"
+      title={factNode!.title}
+      focus={factNode!.focus}
+      microLessonText={factNode!.micro_lesson_text}
+      readingPassage={factNode!.reading_passage}
+      deepDiveRequired={!!factNode!.deep_dive_required}
+      difficulty={factNode!.difficulty}
+      craapCriterion={factNode!.craap_criterion}
+      onContinue={() => setPhase(factNode!.deep_dive_required ? 'deep_dive' : 'task')}
+      onBackToDashboard={() => router.push('/dashboard')}
+    />
   )
 
   // ── Deep dive ─────────────────────────────────────────────
   if (phase === 'deep_dive') return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, fontFamily: FONT }}>
-      <div className={styles.screenCard} style={{ maxWidth: 720, width: '100%', background: '#2A1200', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, padding: 48, boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
-        <div style={stampS}>DEEP DIVE READING</div>
-        <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 20px', lineHeight: 1.7, fontFamily: FONT }}>Read the full article carefully before the task unlocks.</p>
-        <p style={{ fontSize: 14, lineHeight: 2.0, color: C.canvas, background: C.pageBg, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: 28, margin: '0 0 28px', fontFamily: FONT }}>
-          {factNode!.reading_passage}
-        </p>
-        <button onClick={() => setPhase('task')} style={btnPrimary}>I HAVE FINISHED READING →</button>
-      </div>
-    </div>
+    <CaseLessonScreen
+      moduleKey="fact_scanner"
+      nodeId={factNode!.node_id}
+      phase="deep_dive"
+      title={factNode!.title}
+      focus={factNode!.focus}
+      microLessonText={factNode!.micro_lesson_text}
+      readingPassage={factNode!.reading_passage}
+      deepDiveRequired={!!factNode!.deep_dive_required}
+      difficulty={factNode!.difficulty}
+      craapCriterion={factNode!.craap_criterion}
+      onContinue={() => setPhase('task')}
+      onBackToDashboard={() => router.push('/dashboard')}
+    />
   )
 
   // ── Mastery ───────────────────────────────────────────────
   if (phase === 'mastery') return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
-      <div className={styles.screenCard} style={{ maxWidth: 520, width: '100%', background: '#0A1E0A', border: '2px solid #4ddd94', borderRadius: 8, padding: 48, textAlign: 'center', boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
-        <div style={{ ...stampS, color: '#4ddd94', borderColor: '#4ddd94', fontSize: 16, padding: '8px 24px' }}>
-          ✓ REPORT FILED
-        </div>
-        <h2 style={{ fontSize: 20, color: '#4ddd94', margin: '8px 0 16px', fontFamily: FONT }}>{factNode!.title}</h2>
-        <p style={{ fontSize: 12, color: C.textLight, margin: '0 0 28px', fontFamily: FONT }}>Streak: {String(masteryData?.streak ?? 0)} days</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {!!masteryData?.next_node && (
-            <button style={btnPrimary} onClick={() => router.push(`/nodes/fact-scanner/${masteryData.next_node}`)}>NEXT NODE →</button>
-          )}
-          <button style={{ ...btnPrimary, background: '#22aa55', color: '#fff', borderColor: '#4ddd94' }} onClick={() => startSession(true)}>
-            REPLAY WITH FRESH QUESTIONS ↻
-          </button>
-          <button style={btnSm} onClick={() => router.push('/dashboard')}>← DASHBOARD</button>
-        </div>
-      </div>
+    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+      <NodeEvaluationReport
+        moduleKey="fact_scanner"
+        title={factNode?.title || 'FACT SCANNER'}
+        accuracy={(masteryData as any)?.accuracy ?? 100}
+        totalCases={(masteryData as any)?.totalCases ?? 5}
+        correctCases={(masteryData as any)?.correctCases ?? 5}
+        hintsUsed={(masteryData as any)?.hintsUsed ?? 0}
+        timeTakenSeconds={(masteryData as any)?.timeTakenSeconds ?? 0}
+        streak={Number(masteryData?.streak ?? 0)}
+        caseResults={(masteryData as any)?.caseResults}
+        nextNodeId={(masteryData?.next_node as string) || null}
+        onNext={() => !!masteryData?.next_node && router.push(`/nodes/fact-scanner/${masteryData.next_node}`)}
+        onReplay={() => startSession(true)}
+        onDashboard={() => router.push('/dashboard')}
+      />
     </div>
   )
 
