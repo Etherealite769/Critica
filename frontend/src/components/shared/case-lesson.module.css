@@ -1,0 +1,703 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Case Lesson Screen — Classified Field Dossier & Intel Briefing
+   Sleek, compact detective dossier with evidence board polaroids,
+   Inspector Crit surveillance photo, and tactical intel layout.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Screen Backdrop (Exact Evidence Board from Student Dashboard) ── */
+.screenBackdrop {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  position: relative;
+  overflow-y: auto;
+  box-sizing: border-box;
+  animation: backdropFade 0.35s ease forwards;
+
+  /* Bureau slate & evidence board: polaroids, paperwork, red string, pins, blueprint */
+  background-color: #1e2227;
+  background-image:
+    /* Evidence board SVG with polaroid photos & red string */
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%271920%27%20height%3D%271080%27%20viewBox%3D%270%200%201920%201080%27%3E%20%3Cg%20stroke%3D%27%236ba4b8%27%20stroke-opacity%3D%270.12%27%20fill%3D%27none%27%20stroke-width%3D%271.5%27%3E%20%3Cpath%20d%3D%27M80%20980%20h420%20v-160%20h260%20M760%201050%20v-230%20M1500%20960%20h320%20v-140%27%2F%3E%20%3Ccircle%20cx%3D%271640%27%20cy%3D%27880%27%20r%3D%2760%27%2F%3E%3Ccircle%20cx%3D%271640%27%20cy%3D%27880%27%20r%3D%274%27%2F%3E%20%3Cpath%20d%3D%27M1580%20880%20h120%20M1640%20820%20v120%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-7%20125%20260)%27%3E%20%3Crect%20x%3D%2734%27%20y%3D%27146%27%20width%3D%27190%27%20height%3D%27240%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%2730%27%20y%3D%27140%27%20width%3D%27190%27%20height%3D%27240%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M44%20164%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20178%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20192%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20206%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20220%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20234%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20248%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20262%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20276%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20290%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20304%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20318%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20332%20h162%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20346%20h144%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M44%20360%20h126%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(5%201800%20165)%27%3E%20%3Crect%20x%3D%271704%27%20y%3D%2796%27%20width%3D%27200%27%20height%3D%27150%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271700%27%20y%3D%2790%27%20width%3D%27200%27%20height%3D%27150%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1714%20114%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20128%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20142%20h136%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20156%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20170%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20184%20h136%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20198%20h172%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1714%20212%20h154%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-4%201785%20770)%27%3E%20%3Crect%20x%3D%271684%27%20y%3D%27646%27%20width%3D%27210%27%20height%3D%27260%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271680%27%20y%3D%27640%27%20width%3D%27210%27%20height%3D%27260%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1694%20664%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20678%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20692%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20706%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20720%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20734%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20748%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20762%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20776%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20790%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20804%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20818%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20832%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20846%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20860%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1694%20874%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(4%20125%20725)%27%3E%20%3Crect%20x%3D%2724%27%20y%3D%27646%27%20width%3D%27210%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%2720%27%20y%3D%27640%27%20width%3D%27210%27%20height%3D%27170%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M34%20664%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20678%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20692%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20706%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20720%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20734%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20748%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20762%20h164%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20776%20h146%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M34%20790%20h182%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(3%20405%2065.5)%27%3E%20%3Crect%20x%3D%27334%27%20y%3D%2724%27%20width%3D%27150%27%20height%3D%2795%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%27330%27%20y%3D%2718%27%20width%3D%27150%27%20height%3D%2795%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M344%2042%20h122%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2056%20h104%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2070%20h86%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M344%2084%20h122%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-2%201290%201040)%27%3E%20%3Crect%20x%3D%271184%27%20y%3D%27986%27%20width%3D%27220%27%20height%3D%27120%27%20fill%3D%27%23000%27%20opacity%3D%270.3%27%2F%3E%20%3Crect%20x%3D%271180%27%20y%3D%27980%27%20width%3D%27220%27%20height%3D%27120%27%20fill%3D%27%23e4d6b6%27%20opacity%3D%270.85%27%2F%3E%20%3Cpath%20d%3D%27M1194%201004%20h192%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201018%20h174%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201032%20h156%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201046%20h192%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201060%20h174%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%3Cpath%20d%3D%27M1194%201074%20h156%27%20stroke%3D%27%236b5a44%27%20stroke-width%3D%272%27%20opacity%3D%270.35%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(6%20130%20505)%27%3E%20%3Crect%20x%3D%2764%27%20y%3D%27426%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%2760%27%20y%3D%27420%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%2770%27%20y%3D%27430%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%233d4a52%27%2F%3E%20%3Cpath%20d%3D%27M70%20525%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M78%20565%20h80%20M78%20576%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-8%201810%20415)%27%3E%20%3Crect%20x%3D%271744%27%20y%3D%27336%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%271740%27%20y%3D%27330%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%271750%27%20y%3D%27340%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%234a3b30%27%2F%3E%20%3Cpath%20d%3D%27M1750%20435%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M1758%20475%20h80%20M1758%20486%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(4%201630%20115)%27%3E%20%3Crect%20x%3D%271564%27%20y%3D%2736%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%271560%27%20y%3D%2730%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%271570%27%20y%3D%2740%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%232f3d36%27%2F%3E%20%3Cpath%20d%3D%27M1570%20135%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M1578%20175%20h80%20M1578%20186%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20transform%3D%27rotate(-5%20290%20945)%27%3E%20%3Crect%20x%3D%27224%27%20y%3D%27866%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23000%27%20opacity%3D%270.35%27%2F%3E%20%3Crect%20x%3D%27220%27%20y%3D%27860%27%20width%3D%27140%27%20height%3D%27170%27%20fill%3D%27%23efe7d6%27%2F%3E%20%3Crect%20x%3D%27230%27%20y%3D%27870%27%20width%3D%27120%27%20height%3D%27115%27%20fill%3D%27%2346402f%27%2F%3E%20%3Cpath%20d%3D%27M230%20965%20l35%20-30%20l25%2020%20l30%20-35%20l30%2040%20v30%20h-120z%27%20fill%3D%27%23000%27%20opacity%3D%270.25%27%2F%3E%20%3Cpath%20d%3D%27M238%201005%20h80%20M238%201016%20h55%27%20stroke%3D%27%235a4a3a%27%20stroke-width%3D%272%27%20opacity%3D%270.5%27%2F%3E%20%3C%2Fg%3E%20%3Cg%20stroke%3D%27%23c22b2d%27%20stroke-width%3D%272.4%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20opacity%3D%270.9%27%3E%20%3Cpath%20d%3D%27M125%20150%20Q%20240%20330%20130%20430%27%2F%3E%20%3Cpath%20d%3D%27M130%20430%20Q%2060%20600%20125%20650%27%2F%3E%20%3Cpath%20d%3D%27M125%20150%20Q%20260%2090%20400%2030%27%2F%3E%20%3Cpath%20d%3D%27M1800%20100%20Q%201700%20220%201810%20340%27%2F%3E%20%3Cpath%20d%3D%27M1810%20340%20Q%201880%20520%201785%20650%27%2F%3E%20%3Cpath%20d%3D%27M1630%2040%20Q%201720%2070%201800%20100%27%2F%3E%20%3Cpath%20d%3D%27M290%20870%20Q%20700%201020%201290%20990%27%2F%3E%20%3Cpath%20d%3D%27M1290%20990%20Q%201560%20900%201785%20650%27%2F%3E%20%3C%2Fg%3E%20%3Ccircle%20cx%3D%27127%27%20cy%3D%27153%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27125%27%20cy%3D%27150%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27123%27%20cy%3D%27148%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27132%27%20cy%3D%27433%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27130%27%20cy%3D%27430%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27128%27%20cy%3D%27428%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27127%27%20cy%3D%27653%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27125%27%20cy%3D%27650%27%20r%3D%277%27%20fill%3D%27%23f3a712%27%2F%3E%20%3Ccircle%20cx%3D%27123%27%20cy%3D%27648%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27402%27%20cy%3D%2733%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27400%27%20cy%3D%2730%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27398%27%20cy%3D%2728%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271802%27%20cy%3D%27103%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271800%27%20cy%3D%27100%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271798%27%20cy%3D%2798%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271812%27%20cy%3D%27343%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271810%27%20cy%3D%27340%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271808%27%20cy%3D%27338%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271787%27%20cy%3D%27653%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271785%27%20cy%3D%27650%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271783%27%20cy%3D%27648%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271632%27%20cy%3D%2743%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271630%27%20cy%3D%2740%27%20r%3D%277%27%20fill%3D%27%23f3a712%27%2F%3E%20%3Ccircle%20cx%3D%271628%27%20cy%3D%2738%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%27292%27%20cy%3D%27873%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%27290%27%20cy%3D%27870%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%27288%27%20cy%3D%27868%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3Ccircle%20cx%3D%271292%27%20cy%3D%27993%27%20r%3D%277%27%20fill%3D%27%23000%27%20opacity%3D%270.4%27%2F%3E%20%3Ccircle%20cx%3D%271290%27%20cy%3D%27990%27%20r%3D%277%27%20fill%3D%27%23c0392b%27%2F%3E%20%3Ccircle%20cx%3D%271288%27%20cy%3D%27988%27%20r%3D%272.5%27%20fill%3D%27%23fff%27%20opacity%3D%270.6%27%2F%3E%20%3C%2Fsvg%3E"),
+    /* Blueprint mapping grid */
+    linear-gradient(rgba(107, 164, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 164, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(107, 164, 184, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107, 164, 184, 0.035) 1px, transparent 1px),
+    /* Surface texture speckle */
+    radial-gradient(rgba(0, 0, 0, 0.28) 1px, transparent 1.5px),
+    radial-gradient(rgba(180, 190, 200, 0.06) 1px, transparent 1.5px),
+    /* Fine brushed texture */
+    repeating-linear-gradient(91deg, rgba(0, 0, 0, 0.09) 0 2px, transparent 2px 11px, rgba(220, 228, 236, 0.015) 11px 13px, transparent 13px 29px),
+    /* Bureau slate gradient */
+    linear-gradient(170deg, #282c34 0%, #1e2227 100%);
+  background-size:
+    cover,
+    96px 96px, 96px 96px,
+    24px 24px, 24px 24px,
+    5px 5px, 9px 9px,
+    100% 100%,
+    100% 100%;
+  background-position: center, 0 0, 0 0, 0 0, 0 0, 0 0, 2px 3px, 0 0, 0 0;
+  background-repeat: no-repeat, repeat, repeat, repeat, repeat, repeat, repeat, repeat, no-repeat;
+  background-attachment: fixed;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Bureau edge vignette */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 38%, rgba(6, 3, 1, 0.85) 100%);
+  box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.75);
+}
+
+/* Warm overhead desk lamp glow */
+.lampGlow {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 20%, rgba(243, 167, 18, 0.16), transparent 70%),
+    radial-gradient(ellipse 35% 25% at 80% 25%, rgba(243, 167, 18, 0.08), transparent 65%);
+  mix-blend-mode: screen;
+}
+
+/* Ambient red string overlay in corners */
+.redStrings {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* ── Dossier Shell (Compact & Sleek) ─────────────────────────── */
+.dossierWrapper {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 650px;
+  margin: auto;
+  animation: dossierAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dossierAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Manila Folder File Tab on Top */
+.folderTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #3B2B1D;
+  background-image: linear-gradient(180deg, #4F3A27 0%, #352619 100%);
+  border: 1.5px solid #C4A882;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 6px 16px 5px;
+  color: #F5EAD4;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-left: 20px;
+  position: relative;
+  top: 2px;
+  box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.tabClip {
+  color: #F3A712;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tabDossierId {
+  color: #D4B07B;
+  opacity: 0.9;
+}
+
+/* ── The Parchment Case File (Card) ─────────────────────────── */
+.parchmentCard {
+  width: 100%;
+  box-sizing: border-box;
+  background: #F6EDE0;
+  background-image:
+    /* Fine parchment grain */
+    radial-gradient(rgba(120, 85, 45, 0.08) 1px, transparent 1px),
+    radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    /* Aged edge gradient */
+    linear-gradient(180deg, #FCF7EE 0%, #F5ECE0 60%, #EFE1D0 100%);
+  background-size: 8px 8px, 12px 12px, 100% 100%;
+  border: 2px solid #C9A982;
+  border-radius: 10px;
+  padding: 22px 26px 18px;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.72),
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    inset 0 0 40px rgba(185, 145, 95, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  position: relative;
+  color: #1F140A;
+}
+
+/* Top Classified Bar & Stamp */
+.classifiedBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px dashed rgba(140, 90, 60, 0.32);
+  margin-bottom: 12px;
+}
+
+.moduleBadgeGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.moduleIconBox {
+  width: 32px;
+  height: 32px;
+  border-radius: 5px;
+  background: #3B281B;
+  border: 1.5px solid #C4A882;
+  color: #F3A712;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.moduleDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moduleTitleText {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #382414;
+  text-transform: uppercase;
+}
+
+.difficultyPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #7B4B28;
+  text-transform: uppercase;
+}
+
+.difficultyDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22AA55;
+}
+
+/* Official Weathered Red Stamp */
+.weatheredStamp {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border: 1.5px solid #9E2A2B;
+  outline: 1px dashed rgba(158, 42, 43, 0.5);
+  outline-offset: -3px;
+  border-radius: 3px;
+  color: #9E2A2B;
+  font-weight: 900;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+  box-shadow: 0 2px 6px rgba(158, 42, 43, 0.15);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.stampSub {
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  opacity: 0.85;
+}
+
+/* ── Case Header & Attached Polaroid Photo Row ───────────────── */
+.headerWithPhoto {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.caseHeaderLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.caseTitle {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #1F140A;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+/* Field Objective Banner */
+.objectiveBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(230, 207, 175, 0.45);
+  border: 1px solid #C4A882;
+  border-left: 3.5px solid #F3A712;
+  border-radius: 5px;
+  padding: 6px 10px;
+}
+
+.objectiveIcon {
+  color: #A06520;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.objectiveContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.objectiveLabel {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #7B4B28;
+  text-transform: uppercase;
+}
+
+.objectiveText {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #2F1E10;
+  font-weight: 600;
+}
+
+/* CRAAP Forensic Criterion Badge (Fact Scanner) */
+.craapBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  background: #3B1B1B;
+  color: #FFDFA7;
+  border: 1px solid #8C2A2A;
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Pinned Polaroid Evidence Photo ──────────────────────────── */
+.polaroidContainer {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: -6px;
+}
+
+.polaroidFrame {
+  background: #FAF7EF;
+  border: 1px solid rgba(130, 100, 70, 0.3);
+  border-radius: 3px;
+  padding: 5px 5px 6px;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: rotate(2.5deg);
+  transition: transform 0.2s ease;
+  width: 90px;
+  box-sizing: border-box;
+}
+
+.polaroidFrame:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+.polaroidPhoto {
+  width: 100%;
+  height: 64px;
+  background: #231E18;
+  background-image:
+    radial-gradient(ellipse at center, rgba(243, 167, 18, 0.12) 0%, transparent 80%),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.polaroidCaption {
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #4A3525;
+  margin-top: 4px;
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* Masking tape on top of the polaroid */
+.polaroidTape {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+  width: 36px;
+  height: 12px;
+  background: rgba(228, 214, 182, 0.85);
+  border: 1px dashed rgba(160, 130, 90, 0.35);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Red pushpin through the tape */
+.polaroidPin {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff8a8a, #c0392b 45%, #7a1717);
+  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.45);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ── Inspector Intel Briefing Box (Micro-Lesson) ─────────────── */
+.intelBriefingBox {
+  background: #FFFFFF;
+  background-image:
+    linear-gradient(180deg, #FFFFFF 0%, #FAF6EE 100%);
+  border: 1.5px solid #C8AC8A;
+  border-radius: 7px;
+  padding: 14px 18px 12px;
+  margin-bottom: 14px;
+  position: relative;
+  box-shadow:
+    0 3px 12px rgba(100, 70, 40, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.intelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(200, 172, 138, 0.35);
+}
+
+.intelAgentTag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #6B4222;
+  text-transform: uppercase;
+}
+
+.intelTagBadge {
+  background: #F3A712;
+  color: #2B1808;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.lessonBody {
+  font-size: 13px;
+  line-height: 1.62;
+  color: #1A1008;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.005em;
+}
+
+/* Operational Tip Callout */
+.operationalNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #F9F2E6;
+  border: 1px dashed #C8A06A;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: #69401C;
+  line-height: 1.4;
+}
+
+/* ── Deep Dive Reading Room ─────────────────────────────────── */
+.deepDiveSection {
+  margin-bottom: 14px;
+}
+
+.deepDiveHeaderBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2E2014;
+  color: #F8EFE2;
+  padding: 8px 14px;
+  border-radius: 5px 5px 0 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.deepDiveTimeTag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #F3A712;
+  font-size: 9.5px;
+}
+
+.readingPassageViewer {
+  background: #FFFDF9;
+  border: 1.5px solid #2E2014;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 18px 20px;
+  max-height: 250px;
+  overflow-y: auto;
+  font-family: 'Georgia', serif;
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: #1F1812;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.readingPassageViewer::-webkit-scrollbar {
+  width: 6px;
+}
+.readingPassageViewer::-webkit-scrollbar-track {
+  background: #F2E8DA;
+}
+.readingPassageViewer::-webkit-scrollbar-thumb {
+  background: #BFA07C;
+  border-radius: 3px;
+}
+
+.evidenceNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: rgba(118, 184, 82, 0.12);
+  border: 1px solid rgba(118, 184, 82, 0.35);
+  border-radius: 5px;
+  font-size: 10.5px;
+  color: #235817;
+  font-weight: 700;
+}
+
+/* ── Footer Controls ─────────────────────────────────────────── */
+.dossierFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1.5px dashed rgba(140, 90, 60, 0.32);
+  margin-top: 0;
+}
+
+.stepIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #7B4B28;
+  text-transform: uppercase;
+}
+
+.stepDotActive {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #F3A712;
+  box-shadow: 0 0 6px rgba(243, 167, 18, 0.6);
+}
+
+.stepDotPending {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #C4A882;
+  opacity: 0.6;
+}
+
+.actionButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnBackDesk {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1.5px solid #A88258;
+  border-radius: 6px;
+  color: #5A3516;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btnBackDesk:hover {
+  background: rgba(168, 130, 88, 0.15);
+  border-color: #7E4B22;
+  color: #381E08;
+  transform: translateX(-2px);
+}
+
+.btnPrimaryProceed {
+  padding: 9px 20px;
+  background: #FFDFA7;
+  background-image: linear-gradient(180deg, #FFE8BE 0%, #F5CF8E 100%);
+  border: 1.5px solid #8C5A3C;
+  border-radius: 6px;
+  color: #241408;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow:
+    0 3px 10px rgba(67, 40, 24, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btnPrimaryProceed:hover {
+  background: #FFEFC9;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 6px 18px rgba(67, 40, 24, 0.4),
+    0 0 14px rgba(243, 167, 18, 0.35);
+  border-color: #6E3F24;
+}
+
+.btnPrimaryProceed:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.btnArrowIcon {
+  transition: transform 0.2s ease;
+}
+
+.btnPrimaryProceed:hover .btnArrowIcon {
+  transform: translateX(3px);
+}
+
+/* ── Responsive rules ────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .parchmentCard {
+    padding: 16px 16px 14px;
+  }
+  .headerWithPhoto {
+    flex-direction: column-reverse;
+  }
+  .polaroidContainer {
+    align-self: center;
+    margin: 6px 0;
+  }
+  .classifiedBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .weatheredStamp {
+    align-self: flex-start;
+    transform: rotate(0deg);
+  }
+  .dossierFooter {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .actionButtonGroup {
+    flex-direction: column-reverse;
+  }
+  .btnBackDesk,
+  .btnPrimaryProceed {
+    width: 100%;
+    justify-content: center;
+  }
+}
