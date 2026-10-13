@@ -9,6 +9,8 @@ import { MODULE_TITLES } from '@/lib/modules'
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
+import ThemeMusicPlayer       from './ThemeMusicPlayer'
+import { playClickSound }     from '@/lib/sound-effects'
 import desk                   from './desk.module.css'
 import CaseLoadingLobby       from '@/components/shared/CaseLoadingLobby'
 import {
@@ -698,7 +700,7 @@ export default function StudentDashboard() {
       <div className={desk.lamp} aria-hidden />
 
       {/* ── TOPBAR: brand | stats | profile, always one line ── */}
-      <header className="relative z-30 flex-shrink-0 w-full h-12 px-4 overflow-hidden
+      <header className="relative z-30 flex-shrink-0 w-full h-12 px-4 overflow-visible
         flex items-center justify-between gap-4
         bg-[rgba(20,24,28,0.95)] backdrop-blur-[8px] border-b border-[rgba(255,255,255,0.08)]
         shadow-[0_6px_18px_rgba(0,0,0,0.45)]">
@@ -741,7 +743,10 @@ export default function StudentDashboard() {
 
           {/* ── REALTIME EXP & LEVEL PILL ── */}
           <button
-            onClick={() => setShowMetricLogModal(true)}
+            onClick={() => {
+              playClickSound()
+              setShowMetricLogModal(true)
+            }}
             className={`${TOPBAR_BADGE} text-[var(--parchment)] hover:border-[var(--lime)]/70 cursor-pointer`}
             title="View Experience Dossier & Diagnostic Metrics (Metric Log)">
             <Zap size={14} className="text-[var(--amber)]" aria-hidden />
@@ -767,6 +772,9 @@ export default function StudentDashboard() {
             <BookOpen size={14} aria-hidden />
             <span className="hidden xl:inline">Field Guide</span>
           </button>
+
+          {/* ── THEME MUSIC / MUTE CONTROLS ── */}
+          <ThemeMusicPlayer />
         </div>
 
         {/* ── RIGHT: user profile (mascot avatar) ── */}
@@ -852,7 +860,10 @@ export default function StudentDashboard() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    playClickSound()
+                    setActiveTab(tab.id)
+                  }}
                   className={`relative flex flex-col items-start justify-center gap-0.5 px-4 py-1.5
                     max-w-[260px] text-left
                     rounded-t-lg border border-b-0 border-black/20
@@ -1104,7 +1115,10 @@ export default function StudentDashboard() {
               label:   'LEXICAL\nCLIPBOARD',
               note:    'Vocabulary evidence log',
               tilt:    'rotate-[-1.2deg]',
-              onClick: () => setShowLexicalModal(true),
+              onClick: () => {
+                playClickSound()
+                setShowLexicalModal(true)
+              },
             },
             {
               tour:    'quick-review',
@@ -1112,7 +1126,10 @@ export default function StudentDashboard() {
               label:   'QUICK\nREVIEW',
               note:    'Field manual & 60s drill',
               tilt:    'rotate-[0.9deg]',
-              onClick: () => setShowQuickReviewModal(true),
+              onClick: () => {
+                playClickSound()
+                setShowQuickReviewModal(true)
+              },
             },
             {
               tour:    'metric-log',
@@ -1120,7 +1137,10 @@ export default function StudentDashboard() {
               label:   'METRIC\nLOG',
               note:    'Case performance audit',
               tilt:    'rotate-[-0.6deg]',
-              onClick: () => setShowMetricLogModal(true),
+              onClick: () => {
+                playClickSound()
+                setShowMetricLogModal(true)
+              },
             },
           ].map((item, idx) => (
             <button
