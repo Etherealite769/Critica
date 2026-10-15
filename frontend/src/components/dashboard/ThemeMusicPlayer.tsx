@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Volume2, VolumeX, Volume1, Disc, MousePointerClick } from 'lucide-react';
-import { isSfxMuted as checkSfxMuted, setSfxMuted, playClickSound } from '@/lib/sound-effects';
+import {
+  isSfxMuted as checkSfxMuted,
+  setSfxMuted,
+  playClickSound,
+  playRightAnswerSound,
+  playWrongSound,
+  playVictorySound,
+} from '@/lib/sound-effects';
 import styles from './theme-audio.module.css';
 
 interface ThemeMusicPlayerProps {
@@ -374,13 +381,35 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
             </span>
           </div>
 
-          <div className={styles.testRow}>
+          <div className={styles.testRow} style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <span style={{ fontSize: '9px', opacity: 0.65, marginRight: 'auto', fontFamily: 'monospace' }}>Test SFX:</span>
             <button
               type="button"
               onClick={() => playClickSound(true)}
               className={styles.testBtn}
               title="Test the click sound effect">
-              Test Click Sound
+              Click
+            </button>
+            <button
+              type="button"
+              onClick={() => playRightAnswerSound(true)}
+              className={styles.testBtn}
+              title="Test right answer sound effect">
+              ✓ Right
+            </button>
+            <button
+              type="button"
+              onClick={() => playWrongSound(true)}
+              className={styles.testBtn}
+              title="Test wrong answer sound effect">
+              ✗ Wrong
+            </button>
+            <button
+              type="button"
+              onClick={() => playVictorySound(true)}
+              className={styles.testBtn}
+              title="Test victory sound effect">
+              ★ Victory
             </button>
           </div>
         </div>

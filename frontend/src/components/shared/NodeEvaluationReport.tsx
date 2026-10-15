@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { Flame, Clock, Award, ShieldAlert, CheckCircle2, AlertCircle, HelpCircle, ArrowRight, RotateCcw } from 'lucide-react'
 import type { ModuleKey } from '@/lib/modules'
 import { MODULE_TITLES } from '@/lib/modules'
+import { playVictorySound } from '@/lib/sound-effects'
 import styles from './node-evaluation-report.module.css'
 
 export interface CaseResult {
@@ -45,6 +46,11 @@ export default function NodeEvaluationReport({
   onReplay,
   onDashboard,
 }: NodeEvaluationReportProps) {
+  // Play victory fanfare sound on debriefing clearance screen
+  useEffect(() => {
+    playVictorySound();
+  }, []);
+
   // Format MM:SS
   const formattedTime = useMemo(() => {
     const mins = Math.floor(timeTakenSeconds / 60)

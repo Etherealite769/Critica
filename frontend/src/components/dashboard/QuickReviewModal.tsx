@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { playClickSound, playVictorySound, playWrongSound } from '@/lib/sound-effects'
 import styles from './sidebar-modals.module.css'
 import {
   Check, ChevronLeft, ChevronRight, FileText, RotateCcw, Timer,
@@ -143,6 +144,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
 
   const handleSelectAnswer = (qIdx: number, optIdx: number) => {
     if (!drillRunning) return
+    playClickSound()
     setSelectedAnswers(prev => ({ ...prev, [qIdx]: optIdx }))
   }
 
@@ -153,6 +155,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
       if (selectedAnswers[idx] === q.correct) score++
     })
     setDrillScore(score)
+    if (score >= Math.ceil(drillQuestions.length * 0.6)) {
+      playVictorySound()
+    } else {
+      playWrongSound()
+    }
   }
 
   if (!isOpen) return null

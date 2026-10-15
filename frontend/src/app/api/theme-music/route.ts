@@ -4,8 +4,22 @@ import path from 'path';
 
 export async function GET(req: NextRequest) {
   const sound = req.nextUrl.searchParams.get('sound');
-  const targetFile = sound === 'click' ? 'Clicking the select box.mp3' : 'Critica Theme Song.mp3';
-  const slugFile = sound === 'click' ? 'clicking-select-box.mp3' : 'critica-theme.mp3';
+  let targetFile = 'Critica Theme Song.mp3';
+  let slugFile = 'critica-theme.mp3';
+
+  if (sound === 'click') {
+    targetFile = 'Clicking the select box.mp3';
+    slugFile = 'clicking-select-box.mp3';
+  } else if (sound === 'right' || sound === 'correct' || sound === 'right_answer') {
+    targetFile = 'right answer.mp3';
+    slugFile = 'right-answer.mp3';
+  } else if (sound === 'wrong' || sound === 'incorrect') {
+    targetFile = 'wrong.mp3';
+    slugFile = 'wrong.mp3';
+  } else if (sound === 'victory') {
+    targetFile = 'Victory sound.mp3';
+    slugFile = 'victory-sound.mp3';
+  }
 
   const possiblePaths = [
     path.join(process.cwd(), 'src', 'components', 'dashboard', 'theme_music', targetFile),

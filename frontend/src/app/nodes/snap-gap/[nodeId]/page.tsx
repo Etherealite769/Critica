@@ -14,6 +14,7 @@ import {
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import styles from './page.module.css'
 
 
@@ -807,6 +808,7 @@ export default function SnapInGapPage() {
       const isCorrect = correctTile && (correctTile.trim().toLowerCase() === tile.trim().toLowerCase())
 
       if (isCorrect) {
+        playRightAnswerSound()
         setTileState('correct')
         setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
         setLocked(prev => [...prev, pair.pair_id])
@@ -815,6 +817,7 @@ export default function SnapInGapPage() {
           if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
         }, 900)
       } else {
+        playWrongSound()
         setTileState('incorrect')
         const nextWrongs = wrongs + 1
         setWrongs(nextWrongs)
@@ -832,6 +835,7 @@ export default function SnapInGapPage() {
         body: JSON.stringify({ pair_id: pair.pair_id, selected_tile: tile }),
       })
       if (res.result === 'correct') {
+        playRightAnswerSound()
         setTileState('correct')
         setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
         setLocked(prev => [...prev, pair.pair_id])
@@ -840,6 +844,7 @@ export default function SnapInGapPage() {
           if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
         }, 900)
       } else {
+        playWrongSound()
         setTileState('incorrect')
         const nextWrongs = wrongs + 1
         setWrongs(nextWrongs)
@@ -847,7 +852,10 @@ export default function SnapInGapPage() {
         await callFeedback(pair.pair_id, tile, false)
         if (nextWrongs >= 2) fetchHint(Math.min(nextWrongs, 3))
       }
-    } catch { setErrorMsg('Evaluation failed.') }
+    } catch {
+      playWrongSound()
+      setErrorMsg('Evaluation failed.')
+    }
   }
 
   // ── ask Agent Crit for a live socratic hint ───────
@@ -914,12 +922,14 @@ export default function SnapInGapPage() {
           })
         }
         if (nextIdx < sessionExercises.length) {
+          playRightAnswerSound()
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
           setSubmitting(false)
         } else {
           // Finished all 5 questions
           try {
+            playVictorySound()
             const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
             if (sessionStartId) clearSession('snap_gap', sessionStartId)
             const totalCases = sessionExercises.length || sessionQueue.length || 5
@@ -946,6 +956,7 @@ export default function SnapInGapPage() {
         }
         return
       } else {
+        playWrongSound()
         setFbText('Some pairs are incorrect. Check and retry.')
         setHintText('')
         setDrawer(true)
@@ -978,6 +989,7 @@ export default function SnapInGapPage() {
         const nextIdx = questionIndex + 1
 
         if (nextIdx < sessionQueue.length) {
+          playRightAnswerSound()
           const newNextNode = savedNextNode
           const newStreak = savedStreak
 
@@ -992,6 +1004,7 @@ export default function SnapInGapPage() {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
         } else {
+          playVictorySound()
           let finalRes = res
           if (sessionStartId) {
             finalRes = await apiFetch(
@@ -1030,6 +1043,7 @@ export default function SnapInGapPage() {
         }
       }
     } catch (e: any) {
+      playWrongSound()
       setFbText(e?.status === 'incomplete'
         ? 'Some pairs are incorrect. Check and retry.'
         : 'Submission failed. Please try again.')
