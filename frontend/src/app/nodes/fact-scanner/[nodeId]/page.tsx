@@ -14,6 +14,7 @@ import {
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import styles from './page.module.css'
 
 interface ArticleSentence {
@@ -446,10 +447,12 @@ export default function FactScannerPage() {
       const isCorrect = sentence?.is_flawed ?? false
 
       if (isCorrect) {
+        playRightAnswerSound()
         setQuarantined(prev => [...prev, selected])
         setFlawReasons(prev => ({ ...prev, [selected]: sentence?.flaw_reason || 'Violates the CRAAP criterion.' }))
         setFlawsFound(f => f + 1); setSelected(null)
       } else {
+        playWrongSound()
         try {
           const fb = await apiFetch(
             `/ai/session/${sessionId}/feedback/${questionIndex}/`,
@@ -470,10 +473,12 @@ export default function FactScannerPage() {
         { method: 'POST', body: JSON.stringify({ sentence_id: selected }) },
       )
       if (res.result === 'correct') {
+        playRightAnswerSound()
         setQuarantined(prev => [...prev, selected])
         setFlawReasons(prev => ({ ...prev, [selected]: res.flaw_reason }))
         setFlawsFound(f => f + 1); setSelected(null)
       } else {
+        playWrongSound()
         try {
           const fb = await apiFetch(
             `/nodes/fact-scanner/${factNode.node_id}/feedback/`,
@@ -483,7 +488,10 @@ export default function FactScannerPage() {
         } catch { setFbText('That sentence does not violate the CRAAP criterion.') }
         setDrawer(true); setSelected(null)
       }
-    } catch { setErrorMsg('Evaluation failed.') }
+    } catch {
+      playWrongSound()
+      setErrorMsg('Evaluation failed.')
+    }
     finally { setEvaluating(false) }
   }
 
@@ -529,11 +537,13 @@ export default function FactScannerPage() {
           })
         }
         if (nextIdx < sessionExercises.length) {
+          playRightAnswerSound()
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
           setSubmitting(false)
         } else {
           try {
+            playVictorySound()
             const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
             if (sessionStartId) clearSession('fact_scanner', sessionStartId)
             const totalCases = sessionExercises.length || sessionQueue.length || 5
@@ -560,6 +570,7 @@ export default function FactScannerPage() {
         }
         return
       } else {
+        playWrongSound()
         setAttempts(prev => prev + 1)
         setFbText('Some flawed sentences were missed or extra sentences quarantined. Review carefully.')
         setDrawer(true)
@@ -587,6 +598,7 @@ export default function FactScannerPage() {
 
         const nextIdx = questionIndex + 1
         if (nextIdx < sessionQueue.length) {
+          playRightAnswerSound()
           if (sessionStartId) saveSession('fact_scanner', sessionStartId, {
             sessionQueue, questionIndex: nextIdx,
             next_node: savedNextNode || undefined,
@@ -594,6 +606,7 @@ export default function FactScannerPage() {
           })
           setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
         } else {
+          playVictorySound()
           let finalRes = res
           if (sessionStartId) {
             finalRes = await apiFetch(
@@ -623,6 +636,7 @@ export default function FactScannerPage() {
         }
       }
     } catch (e) {
+      playWrongSound()
       setAttempts(prev => prev + 1)
       setFbText((e as any)?.status === 'incomplete'
         ? 'Some flawed sentences were missed. Keep scanning.'

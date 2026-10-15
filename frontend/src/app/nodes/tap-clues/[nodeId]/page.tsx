@@ -15,6 +15,7 @@ import { notifyLexicalUpdated, notifyProgressionUpdated } from '@/lib/realtime-s
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import styles from './page.module.css'
 
 
@@ -657,6 +658,7 @@ export default function TapCluesPage() {
         const isClueCorrect = correctClues.some((c: string) => c === cleanWord || c.split(/\s+/).includes(cleanWord) || cleanWord.includes(c) || c.includes(cleanWord))
 
         if (isClueCorrect) {
+          playRightAnswerSound()
           setPulseClue(cleanWord)
           setTimeout(() => setPulseClue(null), 600)
           apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
@@ -685,6 +687,7 @@ export default function TapCluesPage() {
             await logWordToLexical(wordToLog, defToLog, usageToLog, transToLog)
           }
         } else {
+          playWrongSound()
           const nextWrongs = wrongs + 1
           setWrongs(nextWrongs)
           await callFeedback(targetWordId, cleanWord, false)
@@ -700,6 +703,7 @@ export default function TapCluesPage() {
           body: JSON.stringify({ word_id: targetWordId, clue_word: cleanWord, found_clues: currentFound }),
         })
         if (res.result === 'correct') {
+          playRightAnswerSound()
           setPulseClue(cleanWord)
           setTimeout(() => setPulseClue(null), 600)
           const newFound = res.found_clues || [...currentFound, cleanWord]
@@ -711,12 +715,16 @@ export default function TapCluesPage() {
             await logWordToLexical(res.word, res.definition, res.contextual_usage, res.translation)
           }
         } else {
+          playWrongSound()
           const nextWrongs = wrongs + 1
           setWrongs(nextWrongs)
           await callFeedback(targetWordId, cleanWord, false)
           if (nextWrongs >= 3) fetchHint()
         }
-      } catch { setErrorMsg('Evaluation failed.') }
+      } catch {
+        playWrongSound()
+        setErrorMsg('Evaluation failed.')
+      }
     }
   }
 
@@ -768,11 +776,13 @@ export default function TapCluesPage() {
           })
         }
         if (nextIdx < sessionExercises.length) {
+          playRightAnswerSound()
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
           setSubmitting(false)
         } else {
           try {
+            playVictorySound()
             const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
             if (sessionStartId) clearSession('tap_clues', sessionStartId)
             const totalCases = sessionExercises.length || sessionQueue.length || 5
@@ -810,6 +820,7 @@ export default function TapCluesPage() {
         }
         return
       } else {
+        playWrongSound()
         setFbText('Some words are still locked. Discover all clue words first.')
         setDrawer(true)
         setSubmitting(false)
@@ -843,6 +854,7 @@ export default function TapCluesPage() {
         }
         const nextIdx = questionIndex + 1
         if (nextIdx < sessionQueue.length) {
+          playRightAnswerSound()
           if (sessionStartId) saveSession('tap_clues', sessionStartId, {
             sessionQueue, questionIndex: nextIdx,
             next_node: savedNextNode || undefined,
@@ -850,6 +862,7 @@ export default function TapCluesPage() {
           })
           setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
         } else {
+          playVictorySound()
           let finalRes = res
           if (sessionStartId) {
             finalRes = await apiFetch(`/nodes/tap-clues/${sessionStartId}/mastery/`,
@@ -886,8 +899,11 @@ export default function TapCluesPage() {
           })
           setPhase('mastery')
         }
+      } else {
+        playWrongSound()
       }
     } catch (e: any) {
+      playWrongSound()
       setFbText(e?.status === 'incomplete' ? 'Some words are still locked.' : 'Submission failed.')
       setDrawer(true)
     } finally { setSubmitting(false) }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { playClickSound, playRightAnswerSound, playWrongSound } from '@/lib/sound-effects';
 import styles from './onboarding.module.css';
 
 interface InteractiveDemoSandboxProps {
@@ -23,11 +24,14 @@ export default function InteractiveDemoSandbox({ onDemoCompleted }: InteractiveD
     if (connected) return;
 
     if (!selectedCard) {
+      playClickSound();
       setSelectedCard(id);
     } else if (selectedCard === id) {
+      playClickSound();
       setSelectedCard(null); // deselect
     } else {
       // Connect card 1 and 2
+      playRightAnswerSound();
       setConnected(true);
       setSelectedCard(null);
       if (onDemoCompleted) onDemoCompleted();
@@ -38,9 +42,11 @@ export default function InteractiveDemoSandbox({ onDemoCompleted }: InteractiveD
   const handleChoiceClick = (choice: string) => {
     setSelectedTransition(choice);
     if (choice === 'However') {
+      playRightAnswerSound();
       setSnapStatus('correct');
       if (onDemoCompleted) onDemoCompleted();
     } else {
+      playWrongSound();
       setSnapStatus('wrong');
     }
   };

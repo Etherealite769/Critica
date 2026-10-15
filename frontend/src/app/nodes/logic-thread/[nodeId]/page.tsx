@@ -11,6 +11,7 @@ import {
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import styles from './page.module.css'
 
 // ── Types ────────────────────────────────────────────────────
@@ -648,6 +649,7 @@ export default function LogicThreadPage() {
       }).catch(() => {})
 
       if (isCorrect) {
+        playRightAnswerSound()
         const currentCaseRes: CaseResult = {
           caseNumber: questionIndex + 1,
           correct: true,
@@ -678,6 +680,7 @@ export default function LogicThreadPage() {
               loadQuestion(nextIdx, sessionQueue)
             } else {
               // Mastered all 5 questions
+              playVictorySound()
               const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
               if (sessionStartId) clearSession('logic_thread', sessionStartId)
               const totalCases = sessionExercises.length || sessionQueue.length || 5
@@ -703,6 +706,7 @@ export default function LogicThreadPage() {
         }, 1600)
         return
       } else {
+        playWrongSound()
         const next = wrongCount + 1
         setWrongCount(next); setSubmitState('incorrect')
         setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1400)
@@ -718,6 +722,7 @@ export default function LogicThreadPage() {
         body: JSON.stringify({ sequence: chain, save_progression: false }),
       })
       if (res.status === 'mastered') {
+        playRightAnswerSound()
         const currentCaseRes: CaseResult = {
           caseNumber: questionIndex + 1,
           correct: true,
@@ -740,6 +745,7 @@ export default function LogicThreadPage() {
               })
               setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
             } else {
+              playVictorySound()
               let finalRes = res
               if (sessionStartId) {
                 finalRes = await apiFetch(`/nodes/logic-thread/${sessionStartId}/mastery/`,
@@ -767,8 +773,11 @@ export default function LogicThreadPage() {
             }
           } catch { setSubmitState('idle') }
         }, 2000)
+      } else {
+        playWrongSound()
       }
     } catch {
+      playWrongSound()
       const next = wrongCount + 1
       setWrongCount(next); setSubmitState('incorrect')
       setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1500)
