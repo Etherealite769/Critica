@@ -24,7 +24,7 @@ export default function InspectorCrit({ height, className, priority, decorative 
       width={Math.round(height * ASPECT)}
       height={height}
       className={className}
-      style={{ objectFit: 'contain' }}
+      style={{ objectFit: 'contain', width: 'auto', height: height }}
       priority={priority}
     />
   );

@@ -1,7 +1,8 @@
 from django.urls import path, include
 from .views import (
     api_root, register, login, check_email, verify_email, resend_verification,
-    forgot_password, reset_password,
+    forgot_password, reset_password, cadet_profile, change_password,
+    send_profile_verification,
 )
 
 urlpatterns = [
@@ -13,6 +14,9 @@ urlpatterns = [
     path('auth/resend-verification/', resend_verification, name='resend_verification'),
     path('auth/forgot-password/', forgot_password, name='forgot_password'),
     path('auth/reset-password/', reset_password, name='reset_password'),
+    path('auth/profile/', cadet_profile, name='cadet_profile'),
+    path('auth/change-password/', change_password, name='change_password'),
+    path('auth/send-verification/', send_profile_verification, name='send_profile_verification'),
 
     # new routes — add these
     path('progression/',

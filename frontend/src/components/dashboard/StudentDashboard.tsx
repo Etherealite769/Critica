@@ -9,6 +9,7 @@ import { MODULE_TITLES } from '@/lib/modules'
 import LexicalClipboardModal   from './LexicalClipboardModal'
 import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
+import ProfileSettingsModal   from './ProfileSettingsModal'
 import ThemeMusicPlayer       from './ThemeMusicPlayer'
 import { playClickSound }     from '@/lib/sound-effects'
 import desk                   from './desk.module.css'
@@ -21,7 +22,7 @@ import InspectorCrit          from '@/components/brand/InspectorCrit'
 import {
   Activity, BookOpen, CircleCheck, Clipboard, Crosshair, FileText, Flame,
   FolderOpen, Lock, LogOut, Network, Paperclip, Pin, Puzzle, RotateCcw,
-  ScanSearch, Search, ShieldAlert, Zap, type LucideIcon,
+  ScanSearch, Search, ShieldAlert, Sliders, Zap, type LucideIcon,
 } from 'lucide-react'
 
 interface NodeStatus {
@@ -45,6 +46,7 @@ interface DashboardData {
   level_progress_pct?: number
   completed_count: number
   onboarding_completed?: boolean
+  profile_picture?: string
   module_status: {
     logic_thread:  ModuleStatus
     snap_gap:      ModuleStatus
@@ -466,6 +468,7 @@ export default function StudentDashboard() {
   const [showLexicalModal, setShowLexicalModal] = useState(false)
   const [showQuickReviewModal, setShowQuickReviewModal] = useState(false)
   const [showMetricLogModal, setShowMetricLogModal] = useState(false)
+  const [showProfileModal, setShowProfileModal]     = useState(false)
   const [streakPulse, setStreakPulse] = useState(false)
   const [showTour, setShowTour] = useState(false)
 
@@ -786,8 +789,15 @@ export default function StudentDashboard() {
           className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap font-mono text-xs text-[var(--parchment)]
             hover:text-white cursor-pointer transition-colors">
           <span className="w-8 h-8 flex-shrink-0 rounded-full bg-[var(--parchment)] border-2 border-[var(--lime)] overflow-hidden flex items-center justify-center">
-            {/* decorative: the visible name labels this button */}
-            <InspectorCrit height={26} decorative />
+            {dashboard?.profile_picture && dashboard.profile_picture !== 'default' ? (
+              <img
+                src={dashboard.profile_picture}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <InspectorCrit height={26} decorative />
+            )}
           </span>
           <span className="max-w-[140px] overflow-hidden text-ellipsis whitespace-nowrap">
             {dashboard?.first_name && dashboard?.last_name
@@ -802,6 +812,17 @@ export default function StudentDashboard() {
         <div
           role="menu"
           className={`${desk.indexCard} fixed top-[52px] right-4 rounded-sm z-50 min-w-[200px] overflow-hidden`}>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setShowMenu(false)
+              playClickSound()
+              setShowProfileModal(true)
+            }}
+            className="w-full text-left px-4 py-2.5 text-xs font-mono text-[var(--ink)]
+              hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2 border-b border-[#bea791]/35">
+            <Sliders size={14} aria-hidden /> Cadet Profile &amp; Settings
+          </button>
           <button
             role="menuitem"
             onClick={() => {
@@ -1202,6 +1223,18 @@ export default function StudentDashboard() {
       <MetricLogModal
         isOpen={showMetricLogModal}
         onClose={() => setShowMetricLogModal(false)}
+      />
+      <ProfileSettingsModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onUserUpdated={(updated) => {
+          setDashboard((prev) => (prev ? {
+            ...prev,
+            first_name: updated.first_name,
+            last_name: updated.last_name,
+            profile_picture: updated.profile_picture !== undefined ? updated.profile_picture : prev.profile_picture,
+          } : prev))
+        }}
       />
     </div>
   )
