@@ -17,6 +17,7 @@ class User(Document):
     password = StringField(required=True)
     is_active = BooleanField(default=True)
     is_staff = BooleanField(default=False)
+    profile_picture = StringField(default='')
 
     # Email verification. New sign-ups start as 'unverified'; documents created
     # before this field existed load with the default 'active' so existing

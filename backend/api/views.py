@@ -9,6 +9,7 @@ from .email_verification import (
     is_valid_email,
     password_policy_errors,
     password_policy_message,
+    is_common_password,
     issue_verification_code,
     check_verification_code,
     mark_verified,
@@ -93,7 +94,8 @@ def _auth_success_payload(user, message):
             'id': str(user.id),
             'email': user.email,
             'first_name': user.first_name,
-            'last_name': user.last_name
+            'last_name': user.last_name,
+            'profile_picture': getattr(user, 'profile_picture', '') or '',
         },
         'tokens': {
             'access': token,
@@ -283,6 +285,8 @@ def verify_email(request):
             return Response(_auth_success_payload(user, 'Email verified'), status=status.HTTP_200_OK)
 
         email = normalize_email(request.data.get('email'))
+        if not email and hasattr(request, 'user') and getattr(request.user, 'email', None):
+            email = normalize_email(request.user.email)
         code = str(request.data.get('code') or '').strip()
         if not email or not code:
             return Response({'error': 'Email and verification code are required'},
@@ -494,3 +498,205 @@ def get_progression(request):
             'total_xp': 0,
             'skill_node_progress': []
         }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def cadet_profile(request):
+    """
+    GET /api/auth/profile/
+    Returns full cadet dossier info (name, email, verification status, streak, XP, rank).
+
+    PUT / PATCH /api/auth/profile/
+    Updates editable personnel fields (first_name, last_name).
+    """
+    user = request.user
+    if request.method in ('PUT', 'PATCH'):
+        data = request.data
+        updated = False
+        if 'first_name' in data:
+            fn = str(data.get('first_name') or '').strip()
+            if not fn:
+                return Response({'error': 'First name cannot be empty.', 'field': 'first_name'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            user.first_name = fn
+            updated = True
+        if 'last_name' in data:
+            ln = str(data.get('last_name') or '').strip()
+            if not ln:
+                return Response({'error': 'Last name cannot be empty.', 'field': 'last_name'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            user.last_name = ln
+            updated = True
+        if 'profile_picture' in data:
+            pic = str(data.get('profile_picture') or '').strip()
+            if len(pic) > 2_500_000:
+                return Response({'error': 'Profile picture image is too large (max 2MB).'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            user.profile_picture = pic
+            updated = True
+            try:
+                from api.progression.mongo_models import StudentProfileDocument
+                sp = StudentProfileDocument.objects(student_id=str(user.id)).first()
+                if sp:
+                    sp.profile_picture = pic
+                    sp.save()
+            except Exception:
+                pass
+
+        if updated:
+            user.updated_at = datetime.utcnow()
+            user.save()
+
+    # Calculate progression metrics for the dossier
+    streak = getattr(user, 'streak', 0)
+    total_xp = getattr(user, 'total_xp', 0)
+    level = 1
+    rank_title = 'Novice Analyst (Level 1)'
+    completed_count = 0
+    try:
+        from api.progression.services import ProgressionManagementService
+        profile = ProgressionManagementService.get_or_create_profile(str(user.id), user.email)
+        rank_info = ProgressionManagementService.calculate_rank_and_level(getattr(profile, 'total_xp', 0))
+        streak = getattr(profile, 'streak_count', streak)
+        total_xp = rank_info['total_xp']
+        level = rank_info['level']
+        rank_title = rank_info['rank_title']
+        completed_count = len(getattr(profile, 'completed_nodes', []))
+    except Exception:
+        pass
+
+    account_status = getattr(user, 'account_status', 'active') or 'active'
+    is_verified = (account_status == 'active')
+
+    return Response({
+        'id': str(user.id),
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'profile_picture': getattr(user, 'profile_picture', '') or '',
+        'account_status': account_status,
+        'is_verified': is_verified,
+        'created_at': user.created_at.isoformat() if getattr(user, 'created_at', None) else None,
+        'streak': streak,
+        'total_xp': total_xp,
+        'level': level,
+        'rank_title': rank_title,
+        'completed_count': completed_count,
+        'message': 'Personnel record updated successfully.' if request.method in ('PUT', 'PATCH') else None,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """
+    POST /api/auth/change-password/
+    Payload: { "current_password": "...", "new_password": "...", "confirm_password": "..." }
+    Validates current password, enforces policy on new password, hashes and updates.
+    """
+    try:
+        user = request.user
+        current_password = request.data.get('current_password') or ''
+        new_password = request.data.get('new_password') or ''
+        confirm_password = request.data.get('confirm_password') or ''
+
+        if not current_password or not new_password or not confirm_password:
+            return Response({
+                'error': 'Current passphrase, new passphrase, and confirmation are required.',
+                'code': 'missing_fields'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Verify current password
+        if _is_legacy_sha256(user.password):
+            current_valid = verify_password(current_password, user.password)
+        else:
+            current_valid = check_password(current_password, user.password)
+
+        if not current_valid:
+            return Response({
+                'error': 'Current security passphrase is incorrect.',
+                'code': 'invalid_current_password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Prevent reusing the existing password
+        if new_password == current_password or verify_password(new_password, user.password):
+            return Response({
+                'error': 'New passphrase cannot be the same as your current passphrase.',
+                'code': 'password_reused'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 3. Check confirmation match
+        if new_password != confirm_password:
+            return Response({
+                'error': 'New passphrases do not match.',
+                'code': 'passwords_mismatch'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 4. Check policy errors
+        unmet = password_policy_errors(new_password)
+        if unmet:
+            return Response({
+                'error': password_policy_message(unmet),
+                'password_requirements': unmet,
+                'code': 'weak_password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 5. Check against common breached passwords
+        if is_common_password(new_password):
+            return Response({
+                'error': 'This passphrase is too common. Please choose a more unique security key.',
+                'code': 'common_password'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 6. Hash and save
+        user.password = hash_password(new_password)
+        user.updated_at = datetime.utcnow()
+        user.save()
+
+        return Response({
+            'message': 'Security passphrase successfully updated.',
+            'status': 'success'
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_profile_verification(request):
+    """
+    POST /api/auth/send-verification/
+    Dispatches a 6-digit clearance code to the authenticated cadet's email.
+    """
+    try:
+        user = request.user
+        if getattr(user, 'account_status', 'active') == 'active':
+            return Response({
+                'message': 'Your cadet clearance is already active and verified.',
+                'already_verified': True
+            }, status=status.HTTP_200_OK)
+
+        wait = resend_cooldown_remaining(user)
+        if wait:
+            return Response({
+                'error': f'Please wait {wait}s before requesting another clearance code.',
+                'retry_after': wait
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        code, link_token = issue_verification_code(user)
+        if not send_verification_email(user.email, code, user.first_name, link_token):
+            return Response({
+                'error': 'Failed to dispatch clearance code to your email address.',
+                'code': 'email_send_failed'
+            }, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response({
+            'message': f'Clearance code sent to {user.email}.',
+            'email': user.email,
+            'cooldown': 60
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

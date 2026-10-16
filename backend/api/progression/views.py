@@ -61,6 +61,7 @@ class DashboardView(APIView):
             'unlocked_nodes':  profile.unlocked_nodes,
             'completed_nodes': profile.completed_nodes,
             'onboarding_completed': getattr(profile, 'onboarding_completed', False),
+            'profile_picture': getattr(request.user, 'profile_picture', '') or getattr(profile, 'profile_picture', '') or '',
             'module_status':   module_status,
         })
 

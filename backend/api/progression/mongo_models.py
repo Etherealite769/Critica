@@ -23,6 +23,7 @@ class StudentProfileDocument(me.Document):
     total_xp        = me.IntField(default=0)
     current_level   = me.IntField(default=1)
     onboarding_completed = me.BooleanField(default=False)
+    profile_picture = me.StringField(default='')
     last_active     = me.DateTimeField(
                           default=datetime.utcnow)
 

@@ -61,13 +61,46 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
 
     const handleSfxMuteChange = (e: Event) => {
       const customEvent = e as CustomEvent<{ muted: boolean }>;
-      if (customEvent.detail) {
+      if (customEvent.detail !== undefined) {
         setIsSfxMutedState(customEvent.detail.muted);
       }
     };
 
+    const handleThemeMuteChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ muted: boolean }>;
+      if (customEvent.detail !== undefined) {
+        setIsThemeMuted(customEvent.detail.muted);
+      }
+    };
+
+    const handleThemeVolumeEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ volume: number }>;
+      if (customEvent.detail !== undefined && typeof customEvent.detail.volume === 'number') {
+        setThemeVolume(customEvent.detail.volume);
+        if (customEvent.detail.volume > 0) {
+          setIsThemeMuted(false);
+        }
+      }
+    };
+
+    const handleSfxVolumeEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ volume: number }>;
+      if (customEvent.detail !== undefined && typeof customEvent.detail.volume === 'number') {
+        setSfxVolume(customEvent.detail.volume);
+      }
+    };
+
     window.addEventListener('critica_sfx_mute_changed', handleSfxMuteChange);
-    return () => window.removeEventListener('critica_sfx_mute_changed', handleSfxMuteChange);
+    window.addEventListener('critica_theme_mute_changed', handleThemeMuteChange);
+    window.addEventListener('critica_theme_volume_changed', handleThemeVolumeEvent);
+    window.addEventListener('critica_sfx_volume_changed', handleSfxVolumeEvent);
+
+    return () => {
+      window.removeEventListener('critica_sfx_mute_changed', handleSfxMuteChange);
+      window.removeEventListener('critica_theme_mute_changed', handleThemeMuteChange);
+      window.removeEventListener('critica_theme_volume_changed', handleThemeVolumeEvent);
+      window.removeEventListener('critica_sfx_volume_changed', handleSfxVolumeEvent);
+    };
   }, []);
 
   // Update audio element properties when volume or mute changes
@@ -139,6 +172,7 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
 
     try {
       localStorage.setItem('critica_theme_muted', String(nextMuted));
+      window.dispatchEvent(new CustomEvent('critica_theme_mute_changed', { detail: { muted: nextMuted } }));
     } catch {}
 
     const audio = audioRef.current;
@@ -168,12 +202,14 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
     setThemeVolume(newVol);
     try {
       localStorage.setItem('critica_theme_volume', String(newVol));
+      window.dispatchEvent(new CustomEvent('critica_theme_volume_changed', { detail: { volume: newVol } }));
     } catch {}
 
     if (newVol > 0 && isThemeMuted) {
       setIsThemeMuted(false);
       try {
         localStorage.setItem('critica_theme_muted', 'false');
+        window.dispatchEvent(new CustomEvent('critica_theme_mute_changed', { detail: { muted: false } }));
       } catch {}
     }
 
@@ -192,6 +228,7 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
     setSfxVolume(newVol);
     try {
       localStorage.setItem('critica_sfx_volume', String(newVol));
+      window.dispatchEvent(new CustomEvent('critica_sfx_volume_changed', { detail: { volume: newVol } }));
     } catch {}
 
     if (newVol > 0 && isSfxMuted) {
