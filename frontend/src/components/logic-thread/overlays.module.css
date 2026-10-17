@@ -1,0 +1,670 @@
+/* Logic Thread overlays: Inspector Crit's case debrief + the Lesson Manual slide-over.
+   Same dossier language as the dashboard: manila paper, dark brown buttons, red ink stamps. */
+
+.root {
+  --manila: #f3e8cb;
+  --exhibit: #faf6ed;
+  --edge: #a8915f;
+  --hat: #4e3629;
+  --hat-dark: #3c2d20;
+  --ink: #2b2016;
+  --stamp: #a83232;
+  --ok-ink: #2f6418;
+  --lime: #76b852;
+  --type: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  --hand: 'Segoe Print', 'Bradley Hand', 'Ink Free', 'Comic Sans MS', cursive;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(10, 12, 14, 0.72);
+  backdrop-filter: blur(3px);
+  animation: fade 0.2s ease;
+}
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes slide { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes stampIn { 0% { opacity: 0; transform: rotate(-8deg) scale(1.6); } 70% { opacity: 1; transform: rotate(-8deg) scale(0.95); } 100% { opacity: 1; transform: rotate(-8deg) scale(1); } }
+
+/* ── Shared atoms ── */
+.paper {
+  background-color: var(--manila);
+  background-image:
+    linear-gradient(160deg, rgba(255, 252, 240, 0.45) 0%, transparent 40%, rgba(120, 90, 50, 0.08) 100%),
+    radial-gradient(rgba(78, 54, 41, 0.06) 1px, transparent 1.2px),
+    radial-gradient(rgba(78, 54, 41, 0.04) 1px, transparent 1.2px);
+  background-size: 100% 100%, 7px 7px, 11px 11px;
+  background-position: 0 0, 0 0, 3px 5px;
+}
+
+.kicker { font-family: var(--type); font-size: 11px; letter-spacing: 0.16em; color: var(--ink); }
+
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  font-family: var(--type);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--stamp);
+  border: 3px double var(--stamp);
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+  user-select: none;
+}
+
+.stampOk { color: var(--ok-ink); border-color: var(--ok-ink); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-family: var(--type);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f9f6ed;
+  background: var(--hat);
+  border: 1px solid var(--hat);
+  border-radius: 2px;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.btn:hover { background: var(--hat-dark); }
+.btn:active { transform: translateY(1px); }
+
+.btnGhost { color: var(--hat); background: var(--exhibit); box-shadow: none; }
+.btnGhost:hover { color: #f9f6ed; background: var(--hat); }
+
+.btn:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+
+.clip { position: absolute; color: #8d8a84; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
+
+/* ── Case debrief ── */
+.debrief {
+  position: relative;
+  width: min(92vw, 620px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ink);
+  border: 1px solid #c9b48a;
+  border-radius: 4px;
+  box-shadow: 6px 6px 0 -1px #e3d4ae, 6px 6px 0 0 #b59c6c, 0 24px 50px rgba(0, 0, 0, 0.6);
+  animation: pop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.debriefHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px 12px;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.35);
+}
+
+.debriefTitle { margin: 2px 0 0; font-family: var(--type); font-size: 16px; font-weight: 700; letter-spacing: 0.12em; }
+
+.debriefBody { display: flex; gap: 18px; padding: 18px 22px 8px; overflow-y: auto; }
+
+.crit { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 112px; }
+.critName { font-family: var(--type); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; }
+
+.speech {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--exhibit);
+  border: 1px solid var(--edge);
+  border-left: 4px solid var(--hat);
+  border-radius: 2px;
+  box-shadow: 0 3px 8px rgba(60, 40, 20, 0.18);
+}
+
+.speechPerfect { border-left-color: var(--lime); }
+.speechPartial { border-left-color: var(--stamp); }
+
+.speech::before {
+  content: '';
+  position: absolute;
+  top: 30px;
+  left: -11px;
+  border: 7px solid transparent;
+  border-right-color: var(--edge);
+  border-left: 0;
+}
+
+.lead { margin: 0 0 8px; font-family: var(--hand); font-size: 15px; line-height: 1.45; color: var(--stamp); }
+
+.notes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.notes li { display: flex; gap: 8px; font-family: var(--type); font-size: 12.5px; line-height: 1.5; }
+.notes li svg { flex-shrink: 0; margin-top: 3px; color: var(--stamp); }
+
+.verdictRow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 12px; }
+
+.verdictStamp {
+  padding: 4px 14px;
+  font-size: 17px;
+  border-width: 4px;
+  transform: rotate(-8deg);
+  opacity: 0.85;
+  pointer-events: none;
+  animation: stampIn 0.45s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.scoreRow { display: flex; align-items: center; gap: 12px; padding: 4px 22px 14px; font-family: var(--type); font-size: 12px; }
+.gauge { flex: 1; height: 8px; overflow: hidden; background: #d9ccad; border-radius: 9999px; }
+.gaugeFill { height: 100%; background: var(--lime); border-radius: 9999px; transition: width 0.6s ease; }
+.gaugeFillLow { background: #c0703a; }
+.score { font-weight: 700; white-space: nowrap; }
+
+.xp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-family: var(--type);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--ok-ink);
+  background: rgba(118, 184, 82, 0.15);
+  border: 1px solid rgba(47, 100, 24, 0.4);
+  border-radius: 2px;
+}
+
+.xpPending { color: #5c4a36; background: rgba(168, 145, 95, 0.15); border-color: rgba(92, 74, 54, 0.3); }
+
+.debriefFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 22px 16px;
+  border-top: 1px dashed rgba(139, 115, 85, 0.5);
+}
+
+/* ── Missed cases in the docket debrief ── */
+.missedList { display: flex; flex-direction: column; gap: 12px; }
+.missed { padding-top: 10px; border-top: 1px dashed rgba(139, 115, 85, 0.45); }
+.missedHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-family: var(--type);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.missedScore { flex-shrink: 0; font-size: 10.5px; color: var(--stamp); }
+.missedMore { margin: 0; font-family: var(--type); font-size: 12px; color: #5c4a36; }
+
+/* ── Lesson manual (node-specific) ── */
+.manual {
+  position: relative;
+  width: min(92vw, 720px);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  border: 1px solid #c9b48a;
+  border-radius: 4px;
+  box-shadow: 6px 6px 0 -1px #e3d4ae, 6px 6px 0 0 #b59c6c, 0 24px 50px rgba(0, 0, 0, 0.6);
+  animation: pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.manualHead {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;      /* title block and Close button share one centre line */
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px 14px 26px;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.35);
+}
+
+.manualBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 22px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge) transparent;
+}
+
+.manualHeadLeft { min-width: 0; }
+.manualHeadRight { display: flex; align-items: center; flex-shrink: 0; }
+
+/* Header hierarchy: small kicker, the lesson title as the clear H1 */
+.manualKicker { font-family: var(--type); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: #5c4a36; }
+.manualTitle { margin: 4px 0 0; font-family: var(--type); font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: 0.04em; color: var(--ink); }
+
+.manualBody > * + * { margin-top: 18px; }
+
+/* Field directive callout */
+.directive {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--ink);
+  background: rgba(168, 50, 50, 0.07);
+  border: 1px dashed rgba(168, 50, 50, 0.55);
+  border-radius: 2px;
+}
+
+.directive svg { flex-shrink: 0; margin-top: 2px; color: var(--stamp); }
+.directiveLabel { font-family: var(--type); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--stamp); }
+.directiveText { margin-top: 2px; font-family: var(--type); font-size: 14px; font-weight: 700; line-height: 1.45; }
+
+.keyTerm {
+  padding: 0 3px;
+  color: var(--stamp);
+  background: linear-gradient(transparent 55%, rgba(243, 167, 18, 0.35) 55%);
+}
+
+/* Signal-word callout cards (index cards pinned to the sheet) */
+.callouts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+
+.callout {
+  position: relative;
+  padding: 18px 12px 10px;
+  background-color: var(--exhibit);
+  background-image:
+    linear-gradient(transparent 14px, rgba(158, 42, 43, 0.4) 14px, rgba(158, 42, 43, 0.4) 15px, transparent 15px),
+    repeating-linear-gradient(transparent 0 12px, rgba(107, 164, 184, 0.18) 12px 13px);
+  background-position: 0 0, 0 15px;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  box-shadow: 0 4px 10px -2px rgba(60, 40, 20, 0.35);
+}
+
+.calloutPin {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff8a8a, #c0392b 45%, #7a1717);
+  box-shadow: 1px 3px 3px rgba(0, 0, 0, 0.4);
+}
+
+.calloutWord {
+  font-family: var(--type);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stamp);
+}
+
+.calloutRole { margin-top: 4px; font-family: var(--type); font-size: 12.5px; line-height: 1.45; color: var(--ink); }
+
+.section {
+  position: relative;
+  padding: 14px 16px;
+  background: var(--exhibit);
+  border: 1px solid var(--edge);
+  border-left: 4px solid var(--hat);
+  border-radius: 2px;
+  box-shadow: 0 3px 8px rgba(60, 40, 20, 0.15);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-family: var(--type);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sectionTitle svg { color: var(--stamp); }
+
+.prose { margin: 0; font-family: var(--type); font-size: 14px; line-height: 1.65; white-space: pre-line; }
+
+/* ── Lower-left Inspector Crit side remarks ── */
+@keyframes remarkLife {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.96); }
+  8%   { opacity: 1; transform: none; }
+  85%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+.remark {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column-reverse; /* bubble sits above the avatar, clear of the board */
+  align-items: flex-start;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.remarkAvatar {
+  flex-shrink: 0;
+  width: 56px;    /* w-14: a subtle guide, not the focus */
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--manila);
+  border: 2px solid var(--hat);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  opacity: 0.95;
+}
+
+.remarkBubble {
+  position: relative;
+  max-width: 210px;
+  margin-left: 6px;
+  padding: 7px 11px;
+  font-family: var(--hand);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--stamp);
+  background: var(--exhibit);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  animation: remarkLife 3.6s ease forwards;
+}
+
+.remarkText { margin: 0; }
+
+/* Socratic guidance card (hints + thinking state): aged cream paper, crimson rule */
+.remarkHint {
+  /* w-[320px] max-h-[260px], h-auto */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 320px;
+  max-width: calc(100vw - 28px);
+  height: auto;
+  min-height: 110px;
+  max-height: 260px;
+  padding: 10px 12px 12px 14px;
+  font-size: 12px;              /* text-xs */
+  line-height: 17px;            /* leading-snug, whole pixels so short hints never show a scrollbar */
+  color: var(--ink);
+  background: #fffdf7;
+  border: 1px solid #d8c9a8;
+  border-left: 4px solid #8b0000;
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
+  pointer-events: auto;
+  animation: hintIn 0.25s ease both;
+}
+
+@media (min-width: 640px) {
+  .remarkHint { font-size: 14px; line-height: 19px; }   /* sm:text-sm, leading-snug */
+}
+
+.remarkHint .hintHead,
+.remarkHint .hintMore { flex-shrink: 0; }
+.remarkHint .hintMore { align-self: flex-start; }
+
+/* The hint text scrolls inside the card, clear of DIG DEEPER
+   (selector outranks the desk's global hidden-scrollbar rule) */
+.remark .remarkHint .remarkText {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 2px 0 0;
+  padding: 0 6px 6px 0;   /* bottom room for the handwriting font's tall glyphs, so short hints don't scroll */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #b9a27a transparent;
+}
+
+@keyframes hintIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.hintHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.guidanceBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  font-family: var(--type);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #fffdf7;
+  background: #8b0000;
+  border-radius: 2px;
+}
+
+/* Thinking state: lens sweeps while the dots pulse */
+.thinkingText { display: flex; align-items: flex-start; gap: 8px; color: #5c4a36; font-style: italic; }
+.thinkingIcon { flex-shrink: 0; margin-top: 2px; color: #8b0000; animation: lensSweep 1.4s ease-in-out infinite; }
+
+@keyframes lensSweep {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25%      { transform: translate(3px, -2px) rotate(-12deg); }
+  75%      { transform: translate(-2px, 2px) rotate(10deg); }
+}
+
+.dots i { font-style: normal; animation: dotPulse 1.2s infinite; opacity: 0.2; }
+.dots i:nth-child(2) { animation-delay: 0.2s; }
+.dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dotPulse { 0%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+/* Wrapper so the lens badge can sit on the avatar's rim (the avatar clips its own overflow) */
+.avatarWrap { position: relative; display: inline-flex; }
+.remarkAvatarThinking { animation: critPonder 1.6s ease-in-out infinite; box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.45); }
+
+@keyframes critPonder {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-6deg) translateY(-2px); }
+}
+
+.thinkingLens {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  display: flex;
+  padding: 3px;
+  color: #fffdf7;
+  background: #8b0000;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  animation: lensSweep 1.4s ease-in-out infinite;
+}
+
+.hintClose {
+  display: inline-flex;
+  padding: 2px;
+  color: var(--hat);
+  background: transparent;
+  border: 1px solid rgba(78, 54, 41, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.hintMore {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 9px;
+  font-family: var(--type);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f9f6ed;
+  background: var(--hat);
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.hintMore:disabled { opacity: 0.6; cursor: wait; }
+.hintClose:focus-visible, .hintMore:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+
+.remarkBubble::before {
+  content: '';
+  position: absolute;
+  left: 20px;      /* points down at the avatar's head */
+  bottom: -7px;
+  border: 6px solid transparent;
+  border-top-color: var(--edge);
+  border-bottom: 0;
+}
+
+/* ── Node 01 spotlight walkthrough ── */
+.tutorial { position: fixed; inset: 0; z-index: 300; overflow: hidden; }
+.tutorialShield { position: absolute; inset: 0; }
+.tutorialDim { position: absolute; inset: 0; background: rgba(10, 12, 14, 0.7); pointer-events: none; }
+
+.spotlight {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid #e0bb6b;
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgba(10, 12, 14, 0.7), 0 0 22px 4px rgba(224, 187, 107, 0.55);
+  transition: top 0.3s ease-out, left 0.3s ease-out, width 0.3s ease-out, height 0.3s ease-out;
+}
+
+.tutorialCard {
+  position: absolute;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  color: var(--ink);
+  border: 1px solid #c9b48a;
+  border-left: 4px solid #8b0000;
+  border-radius: 4px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  outline: none;
+  transition: top 0.3s ease-out, left 0.3s ease-out;
+}
+
+.tutorialHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(139, 115, 85, 0.35);
+}
+
+.tutorialStep { font-family: var(--type); font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; color: #8b0000; }
+
+.tutorialSkip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-family: var(--type);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hat);
+  background: transparent;
+  border: 1px solid rgba(78, 54, 41, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.tutorialSkip:hover { color: #f9f6ed; background: var(--hat); }
+
+.tutorialBody { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 6px; }
+
+.tutorialCrit {
+  flex-shrink: 0;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--exhibit);
+  border: 2px solid var(--hat);
+  border-radius: 50%;
+}
+
+.tutorialBubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  background: #fffdf7;
+  border: 1px solid #d8c9a8;
+  border-radius: 4px;
+}
+
+.tutorialBubble::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: -8px;
+  border: 7px solid transparent;
+  border-right-color: #d8c9a8;
+  border-left: 0;
+}
+
+.tutorialTitle { margin: 0 0 4px; font-family: var(--type); font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #8b0000; }
+.tutorialText { margin: 0; font-family: var(--type); font-size: 13.5px; line-height: 1.55; }
+
+.tutorialPips { display: flex; justify-content: center; gap: 6px; padding: 6px 0 2px; }
+.tutorialPips i { width: 7px; height: 7px; border-radius: 9999px; background: rgba(78, 54, 41, 0.25); transition: width 0.2s; }
+.tutorialPips i.pipActive { width: 18px; background: #8b0000; }
+.tutorialPips i.pipDone { background: var(--lime); }
+
+.tutorialFoot { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px 14px; }
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.tutorialSkip:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+
+@media (max-width: 560px) {
+  .debriefBody { flex-direction: column; align-items: center; }
+  .speech::before { display: none; }
+  .verdictStamp { font-size: 13px; }
+  .manualHead { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop, .debrief, .manual, .verdictStamp { animation: none; }
+  .spotlight, .tutorialCard { transition: none; }
+  .remarkBubble { animation-duration: 0.01s; animation-delay: 3.5s; }
+  .remarkHint, .thinkingIcon, .thinkingLens, .remarkAvatarThinking, .dots i { animation: none; }
+  .dots i { opacity: 1; }
+}

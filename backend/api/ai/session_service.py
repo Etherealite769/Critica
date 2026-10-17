@@ -1,4 +1,5 @@
 # backend/api/ai/session_service.py
+import re
 import uuid
 import random
 import logging
@@ -38,6 +39,22 @@ def _get_node_difficulty(node_id: str) -> int:
         return 3
     except Exception:
         return 1
+
+
+_BLOCK_ID_RE = re.compile(r"\bp\d+\b", re.IGNORECASE)
+
+
+def _tidy_hint(text: Optional[str], max_sentences: int = 3) -> Optional[str]:
+    """Plain-text, at most `max_sentences` sentences; None if it leaks card ids (caller falls back)."""
+    if not text:
+        return None
+    t = re.sub(r"[*_#`>]+", "", text)                       # markdown emphasis / headings
+    t = re.sub(r"^\s*(?:[-•]|\d+[.)])\s+", "", t, flags=re.MULTILINE)   # list markers
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t or _BLOCK_ID_RE.search(t):
+        return None
+    sentences = re.split(r"(?<=[.!?])\s+", t)
+    return " ".join(sentences[:max_sentences]).strip()
 
 
 class SessionService:
@@ -436,8 +453,14 @@ class SessionService:
             error_count=error_count,
         )
 
-        hint = client.generate_live_socratic_hint(prompt)
-        return {'socratic_hint': hint or 'Examine how the ideas connect in sequence.'}
+        hints = ex.get('scaffold_hints', [])
+        fallback = hints[1].get('hint_text', '') if len(hints) > 1 else 'Examine how the ideas connect in sequence.'
+        if session_doc.module == 'logic_thread':
+            # Lower temperature keeps the clue focused on the cards' signal words
+            hint = _tidy_hint(client.generate_live_socratic_hint(prompt, temperature=0.4))
+        else:
+            hint = client.generate_live_socratic_hint(prompt)
+        return {'socratic_hint': hint or fallback or 'Examine how the ideas connect in sequence.'}
 
     @classmethod
     def get_exercise_feedback(

@@ -176,7 +176,10 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
 4. `correct_sequence`: The exact ordered list of block_ids (e.g. ['p2', 'p1', 'p3'] or appropriate sequence).
    - SEQUENCE VARIETY RULE: Across the {count} exercises, vary the correct_sequence unpredictably (e.g., ['p2', 'p1', 'p3'], ['p3', 'p2', 'p1'], ['p1', 'p3', 'p2']). Never generate consecutive exercises with identical sequence patterns, and never default to chronological order 'p1, p2, p3'.
 5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological dependency requires p1 first').
-6. `scaffold_hints`: Exactly 3 hints (tier 1: gentle cue, tier 2: structural signal word pointer, tier 3: explicit sequence step).
+6. `scaffold_hints`: Exactly 3 Socratic hints, each 1-2 sentences and at most 35 words, written as Inspector Crit coaching a cadet:
+   - tier 1: a guiding question about what kind of signal to look for (e.g. which event could only happen first?).
+   - tier 2: point to ONE transition signal word that appears in the cards (quote it, e.g. "first", "meanwhile", "finally") and what it implies about position.
+   - tier 3: identify which card opens OR which card closes the chain by quoting its first few words. Never state the full order or any block ids.
 7. SYNTACTIC VARIETY: Forbid repeating opening phrases, cloned sentence structures, or identical transition markers across exercises in this batch.
 """
 
@@ -250,6 +253,15 @@ For each of the {count} exercises:
     return prompt
 
 
+# Shared output rules for live hints: short, plain, Socratic, never the answer
+SOCRATIC_OUTPUT_RULES = """[OUTPUT RULES]:
+- 2 or 3 sentences, at most 60 words in total. Plain text only: no markdown, lists, headings or emojis.
+- Be Socratic: end with a question that makes the student check the evidence themselves.
+- Highlight transition signal words by quoting them in double quotes (e.g. "first", "next", "meanwhile", "finally").
+- NEVER reveal the full order, card positions or numbers, block ids (like p1, p2) or which card goes where in the sequence.
+- Speak as Inspector Crit to a cadet: warm, sharp, encouraging. Do not greet or sign off."""
+
+
 def build_socratic_hint_prompt(
     module: str,
     exercise: Dict[str, Any],
@@ -261,6 +273,35 @@ def build_socratic_hint_prompt(
     """
     passage = exercise.get('reading_passage', '')
     title = exercise.get('topic_title', 'Exercise')
+
+    if module == 'logic_thread':
+        blocks = exercise.get('paragraph_blocks', []) or []
+        text_of = {b.get('block_id'): b.get('text', '') for b in blocks}
+        cards = "\n".join(f'- "{b.get("text", "")}"' for b in blocks)
+        chain = [text_of.get(bid, '') for bid in (submission_state or {}).get('sequence', []) if bid in text_of]
+        attempt = "\n".join(f'{i + 1}. "{t}"' for i, t in enumerate(chain)) or "(no cards threaded yet)"
+        answer = " -> ".join(f'"{text_of.get(bid, "")[:60]}"' for bid in exercise.get('correct_sequence', []))
+
+        return f"""You are Inspector Crit, the Socratic reading detective in CRITICA.
+A cadet is ordering shuffled paragraph cards into a logical sequence (Forensic Textual Analysis) and asked for help (request #{error_count}).
+
+[EXERCISE TOPIC]: {title}
+
+[CARDS ON THE BOARD (shuffled)]:
+{cards}
+
+[THE CADET'S CURRENT CHAIN]:
+{attempt}
+
+[ANSWER KEY - for your reasoning only, never reveal it]: {answer}
+
+[TASK]:
+Give one concise Socratic clue that moves the cadet one step closer: point to a transition signal word on the cards
+(or the absence of one) and what it implies, or question a link in their current chain that does not hold.
+Do not solve the puzzle for them.
+
+{SOCRATIC_OUTPUT_RULES}
+"""
 
     return f"""You are Agent Crit, the Socratic Reading Detective and pedagogical coach in CRITICA.
 A student is working on the following reading exercise in {module.upper()} and made an incorrect attempt (Attempt #{error_count}).

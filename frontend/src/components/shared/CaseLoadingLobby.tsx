@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Network, Puzzle, Search, ScanSearch, type LucideIcon } from 'lucide-react'
 import type { ModuleKey } from '@/lib/modules'
 import { MODULE_TITLES } from '@/lib/modules'
@@ -133,16 +133,23 @@ export default function CaseLoadingLobby({
 }: CaseLoadingLobbyProps) {
   const [stepIndex, setStepIndex] = useState(0)
   const [progressPct, setProgressPct] = useState(0)
+  // Client-only: the server can't know the random shuffle, so the drifting words wait for mount
+  const [hasMounted, setHasMounted] = useState(false)
+  const [ambientWords, setAmbientWords] = useState<string[]>([])
 
   const steps = customSteps ?? MODULE_STEPS[moduleKey]
   const popWords = MODULE_POPWORDS[moduleKey]
   const ModuleIcon = MODULE_ICONS[moduleKey]
   const moduleLabel = MODULE_TITLES[moduleKey]
 
-  // Shuffle ambient words on mount to feel organic each time
-  const ambientWords = useMemo(() => {
-    const shuffled = [...AMBIENT_WORDS].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, AMBIENT_POSITIONS.length)
+  // Shuffle ambient words after mount (keeps SSR and first client render identical)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const shuffled = [...AMBIENT_WORDS].sort(() => Math.random() - 0.5)
+      setAmbientWords(shuffled.slice(0, AMBIENT_POSITIONS.length))
+      setHasMounted(true)
+    })
+    return () => cancelAnimationFrame(frame)
   }, [])
 
   // Rotate status steps
@@ -195,7 +202,7 @@ export default function CaseLoadingLobby({
 
       {/* Ambient drifting words (very faint) */}
       <div className={lobby.wordsLayer} aria-hidden>
-        {ambientWords.map((word, i) => {
+        {hasMounted && ambientWords.map((word, i) => {
           const pos = AMBIENT_POSITIONS[i]
           return (
             <span
