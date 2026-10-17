@@ -12,6 +12,17 @@ import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
+import { MODULE_TITLES } from '@/lib/modules'
+import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import LessonManual, { type NodeLesson } from '@/components/logic-thread/LessonManual'
+import LogicThreadTutorial, { hasSeenLogicThreadTutorial } from '@/components/logic-thread/LogicThreadTutorial'
+import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { analyzeSequence } from '@/components/logic-thread/sequenceFeedback'
+import {
+  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Network, Paperclip, RotateCcw,
+} from 'lucide-react'
+import desk from '@/components/dashboard/desk.module.css'
+import { Montserrat } from 'next/font/google'
 import styles from './page.module.css'
 
 // ── Types ────────────────────────────────────────────────────
@@ -28,6 +39,8 @@ interface NodeData {
 }
 type Phase       = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 type SubmitState = 'idle' | 'submitting' | 'correct' | 'incorrect'
+/** Fields read from the mastery endpoints' responses. */
+interface MasteryResponse { status?: string; next_node?: string | null; streak?: number; xp_awarded?: number }
 
 /** True Fisher-Yates array shuffle for non-predictable card scattering */
 function shuffleBlocks(arr: Block[]): Block[] {
@@ -39,41 +52,87 @@ function shuffleBlocks(arr: Block[]): Block[] {
   return copy
 }
 
-/** Dynamic font size and line height calculation to ensure sentences fit inside card boxes without clipping */
+// Exhibit card text: Montserrat, self-hosted by next/font
+const cardFont = Montserrat({ subsets: ['latin'], weight: ['500', '600'], display: 'swap' })
+
+/**
+ * Card typography. The card's ruled lines are spaced at `rule` px (= the line-height), and the
+ * top padding puts each text baseline right on a rule (Montserrat baseline ≈ rule/2 + 0.36·size).
+ */
 function getCardTypography(text: string, cardCount: number) {
   const len = text.length
-  let fontSize = cardCount >= 5 ? 12 : 12.5
-  let lineHeight = cardCount >= 5 ? 1.45 : 1.55
-
-  if (len > 130) {
-    fontSize = 10.5
-    lineHeight = 1.32
-  } else if (len > 85) {
-    fontSize = 11.5
-    lineHeight = 1.4
-  }
-  return { fontSize, lineHeight }
+  let fontSize = 17, rule = 28                       // text-lg on 1.75rem lines
+  if (len > 140)      { fontSize = 14; rule = 24 }
+  else if (len > 110) { fontSize = 15; rule = 26 }
+  else if (len > 70)  { fontSize = 16; rule = 28 }  // text-base, leading-[1.75rem]
+  if (cardCount >= 5) fontSize = Math.min(fontSize, 16)
+  const paddingTop = Math.round(23 + rule / 2 - 0.36 * fontSize)
+  return { fontSize, rule, paddingTop }
 }
 
-const TEXT_STRUCTURE_TUTORIAL_KEY = 'critica_tutorial_seen_logic_thread_first_node'
 
-const TUTORIAL_STEPS = [
-  { stepLabel: 'Overview',     bubble: "Welcome to Forensic Textual Analysis. You will see paragraph cards pinned to a cork bulletin board all out of order.\n\nYour mission: connect them in the correct logical sequence by drawing a red thread between them, just like a detective's case board." },
-  { stepLabel: 'Select Card',  bubble: 'Click any card to select it. It will glow with a gold outline and the node dot turns red. Read its content carefully before connecting. You can click the same card again to deselect it.' },
-  { stepLabel: 'Draw thread',  bubble: "After selecting the first card, click a second card. A red thread is drawn between them with a numbered circle showing the connection order. Keep going until all cards form a complete sequence." },
-  { stepLabel: 'Submit',       bubble: "Once you've connected all cards, hit Submit. Correct connections turn teal. Wrong ones turn red — those connections are cleared so you can try again." },
-] as const
+// Inspector Crit's lower-left side remarks
+const CORRECT_REMARKS = ['Good job!', 'Well done, Cadet!', 'Sharp deduction!', 'Textbook detective work!', 'That thread holds — nicely done!']
+const MAX_ATTEMPTS = 3
+const RETRY_REMARKS = ['Not quite — re-thread the cards and try again.', 'Close, Cadet. Check the signal words and give it another go.', 'One link snapped. Find it and resubmit.']
+const CHAIN_DONE_REMARKS = ['All exhibits threaded. Submit when you are sure.', 'Every card is pinned — give it one last look.']
+const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
+
+/** Inspector Crit's walkthrough of the correct thread after the last failed attempt. */
+function explainCorrectThread(answerKey: string[] | null, blocks: Block[]): string {
+  const snip = (id: string) => {
+    const words = (blocks.find(b => b.block_id === id)?.text ?? '').split(/\s+/)
+    return words.slice(0, 5).join(' ').replace(/[,.;:]$/, '') + (words.length > 5 ? '…' : '')
+  }
+  if (!answerKey || answerKey.length === 0) {
+    return 'Three strikes on this exhibit, Cadet — it goes in the file as unverified. Study how each card opens: the signal words set the order. On to the next case.'
+  }
+  const thread = answerKey.map((id, i) => `${i + 1}) “${snip(id)}”`).join(' → ')
+  return `Three strikes — this one is filed as unverified. The thread runs: ${thread}. Notice how each opening signal word fixes its place.`
+}
+const HINT_FALLBACK = 'Re-read how each card opens — signal words like First, Then, Meanwhile and Finally give the order away.'
+const THINKING_TEXT = 'Inspector Crit is examining the evidence trail'
+const SOCRATIC_FALLBACK = 'Ask yourself which event has to happen before each card. Which one could only come last?'
+
+// Missed cases survive a reload, so a resumed docket can't close with an unsolved case
+const SKIPPED_KEY = (startId: string) => `critica_skipped_logic_thread_${startId}`
+function readSkipped(startId: string | null): number[] {
+  if (!startId) return []
+  try { return JSON.parse(localStorage.getItem(SKIPPED_KEY(startId)) || '[]') } catch { return [] }
+}
+function writeSkipped(startId: string | null, cases: number[]) {
+  if (!startId) return
+  try {
+    if (cases.length) localStorage.setItem(SKIPPED_KEY(startId), JSON.stringify(cases))
+    else localStorage.removeItem(SKIPPED_KEY(startId))
+  } catch { /* storage blocked */ }
+}
+
 
 // ── Canvas geometry ──────────────────────────────────────────
-const CW = 900, CH = 520, CARD_W = 230, CARD_H = 138
+const CW = 1100, CH = 520, CARD_W = 270, CARD_H = 190
+// Card layouts below were drawn for a 900px-wide board (rightmost card at x=625);
+// stretch them so the widest layout spans the wider board with a small margin
+const LAYOUT_MAX_X = 625
+const X_STRETCH = (CW - CARD_W - 8) / LAYOUT_MAX_X
+// Room kept free beside the dossier: the retracted side tabs only show their icons
+const SIDE_GUTTER = 64
+// Slight hand-pinned tilt per index card (degrees)
+// Pointer travel (board px) before a press becomes a drag instead of a click
+const DRAG_THRESHOLD = 5
+const CARD_TILTS = [-1.2, 0.8, -0.5, 1.1, -0.9, 0.6]
 
 export function getScatterPositions(count: number) {
+  return layoutFor(count).map(p => ({ x: Math.round(p.x * X_STRETCH), y: p.y }))
+}
+
+function layoutFor(count: number) {
   // Basics: exactly 3 cards (Triangle / V-stagger formation)
   if (count <= 3) {
     return [
-      { x: 65,  y: 65 },
-      { x: 335, y: 240 },
-      { x: 605, y: 75 },
+      { x: 45,  y: 50 },
+      { x: 315, y: 290 },
+      { x: 585, y: 60 },
     ]
   }
   // Intermediate: exactly 4 cards (Staggered 2x2 detective formation)
@@ -95,14 +154,14 @@ export function getScatterPositions(count: number) {
       { x: 505, y: 260 },
     ]
   }
-  // Fallback for 6+ cards
+  // Fallback for 6+ cards (two staggered rows of three)
   return [
-    { x: 52,  y: 38  },
-    { x: 288, y: 188 },
-    { x: 52,  y: 248 },
-    { x: 504, y: 48  },
-    { x: 504, y: 228 },
-    { x: 288, y: 316 },
+    { x: 30,  y: 30  },
+    { x: 315, y: 50  },
+    { x: 600, y: 30  },
+    { x: 30,  y: 300 },
+    { x: 315, y: 320 },
+    { x: 600, y: 300 },
   ]
 }
 
@@ -133,18 +192,6 @@ const C = {
 } as const
 
 // ── Shared inline style atoms ─────────────────────────────────
-const stampS: React.CSSProperties = {
-  display: 'inline-block', border: `2px solid ${C.textMid}`,
-  padding: '3px 14px', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.15em', color: C.textMid,
-  marginBottom: 12, fontFamily: FONT,
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 24px', background: C.btnGold,
-  border: `2px solid ${C.btnGoldBdr}`, borderRadius: 10, color: C.textDark,
-  fontFamily: FONT, fontSize: 11, fontWeight: 700,
-  cursor: 'pointer', letterSpacing: '0.08em',
-}
 const btnSm: React.CSSProperties = {
   padding: '7px 16px', background: 'transparent',
   border: `1px solid ${C.textMid}`, borderRadius: 2, color: C.textLight,
@@ -158,7 +205,7 @@ function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCance
 
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex',
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex',
       flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       fontFamily: FONT, gap: 16 }}>
       <p style={{ color: '#ff6b6b', fontSize: 13 }}>{msg}</p>
@@ -206,7 +253,7 @@ function DeepDiveScreen({ node, onContinue, onDashboard }: { node: NodeData; onC
 function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
   { node: NodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
       <NodeEvaluationReport
         moduleKey="logic_thread"
         title={node.title}
@@ -226,202 +273,6 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
   )
 }
 
-// ── Tutorial ──────────────────────────────────────────────────
-function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
-  open: boolean; step: number
-  onBack: () => void; onNext: () => void
-  onClose: () => void; onStart: () => void
-}) {
-  if (!open) return null
-
-  const tutorialCode = `TUT-TSM-${String(step + 1).padStart(3, '0')}`
-  const stepCfg  = TUTORIAL_STEPS[step]
-  const isFirst  = step === 0
-  const isLast   = step === TUTORIAL_STEPS.length - 1
-
-  const navItem = (label: string, index: number) => {
-    const complete = index < step
-    const active   = index === step
-    return (
-      <div key={label} className={styles.tutorialNavItem} style={{
-        width: 156, height: 76, border: `1px solid ${C.btnGoldBdr}`,
-        background: complete ? '#b9dfbf' : active ? C.cardPaper : C.canvas,
-        color: C.textDark,
-        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.35)' : 'none',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', textAlign: 'center', fontFamily: FONT, fontSize: 12, fontWeight: 700,
-      }}>
-        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? C.btnGold : C.cardBdrIdle,
-            color: complete ? '#fff' : C.textDark,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700,
-          }}>
-            {complete ? '✓' : index + 1}
-          </div>
-        </div>
-        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
-      </div>
-    )
-  }
-
-  const renderBoard = () => {
-    if (step === 0) return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 34, padding: '18px 14px 12px' }}>
-        <div style={{ width: 108, height: 70, border: '1.5px solid #b4b0a8', background: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-          boxShadow: '0 3px 10px rgba(0,0,0,0.12)', position: 'relative', marginLeft: 36 }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#2049d4' }} />
-          <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>CARD A</div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#444', lineHeight: 1.25, textAlign: 'center', marginTop: 4 }}>Opening claim of the argument...</div>
-        </div>
-        <div style={{ fontFamily: FONT, color: '#222', fontSize: 24, letterSpacing: '0.18em' }}>······→</div>
-        <div style={{ width: 108, height: 70, border: '1.5px solid #b4b0a8', background: '#fff',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column',
-          boxShadow: '0 3px 10px rgba(0,0,0,0.12)', position: 'relative', marginLeft: 4 }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#d02c5f' }} />
-          <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700 }}>CARD B</div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#444', lineHeight: 1.25, textAlign: 'center', marginTop: 4 }}>Evidence that supports it...</div>
-        </div>
-      </div>
-    )
-    if (step === 1) return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '16px 12px 12px' }}>
-        <div style={{ width: 120, height: 96, border: '3px solid #f0c400', borderRadius: 8, background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.18)', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#d02c5f' }} />
-          <div style={{ textAlign: 'center', paddingTop: 12, fontFamily: FONT, fontSize: 13, fontWeight: 700, color: '#b49500' }}>SELECTED</div>
-          <div style={{ padding: '6px 10px 0', fontFamily: FONT, fontSize: 10, color: '#333', lineHeight: 1.35 }}>Evidence that supports it...</div>
-        </div>
-        <div style={{ fontFamily: FONT, fontSize: 20, color: '#444' }}>←</div>
-        <div style={{ fontFamily: FONT, fontSize: 12, color: '#444', lineHeight: 1.3 }}>glowing border = selected</div>
-      </div>
-    )
-    if (step === 2) return (
-      <div style={{ position: 'relative', height: 145, padding: '18px 16px 10px' }}>
-        <div style={{ position: 'absolute', left: 28, top: 34, width: 118, height: 80,
-          border: '2px solid #58baf7', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.16)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#0a4ebd' }} />
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CARD A</div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#333', lineHeight: 1.35, textAlign: 'center', marginTop: 2 }}>Opening claim...</div>
-        </div>
-        <svg width={285} height={112} style={{ position: 'absolute', left: 124, top: 30 }}>
-          <path d="M14,56 C62,36 90,36 128,52" stroke="#b67b75" strokeWidth={2.1} fill="none" />
-          <circle cx={74} cy={50} r={11} fill="#fff" stroke="#b03030" strokeWidth={1.8} />
-          <text x={74} y={54} textAnchor="middle" fontFamily={FONT} fontSize={9} fontWeight={700} fill="#b03030">1</text>
-        </svg>
-        <div style={{ position: 'absolute', left: 235, top: 34, width: 118, height: 80,
-          border: '2px solid #58baf7', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.16)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-          <div style={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)', width: 10, height: 10, borderRadius: '50%', background: '#c91f55' }} />
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>CARD B</div>
-          <div style={{ fontFamily: FONT, fontSize: 10, color: '#333', lineHeight: 1.35, textAlign: 'center', marginTop: 2 }}>Evidence that supports it...</div>
-        </div>
-      </div>
-    )
-    return (
-      <div style={{ padding: '16px 16px 0' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 20 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, border: '1px solid #59b0e0', background: '#d8efff', color: '#167ab2', padding: '8px 14px', fontFamily: FONT, fontSize: 11, fontWeight: 700, width: 'fit-content', borderRadius: 4 }}>
-            <span>✓</span> Correct connection
-          </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, border: '1px solid #d18b84', background: '#f8dddb', color: '#b0443e', padding: '8px 14px', fontFamily: FONT, fontSize: 11, fontWeight: 700, width: 'fit-content', borderRadius: 4 }}>
-            <span>✕</span> Wrong — cleared for retry
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={styles.tutorialOverlay} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-      zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, fontFamily: FONT,
-    }}>
-      <div className={styles.tutorialModal} style={{
-        width: '100%', maxWidth: 840, background: C.canvas,
-        border: `1px solid ${C.btnGoldBdr}`,
-        boxShadow: '0 18px 44px rgba(0,0,0,0.55)', padding: '10px 14px 14px',
-        borderRadius: 6,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: C.textDark }}>
-            CRITICA — FIELD BRIEFING
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.18em', color: C.textMuted }}>
-            {tutorialCode}
-          </div>
-        </div>
-
-        <div style={{ background: C.board, border: `1px solid ${C.btnGoldBdr}`, borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: C.board, borderLeft: `1px solid ${C.btnGoldBdr}`, borderTop: `1px solid ${C.btnGoldBdr}` }} />
-
-          {/* Agent bubble */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 28 }}>
-            <div style={{ width: 120, textAlign: 'center', flexShrink: 0 }}>
-              <div style={{ width: 56, height: 56, border: `2px solid ${C.btnGoldBdr}`, background: C.cardPaper, margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
-                <div style={{ width: 34, height: 34, background: C.btnDark, borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: C.canvas }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: C.canvas }} />
-                </div>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: '0.08em', color: C.textDark }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
-            </div>
-            <div style={{ position: 'relative', flex: 1, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, boxShadow: '0 3px 12px rgba(0,0,0,0.18)', padding: '14px 18px', minHeight: 96, borderRadius: 4 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: C.cardPaper, borderLeft: `1px solid ${C.btnGoldBdr}`, borderBottom: `1px solid ${C.btnGoldBdr}`, transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.5, color: C.textDark, whiteSpace: 'pre-line', fontFamily: FONT }}>
-                {stepCfg.bubble}
-              </div>
-            </div>
-          </div>
-
-          {/* Step nav */}
-          <div style={{ border: `1px solid ${C.btnGoldBdr}`, background: C.canvas, padding: 10, marginBottom: 24 }}>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-              {TUTORIAL_STEPS.map((cfg, index) => navItem(cfg.stepLabel, index))}
-            </div>
-          </div>
-
-          {/* Board preview + notes */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, padding: 14, borderRadius: 4 }}>
-            <div style={{ flex: 1, minHeight: 180, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, padding: 14, position: 'relative', borderRadius: 4 }}>
-              {renderBoard()}
-            </div>
-            <div style={{ width: 130, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, padding: '12px 10px', borderRadius: 4, flexShrink: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 8 }}>FIELD TIPS</div>
-              <div style={{ fontSize: 10, lineHeight: 1.45, color: C.textDark }}>
-                Draw thread from top claim to supporting reasons to conclusion.
-              </div>
-            </div>
-          </div>
-
-          {/* Nav buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 }}>
-            <button
-              onClick={isFirst ? onClose : onBack}
-              className={styles.tutorialSecondaryBtn}
-              style={{ ...btnSm, minWidth: 140, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11 }}
-            >
-              {isFirst ? 'SKIP BRIEFING' : '← BACK'}
-            </button>
-            <button
-              onClick={isLast ? onStart : onNext}
-              className={styles.tutorialPrimaryBtn}
-              style={{ ...btnPrimary, minWidth: 160, fontSize: 11 }}
-            >
-              {isLast ? 'BEGIN MISSION →' : 'NEXT STEP →'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ───────────────────────────────────────────
 export default function LogicThreadPage() {
   const router = useRouter()
@@ -435,13 +286,10 @@ export default function LogicThreadPage() {
   const [submitState,  setSubmitState]  = useState<SubmitState>('idle')
   const [wrongCount,   setWrongCount]   = useState(0)
   const [showHint,     setShowHint]     = useState(false)
-  const [hintText,     setHintText]     = useState('')
-  const [socraticText, setSocraticText] = useState('')
   const [socraticLoading, setSocraticLoading] = useState(false)
   const [masteryData,  setMasteryData]  = useState<any>(null)
   const [errorMsg,     setErrorMsg]     = useState('')
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
 
   const [sessionQueue,     setSessionQueue]     = useState<string[]>([])
   const [questionIndex,    setQuestionIndex]    = useState(0)
@@ -454,6 +302,22 @@ export default function LogicThreadPage() {
   // session accuracy evaluation state
   const [sessionResults,   setSessionResults]   = useState<CaseResult[]>([])
   const sessionStartTimeRef = useRef<number>(Date.now())
+
+  // Inspector Crit's post-case debrief, the lesson manual and viewport fitting
+  const [debrief,    setDebrief]    = useState<DocketDebrief | null>(null)
+  const [missedCases, setMissedCases] = useState<MissedCase[]>([])
+  const [remark,     setRemark]     = useState<Remark | null>(null)
+  const [lesson,     setLesson]     = useState<NodeLesson | null>(null)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [fitScale,   setFitScale]   = useState(1)
+  const fitRef = useRef<HTMLDivElement>(null)
+
+  // Freeform card dragging: dragged cards keep their own board position (keyed by block id)
+  const [cardPos,    setCardPos]    = useState<Record<string, { x: number; y: number }>>({})
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null)
+  const suppressClickRef = useRef(false)   // a drag must not also count as a click (select/thread)
+  const closeManual = useCallback(() => setManualOpen(false), [])
 
   // ── Load question ───────────────────────────────────────────
   const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
@@ -468,16 +332,17 @@ export default function LogicThreadPage() {
           paragraph_blocks: ex.paragraph_blocks || prev.paragraph_blocks,
         }) : ex)
         setBlocks(shuffleBlocks(ex.paragraph_blocks))
-        setChain([]); setSubmitState('idle'); setWrongCount(0)
-        setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
+        setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+        setShowHint(false); setPhase('task')
         return
       }
       const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/logic-thread/${targetNodeId}/`)
       setNode(d)
+      setLesson({ nodeId: d.node_id, title: d.title, focus: d.focus, text: d.micro_lesson_text })
       setBlocks(shuffleBlocks(d.paragraph_blocks))
-      setChain([]); setSubmitState('idle'); setWrongCount(0)
-      setShowHint(false); setHintText(''); setSocraticText(''); setPhase('task')
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+      setShowHint(false); setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.'); setPhase('error')
     }
@@ -488,18 +353,29 @@ export default function LogicThreadPage() {
     setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
+    if (forceFresh) {
+      // Retry / Fresh Case: wipe the whole docket, not just the failed case
+      setSessionResults([]); setMissedCases([])
+      writeSkipped(start, [])
+      sessionStartTimeRef.current = Date.now()
+    }
 
     try {
       const sessionData = await fetchNodeSession('logic_thread', start, forceFresh)
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
       
-      const resumeIdx = Math.min(
+      // A fresh start (Retry / Fresh Case) always opens a brand-new full docket at case 1
+      const resumeIdx = forceFresh ? 0 : Math.min(
         sessionData.current_index ?? 0,
         Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
       )
       const activeExercise = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
 
+      setLesson({
+        nodeId: sessionData.node_id, title: sessionData.title,
+        focus: sessionData.focus, text: sessionData.micro_lesson_text,
+      })
       setNode({
         node_id: sessionData.node_id,
         title: activeExercise?.topic_title || sessionData.title,
@@ -516,11 +392,13 @@ export default function LogicThreadPage() {
       const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
       setSessionQueue(queue)
       setQuestionIndex(resumeIdx)
-      setChain([]); setSubmitState('idle'); setWrongCount(0)
-      setShowHint(false); setHintText(''); setSocraticText('')
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+      setShowHint(false)
       
       if (forceFresh || resumeIdx === 0) {
         setSessionResults([])
+        setMissedCases([])
+        writeSkipped(start, [])
         sessionStartTimeRef.current = Date.now()
       }
 
@@ -532,7 +410,8 @@ export default function LogicThreadPage() {
       setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
-      const saved = loadSession('logic_thread', start)
+      if (forceFresh) clearSession('logic_thread', start)
+      const saved = forceFresh ? null : loadSession('logic_thread', start)
       if (saved && saved.sessionQueue.length === 5) {
         setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
         if (saved.next_node) setSavedNextNode(saved.next_node)
@@ -541,6 +420,7 @@ export default function LogicThreadPage() {
         apiFetch(`/nodes/logic-thread/${activeId}/`)
           .then((d: NodeData) => {
             setNode(d); setBlocks(shuffleBlocks(d.paragraph_blocks)); setPhase('task')
+            setLesson({ nodeId: d.node_id, title: d.title, focus: d.focus, text: d.micro_lesson_text })
           })
           .catch((e: any) => {
             if (e?.status === 401)              { router.push('/auth');      return }
@@ -551,7 +431,8 @@ export default function LogicThreadPage() {
         apiFetch(`/nodes/logic-thread/${start}/`)
           .then((d: NodeData) => {
             setNode(d); setBlocks(shuffleBlocks(d.paragraph_blocks))
-            setPhase('micro_lesson')
+            setLesson({ nodeId: d.node_id, title: d.title, focus: d.focus, text: d.micro_lesson_text })
+            setPhase(forceFresh ? 'task' : 'micro_lesson')
             apiFetch('/progression/dashboard/')
               .then((prog: any) => {
                 const unlocked: string[] = prog.unlocked_nodes ?? []
@@ -576,214 +457,275 @@ export default function LogicThreadPage() {
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'log_node_01') return
-    const seen = localStorage.getItem(TEXT_STRUCTURE_TUTORIAL_KEY)
-    if (seen === '1') return
-    localStorage.setItem(TEXT_STRUCTURE_TUTORIAL_KEY, '1')
-    setTutorialStep(0); setTutorialOpen(true)
+    // First visit to Node 01: Inspector Crit walks the cadet through the board
+    if (hasSeenLogicThreadTutorial()) return
+    setTutorialOpen(true)
   }, [phase, nodeId])
 
-  const fetchHint = useCallback(async (tier: number) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
-          method: 'POST',
-          body: JSON.stringify({ tier }),
-        })
-        setHintText(res.hint || res.explanation || 'Try re-reading the passage and look for signal words.')
-      } catch {
-        setHintText('Try re-reading the passage and look for signal words.')
-      }
-      setShowHint(true)
-      return
-    }
+  // Inspector Crit speaks from the lower-left corner: remarks fade on their own, hints stay until dismissed
+  const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
 
-    const activeNodeId = node?.node_id ?? nodeId
+  const fetchHint = useCallback(async (tier: number) => {
+    setShowHint(true)   // counts as a hint used on this case
+    say(THINKING_TEXT, 'thinking')   // Inspector Crit ponders while the hint loads
+    let text = HINT_FALLBACK
     try {
-      const res = await apiFetch(`/nodes/logic-thread/${activeNodeId}/feedback/`, {
-        method: 'POST',
-        body: JSON.stringify({ source_id: '', target_id: '', inactivity_seconds: 61 }),
-      })
-      setHintText(res.hint || res.explanation || 'Try re-reading the passage and look for signal words.')
-    } catch {
-      setHintText('Try re-reading the passage and look for signal words.')
-    }
-    setShowHint(true)
-  }, [nodeId, node, sessionId, sessionExercises, questionIndex])
+      const res = sessionId && sessionExercises.length > questionIndex
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+            method: 'POST',
+            body: JSON.stringify({ tier }),
+          })
+        : await apiFetch(`/nodes/logic-thread/${node?.node_id ?? nodeId}/feedback/`, {
+            method: 'POST',
+            body: JSON.stringify({ source_id: '', target_id: '', inactivity_seconds: 61 }),
+          })
+      text = res.hint || res.explanation || HINT_FALLBACK
+    } catch { /* keep the fallback hint */ }
+    say(text, 'hint')
+  }, [nodeId, node, sessionId, sessionExercises, questionIndex, say])
 
   const handleAskSocraticAdvice = async () => {
     if (!sessionId) return
     setSocraticLoading(true)
+    say(THINKING_TEXT, 'thinking')
     try {
       const res = await fetchLiveSocraticHint(sessionId, questionIndex, { sequence: chain }, wrongCount + 1)
-      setSocraticText(res.socratic_hint || '')
+      say(res.socratic_hint || SOCRATIC_FALLBACK, 'hint')
     } catch {
-      setSocraticText('Review how the primary claim transitions to supporting evidence.')
+      say(SOCRATIC_FALLBACK, 'hint')
     } finally {
       setSocraticLoading(false)
     }
   }
 
+  // ── Card dragging (pointer events: mouse, pen and touch) ────
+  const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>, blockId: string, pos: { x: number; y: number }) => {
+    if (e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { id: blockId, startX: e.clientX, startY: e.clientY, originX: pos.x, originY: pos.y, moved: false }
+  }
+
+  const handleCardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    // Pointer deltas are in screen pixels; the dossier is scaled to fit, so convert to board pixels
+    const dx = (e.clientX - drag.startX) / fitScale
+    const dy = (e.clientY - drag.startY) / fitScale
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+      drag.moved = true
+      setDraggingId(drag.id)
+    }
+    // Keep the whole card inside the evidence board (inside its 1px border)
+    const x = Math.min(Math.max(0, drag.originX + dx), CW - 2 - CARD_W)
+    const y = Math.min(Math.max(0, drag.originY + dy), CH - 2 - CARD_H)
+    setCardPos(prev => ({ ...prev, [drag.id]: { x, y } }))
+  }
+
+  const handleCardPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    if (drag.moved) suppressClickRef.current = true
+    dragRef.current = null
+    setDraggingId(null)
+  }
+
   const handleCardClick = (blockId: string) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return }
     if (submitState !== 'idle') return
-    setChain(prev => {
-      const idx = prev.indexOf(blockId)
-      if (idx !== -1) return prev.slice(0, idx)
-      return [...prev, blockId]
+    const idx = chain.indexOf(blockId)
+    const nextChain = idx !== -1 ? chain.slice(0, idx) : [...chain, blockId]
+    setChain(nextChain)
+    if (idx === -1 && nextChain.length === blocks.length) say(pick(CHAIN_DONE_REMARKS))
+  }
+
+  // Attempts left on the active case (wrongCount resets to 0 whenever a case loads)
+  const attemptsLeft = Math.max(0, MAX_ATTEMPTS - wrongCount)
+
+  const totalCases = sessionId && sessionExercises.length > 0
+    ? sessionExercises.length
+    : (sessionQueue.length || 1)
+
+  /** Record how this case was decided and return the updated results list. */
+  const recordCase = (correct: boolean): CaseResult[] => {
+    const res: CaseResult = {
+      caseNumber: questionIndex + 1,
+      correct,
+      firstTry: correct && wrongCount === 0,
+      hintsUsed: showHint ? 1 : 0,
+      attempts: correct ? wrongCount + 1 : MAX_ATTEMPTS,
+    }
+    const updated = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), res]
+    setSessionResults(updated)
+    return updated
+  }
+
+  /** Save the docket position so the session resumes at `nextIdx`. */
+  const persistProgress = (nextIdx: number) => {
+    if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+    if (sessionStartId) saveSession('logic_thread', sessionStartId, {
+      sessionQueue, questionIndex: nextIdx,
+      next_node: savedNextNode || undefined,
+      streak: savedStreak !== null ? savedStreak : undefined,
     })
   }
 
+  /** Cases missed this docket (this run's misses plus misses saved before a reload). */
+  const unsolvedCases = (updated: CaseResult[]) =>
+    new Set([...updated.filter(r => !r.correct).map(r => r.caseNumber), ...readSkipped(sessionStartId)]).size
+
+  /** Last case submitted: commit mastery only when no case was missed, then build the report. */
+  const closeDocket = async (updated: CaseResult[], legacyRes?: MasteryResponse) => {
+    const solved = updated.filter(r => r.correct).length
+    const cleared = unsolvedCases(updated) === 0
+    let finalRes: MasteryResponse = legacyRes ?? {}
+    if (cleared) {
+      playVictorySound()
+      try {
+        if (sessionId && sessionExercises.length > 0) {
+          finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+        } else if (sessionStartId) {
+          finalRes = await apiFetch(`/nodes/logic-thread/${sessionStartId}/mastery/`,
+            { method: 'POST', body: JSON.stringify({ commit_only: true }) })
+        }
+      } catch { /* the report still shows; the docket can be replayed */ }
+    }
+    if (sessionStartId) clearSession('logic_thread', sessionStartId)
+    writeSkipped(sessionStartId, [])
+    setMasteryData({
+      next_node: cleared ? (savedNextNode || finalRes.next_node) : null,
+      streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
+      accuracy: Math.round((solved / Math.max(1, totalCases)) * 100),
+      totalCases,
+      correctCases: solved,
+      hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
+      timeTakenSeconds: Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000)),
+      caseResults: updated,
+    })
+    return {
+      xp: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+      nextNode: cleared ? (savedNextNode || finalRes.next_node || null) : null,
+    }
+  }
+
+  // Up to MAX_ATTEMPTS submissions per case: a wrong answer with attempts left can be re-arranged
+  // and resubmitted; a correct answer or the last failed attempt decides the case and moves on.
+  // Inspector Crit's debrief only opens after the last case of the docket.
   const handleSubmit = async () => {
-    if (!node || submitState !== 'idle') return
-    if (chain.length !== blocks.length)  return
+    if (!node || submitState !== 'idle' || chain.length !== blocks.length) return
     setSubmitState('submitting')
 
-    // 1. AI Dynamic Session Submission
-    if (sessionId && sessionExercises.length > questionIndex) {
-      const currentEx = sessionExercises[questionIndex]
-      const isCorrect = JSON.stringify(chain) === JSON.stringify(currentEx.correct_sequence)
+    let isCorrect = false
+    let answerKey: string[] | null = null
+    let legacyRes: MasteryResponse | undefined
 
-      // Send evaluation telemetry to backend
+    if (sessionId && sessionExercises.length > questionIndex) {
+      // 1. AI session: the answer key ships with the exercise
+      const currentEx = sessionExercises[questionIndex]
+      answerKey = currentEx.correct_sequence ?? null
+      isCorrect = JSON.stringify(chain) === JSON.stringify(currentEx.correct_sequence)
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
         body: JSON.stringify({ sequence: chain, node_id: nodeId, module: 'logic_thread' }),
       }).catch(() => {})
-
-      if (isCorrect) {
-        playRightAnswerSound()
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongCount === 0,
-          hintsUsed: showHint ? 1 : 0,
-          attempts: wrongCount + 1,
-        }
-        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
-        setSessionResults(updatedCases)
-
-        setSubmitState('correct')
-        const nextIdx = questionIndex + 1
-        if (sessionId) {
-          updateSessionProgress(sessionId, nextIdx).catch(() => {})
-        }
-        if (sessionStartId) {
-          saveSession('logic_thread', sessionStartId, {
-            sessionQueue,
-            questionIndex: nextIdx,
-            next_node: savedNextNode || undefined,
-            streak: savedStreak !== null ? savedStreak : undefined,
-          })
-        }
-        setTimeout(async () => {
-          try {
-            if (nextIdx < sessionExercises.length) {
-              setQuestionIndex(nextIdx)
-              loadQuestion(nextIdx, sessionQueue)
-            } else {
-              // Mastered all 5 questions
-              playVictorySound()
-              const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
-              if (sessionStartId) clearSession('logic_thread', sessionStartId)
-              const totalCases = sessionExercises.length || sessionQueue.length || 5
-              const correctCases = updatedCases.filter(r => r.correct).length
-              const firstTryCases = updatedCases.filter(r => r.firstTry).length
-              const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-              const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-              const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
-
-              setMasteryData({
-                next_node: finalRes.next_node,
-                streak: finalRes.streak ?? 1,
-                accuracy,
-                totalCases,
-                correctCases,
-                hintsUsed: totalHints,
-                timeTakenSeconds,
-                caseResults: updatedCases,
-              })
-              setPhase('mastery')
-            }
-          } catch { setSubmitState('idle') }
-        }, 1600)
-        return
-      } else {
-        playWrongSound()
-        const next = wrongCount + 1
-        setWrongCount(next); setSubmitState('incorrect')
-        setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1400)
-        if (next >= 2) fetchHint(Math.min(next, 3))
-        return
-      }
+    } else {
+      // 2. Legacy fallback: the backend checks the sequence
+      try {
+        legacyRes = await apiFetch(`/nodes/logic-thread/${node.node_id}/mastery/`, {
+          method: 'POST',
+          body: JSON.stringify({ sequence: chain, save_progression: false }),
+        })
+        isCorrect = legacyRes?.status === 'mastered'
+      } catch { isCorrect = false }
     }
 
-    // 2. Legacy Fallback Submission
-    try {
-      const res = await apiFetch(`/nodes/logic-thread/${node.node_id}/mastery/`, {
-        method: 'POST',
-        body: JSON.stringify({ sequence: chain, save_progression: false }),
-      })
-      if (res.status === 'mastered') {
-        playRightAnswerSound()
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongCount === 0,
-          hintsUsed: showHint ? 1 : 0,
-          attempts: wrongCount + 1,
-        }
-        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
-        setSessionResults(updatedCases)
+    const caseNumber = questionIndex + 1
+    const isFinal = caseNumber >= totalCases
+    const attemptsLeftAfter = isCorrect ? attemptsLeft : attemptsLeft - 1
 
-        setSubmitState('correct')
-        const nextIdx = questionIndex + 1
-        setTimeout(async () => {
-          try {
-            if (nextIdx < sessionQueue.length) {
-              if (sessionStartId) saveSession('logic_thread', sessionStartId, {
-                sessionQueue, questionIndex: nextIdx,
-                next_node: savedNextNode || undefined,
-                streak: savedStreak !== null ? savedStreak : undefined,
-              })
-              setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
-            } else {
-              playVictorySound()
-              let finalRes = res
-              if (sessionStartId) {
-                finalRes = await apiFetch(`/nodes/logic-thread/${sessionStartId}/mastery/`,
-                  { method: 'POST', body: JSON.stringify({ commit_only: true }) })
-              }
-              if (sessionStartId) clearSession('logic_thread', sessionStartId)
-              const totalCases = sessionQueue.length || 5
-              const correctCases = updatedCases.filter(r => r.correct).length
-              const firstTryCases = updatedCases.filter(r => r.firstTry).length
-              const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-              const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-              const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
-
-              setMasteryData({
-                next_node: savedNextNode || finalRes.next_node,
-                streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
-                accuracy,
-                totalCases,
-                correctCases,
-                hintsUsed: totalHints,
-                timeTakenSeconds,
-                caseResults: updatedCases,
-              })
-              setPhase('mastery')
-            }
-          } catch { setSubmitState('idle') }
-        }, 2000)
-      } else {
-        playWrongSound()
-      }
-    } catch {
+    // Wrong but attempts remain: keep the chain so the cadet can re-arrange it and try again
+    if (!isCorrect && attemptsLeftAfter > 0) {
       playWrongSound()
-      const next = wrongCount + 1
-      setWrongCount(next); setSubmitState('incorrect')
-      setTimeout(() => { setSubmitState('idle'); setChain([]) }, 1500)
-      if (next >= 3) fetchHint(Math.min(next - 2, 3))
+      setWrongCount(c => c + 1)
+      setSubmitState('incorrect')
+      say(pick(RETRY_REMARKS))
+      setTimeout(() => setSubmitState('idle'), 1400)
+      return
     }
+
+    // The case is decided: solved, or out of attempts
+    const updated = recordCase(isCorrect)
+    let notes = missedCases
+    if (!isCorrect) {
+      // Third strike: the case is filed as unsolved and Crit walks through the correct thread
+      setWrongCount(c => c + 1)
+      writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
+      const v = analyzeSequence(chain, blocks, answerKey)
+      notes = [...missedCases.filter(m => m.caseNumber !== caseNumber),
+        { caseNumber, title: node.title, notes: v.notes, correctSlots: v.correctSlots, total: v.total }]
+      setMissedCases(notes)
+      say(explainCorrectThread(answerKey, blocks), 'explain')
+      playWrongSound()
+    } else {
+      playRightAnswerSound()
+      say(pick(CORRECT_REMARKS))
+    }
+    setSubmitState(isCorrect ? 'correct' : 'incorrect')
+
+    setTimeout(async () => {
+      if (!isFinal) {
+        const nextIdx = questionIndex + 1
+        persistProgress(nextIdx)
+        setQuestionIndex(nextIdx)
+        loadQuestion(nextIdx, sessionQueue)
+        // Leave Crit's explanation of a failed case up while the next case loads
+        if (isCorrect) say(`Case ${nextIdx + 1} of ${totalCases} — fresh evidence on the board.`)
+        return
+      }
+      const unsolved = unsolvedCases(updated)   // read before closeDocket clears the saved misses
+      const { xp, nextNode } = await closeDocket(updated, legacyRes)
+      setDebrief({
+        verdict: unsolved === 0 ? 'perfect' : 'partial',
+        solved: totalCases - unsolved,
+        total: totalCases,
+        xpAwarded: xp,
+        nextNode,
+        missed: notes,
+      })
+    }, isCorrect ? 1400 : 2600)
   }
+
+  // ── Debrief actions ─────────────────────────────────────────
+  const handleRetryDocket = useCallback(() => {
+    setDebrief(null); setMissedCases([]); setRemark(null)
+    startSession(true)
+  }, [startSession])
+
+  const handleNextDocket = () => {
+    const next = debrief?.nextNode
+    setDebrief(null)
+    if (next) router.push(`/nodes/logic-thread/${next}`)
+    else setPhase('mastery')
+  }
+
+  const handleViewReport = () => { setDebrief(null); setPhase('mastery') }
+
+  // Scale the dossier down so the whole board fits the 100vh viewport
+  useEffect(() => {
+    if (phase !== 'task') return
+    const el = fitRef.current
+    if (!el) return
+    const fit = () => {
+      const maxW = Math.min(window.innerWidth * 0.92, window.innerWidth - 2 * SIDE_GUTTER)   // w-[92vw]
+      const s = Math.min(1, maxW / el.offsetWidth, (window.innerHeight - 28) / el.offsetHeight)
+      setFitScale(s > 0 ? s : 1)
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    window.addEventListener('resize', fit)
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit) }
+  }, [phase])
 
   // ── Phase guards ────────────────────────────────────────────
   if (phase === 'loading')      return <BriefingGenerationScreen title={node?.title} onCancel={() => router.push('/dashboard')} />
@@ -811,21 +753,21 @@ export default function LogicThreadPage() {
   )
 
   // ── TASK PHASE ──────────────────────────────────────────────
-  const allChained    = chain.length === blocks.length
-  const lineColor     = submitState === 'correct' ? '#22aa55' : '#cc3333'
-  const canvasOutline = submitState === 'correct' ? '3px solid #55aaff' : '3px solid transparent'
+  const allChained = chain.length === blocks.length
+  const threadColor = submitState === 'correct' ? '#2f6418' : '#a83232'
+  const level = node!.difficulty ?? nodeDifficulty(nodeId)
 
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>
+    <div className={`${desk.desk} ${styles.screen}`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
 
-      {/* ── Fixed folder tabs ── */}
-      <div style={{ position: 'fixed', left: 0, top: '20%', transform: 'translateY(-20%)',
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, zIndex: 100 }}>
+      {/* ── Side folder tabs ── */}
+      <div className={styles.sideTabs}>
         {[
-          { label: 'Hint', action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
-          { label: 'Fresh Case ↻', action: () => startSession(true) },
-          { label: 'End Session', action: () => {
+          { label: 'Hint', icon: Lightbulb, action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
+          { label: 'Fresh Case', icon: RotateCcw, action: handleRetryDocket },
+          { label: 'End Session', icon: LogOut, action: () => {
             if (sessionId) {
               updateSessionProgress(sessionId, questionIndex).catch(() => {})
             }
@@ -838,112 +780,93 @@ export default function LogicThreadPage() {
             }
             router.push('/dashboard')
           }},
-        ].map(({ label, action }) => (
-          <button key={label} onClick={action} className={styles.folderTab} style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: FONT, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
-          >
-            {label}
+        ].map(({ label, icon: Icon, action }) => (
+          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
+            <span className={styles.sideTabLabel}>{label}</span>
+            <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', borderRadius: 6 }}>
+      {/* ── Dossier (scaled to fit the viewport) ── */}
+      <div ref={fitRef} className={`${styles.boardEnter} ${styles.dossier}`} style={{ transform: `scale(${fitScale})` }}>
 
-        {/* ── Board wrapper ── */}
-        <div className={styles.boardEnter} style={{
-          background: C.board, border: canvasOutline,
-          borderRadius: 6, overflow: 'hidden',
-          transition: 'border-color 0.4s',
-          display: 'flex', flexDirection: 'column',
-        }}>
-
-          {/* ── Header row 1: objective ── */}
-          <div style={{ padding: '12px 24px 10px', textAlign: 'center', borderBottom: `1px solid rgba(0,0,0,0.12)` }}>
-            <div style={{
-              display: 'inline-block', border: `1.5px solid ${C.accentRed}`,
-              padding: '7px 28px', fontSize: 13, fontWeight: 700,
-              letterSpacing: '0.12em', background: 'rgba(255,255,255,0.3)', fontFamily: FONT,
-            }}>
-              <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-              <span style={{ color: C.accentRed }}>CONNECT ALL {blocks.length || 3} PARAGRAPHS IN LOGICAL SEQUENCE</span>
-            </div>
+        {/* Folder tabs */}
+        <div className={styles.dossierTabs}>
+          <div className={`${styles.dossierTab} ${styles.dossierTabActive}`}>
+            <Paperclip size={22} strokeWidth={1.75} className={styles.tabClip} aria-hidden />
+            <span className={styles.tabIndex}>[1] CASE 01:</span>
+            <span className={styles.tabLabel}><Network size={13} aria-hidden /> {MODULE_TITLES.logic_thread}</span>
           </div>
-
-          {/* ── Header row 2: meta ── */}
-          <div style={{ padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.12)', borderRadius: 20, padding: '5px 14px' }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: FONT }}>
-                LVL {node!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[node!.difficulty ?? nodeDifficulty(nodeId)]} ({blocks.length} CARDS)
-              </span>
+          {sessionQueue.length > 0 && (
+            <div className={styles.dossierTab}>
+              <span className={styles.tabIndex}>DOCKET</span>
+              <span className={styles.tabLabel}>CASE {questionIndex + 1} / {sessionQueue.length}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {sessionQueue.length > 0 && (
-                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, background: 'rgba(0,0,0,0.1)', borderRadius: 20, padding: '5px 14px' }}>
-                  CASE {questionIndex + 1} / {sessionQueue.length}
-                </span>
-              )}
-              <button
-                onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
-                className={styles.tutorialBtn}
-                style={{ padding: '7px 18px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 8, color: C.textDark, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}
-              >
-                TUTORIAL
+          )}
+          <div className={styles.dossierTab}>
+            <span className={styles.tabIndex}>CLEARANCE</span>
+            <span className={styles.tabLabel}>
+              <span className={styles.levelDot} style={{ background: DIFFICULTY_COLORS[level] }} />
+              LVL {level} — {DIFFICULTY_LABELS[level]}
+            </span>
+          </div>
+        </div>
+
+        <div className={`${desk.folder} ${styles.folder}`}>
+          <Paperclip size={34} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
+
+          {/* Header bar */}
+          <header className={styles.header}>
+            <div className={styles.headerLeft}>
+              <span className={styles.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} EVIDENCE BOARD
+              </span>
+              <h1 className={styles.title}>{node!.title}</h1>
+            </div>
+            <div className={styles.headerRight}>
+              <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`}
+                onClick={() => setTutorialOpen(true)}>
+                <HelpCircle size={14} aria-hidden /> Tutorial
+              </button>
+              <button type="button" className={styles.caseBtn} onClick={() => setManualOpen(true)}>
+                <BookOpen size={14} aria-hidden /> Lesson Manual
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* Progress bar */}
+          {/* Objective stamp + progress */}
+          <div className={styles.objectiveRow}>
+            <span className={styles.objective}>
+              OBJECTIVE: CONNECT ALL {blocks.length || 3} PARAGRAPHS IN LOGICAL SEQUENCE
+            </span>
+            <span className={`${desk.handwritten} ${styles.objectiveNote}`}>follow the signal words →</span>
+          </div>
           {sessionQueue.length > 0 && (
-            <div style={{ padding: '0 24px 10px' }}>
-              <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${((questionIndex + 1) / sessionQueue.length) * 100}%`,
-                  height: '100%',
-                  background: DIFFICULTY_COLORS[node!.difficulty ?? nodeDifficulty(nodeId)] ?? '#4ddd94',
-                  transition: 'width 0.4s ease',
-                }} />
-              </div>
+            <div className={styles.progress} aria-hidden>
+              <div className={styles.progressFill} style={{ width: `${((questionIndex + 1) / sessionQueue.length) * 100}%` }} />
             </div>
           )}
 
-          {/* ── Bulletin board canvas ── */}
-          <div style={{
-            width: CW, height: CH, background: C.canvas,
-            position: 'relative', overflow: 'hidden',
-          }}>
+          {/* ── Evidence board ── */}
+          <div className={styles.board} style={{ width: CW, height: CH }}>
             {(() => {
-              const positions = getScatterPositions(blocks.length)
+              // Dragged cards use their own position; the rest keep the scattered layout
+              const scatter = getScatterPositions(blocks.length)
+              const posOf = (id: string, i: number) => cardPos[id] ?? scatter[i] ?? { x: 50 + i * 140, y: 100 }
+              const positions = blocks.map((b, i) => posOf(b.block_id, i))
               return (
                 <>
                   {blocks.map((block, index) => {
-                    const pos       = positions[index] ?? { x: 50 + index * 140, y: 100 }
-                    const inChain   = chain.includes(block.block_id)
-                    const chainPos  = chain.indexOf(block.block_id)
-                    const isLatest  = chain.length > 0 && chain[chain.length - 1] === block.block_id
+                    const pos      = positions[index] ?? { x: 50 + index * 140, y: 100 }
+                    const inChain  = chain.includes(block.block_id)
+                    const isLatest = chain.length > 0 && chain[chain.length - 1] === block.block_id
 
-                    const border =
-                      submitState === 'correct'   && inChain ? '2px solid #22aa55' :
-                      submitState === 'incorrect' && inChain ? '2px solid #cc3333' :
-                      isLatest                               ? `2px solid ${C.btnGoldBdr}` :
-                      inChain                                ? `2px solid ${C.textMid}` :
-                      `1px solid ${C.cardBdrIdle}`
-
-                    const bg =
-                      submitState === 'correct'   && inChain ? '#f0fff4' :
-                      submitState === 'incorrect' && inChain ? '#fff0f0' :
-                      isLatest                               ? '#FFF8E7' :
-                      C.cardPaper
+                    const state =
+                      submitState === 'correct'   && inChain ? styles.indexCorrect :
+                      submitState === 'incorrect' && inChain ? styles.indexIncorrect :
+                      isLatest                               ? styles.indexLatest :
+                      inChain                                ? styles.indexChained : ''
 
                     const cardAnim =
                       submitState === 'correct'   && inChain ? styles.cardCorrect :
@@ -955,47 +878,28 @@ export default function LogicThreadPage() {
                     return (
                       <div
                         key={block.block_id}
+                        data-tutorial="exhibits"
+                        role="button"
+                        tabIndex={submitState === 'idle' ? 0 : -1}
+                        aria-pressed={inChain}
                         onClick={() => handleCardClick(block.block_id)}
-                        className={`${cardAnim} ${styles.cardEnter}`}
+                        onPointerDown={e => handleCardPointerDown(e, block.block_id, pos)}
+                        onPointerMove={handleCardPointerMove}
+                        onPointerUp={handleCardPointerUp}
+                        onPointerCancel={handleCardPointerUp}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCardClick(block.block_id) } }}
+                        className={`${desk.indexCard} ${styles.indexCard} ${cardAnim} ${styles.cardEnter} ${state} ${draggingId === block.block_id ? styles.dragging : ''}`}
                         style={{
-                          position: 'absolute', left: pos.x, top: pos.y,
-                          width: CARD_W, height: CARD_H,
-                          background: bg, border, borderRadius: 10,
-                          boxShadow: isLatest ? '0 4px 18px rgba(196,154,90,0.45)' : '0 3px 12px rgba(0,0,0,0.22)',
-                          cursor: submitState === 'idle' ? 'pointer' : 'default',
-                          padding: '16px 14px 10px',
-                          userSelect: 'none', zIndex: 2,
-                          display: 'flex', flexDirection: 'column',
-                          overflow: 'hidden',
+                          left: pos.x, top: pos.y, width: CARD_W, height: CARD_H,
+                          paddingTop: typo.paddingTop,
+                          ['--rule' as string]: `${typo.rule}px`,
+                          transform: `rotate(${CARD_TILTS[index % CARD_TILTS.length]}deg)`,
                         }}
                       >
-                        {/* pin hole decoration */}
-                        <div style={{
-                          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-                          width: 7, height: 7, borderRadius: '50%',
-                          background: isLatest ? C.accentRed : C.cardBdrIdle,
-                          boxShadow: isLatest ? `0 0 0 2px rgba(128,0,32,0.25)` : 'none',
-                          transition: 'background 0.2s',
-                          zIndex: 3,
-                        }} />
-                        <div style={{
-                          flex: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          overflowY: 'auto',
-                          wordBreak: 'break-word',
-                          scrollbarWidth: 'thin',
-                          paddingTop: 4,
-                        }}>
-                          <p style={{
-                            margin: 0,
-                            fontSize: typo.fontSize,
-                            lineHeight: typo.lineHeight,
-                            color: C.textDark,
-                            fontFamily: FONT,
-                            fontWeight: inChain ? 600 : 400,
-                            width: '100%',
-                          }}>
+                        <span className={styles.pushPin} aria-hidden />
+                        <span className={styles.exhibitNo}>EXHIBIT {String.fromCharCode(65 + index)}</span>
+                        <div className={styles.cardText}>
+                          <p className={cardFont.className} style={{ fontSize: typo.fontSize, lineHeight: `${typo.rule}px`, fontWeight: inChain ? 600 : 500 }}>
                             {block.text}
                           </p>
                         </div>
@@ -1003,8 +907,13 @@ export default function LogicThreadPage() {
                     )
                   })}
 
-                  {/* SVG — threads and pins */}
-                  <svg style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }} width={CW} height={CH}>
+                  {/* SVG — crimson threads and numbered pins */}
+                  <svg className={styles.threads} width={CW} height={CH}>
+                    <defs>
+                      <filter id="threadShadow" x="-10%" y="-10%" width="120%" height="120%">
+                        <feDropShadow dx="0" dy="2" stdDeviation="1.2" floodColor="#000" floodOpacity="0.35" />
+                      </filter>
+                    </defs>
                     {chain.slice(0, -1).map((_, i) => {
                       const fi = blocks.findIndex(b => b.block_id === chain[i])
                       const ti = blocks.findIndex(b => b.block_id === chain[i + 1])
@@ -1016,10 +925,11 @@ export default function LogicThreadPage() {
                           key={`${chain[i]}->${chain[i + 1]}`}
                           className={styles.threadPath}
                           d={bezierPath(fp.x, fp.y, tp.x, tp.y)}
-                          stroke={lineColor}
-                          strokeWidth={2.5}
+                          stroke={threadColor}
+                          strokeWidth={2.6}
                           fill="none"
                           strokeLinecap="round"
+                          filter="url(#threadShadow)"
                         />
                       )
                     })}
@@ -1028,14 +938,12 @@ export default function LogicThreadPage() {
                       if (bi < 0) return null
                       const px = (positions[bi]?.x ?? 0) + CARD_W / 2
                       const py = positions[bi]?.y ?? 0
-                      const pinColor = submitState === 'correct' ? '#22aa55'
-                        : submitState === 'incorrect' ? '#cc3333'
-                        : C.textMid
+                      const pinColor = submitState === 'correct' ? '#2f6418' : '#a83232'
                       return (
                         <g key={`pin-${blockId}-${i}`} className={styles.pin}>
-                          <circle cx={px} cy={py} r={13} fill="white" stroke={pinColor} strokeWidth={2} />
+                          <circle cx={px} cy={py} r={13} fill="#faf6ed" stroke={pinColor} strokeWidth={2.2} />
                           <text x={px} y={py + 4.5} textAnchor="middle"
-                            fontSize={11} fontWeight={700} fill={pinColor} fontFamily={FONT}>
+                            fontSize={12} fontWeight={700} fill={pinColor} fontFamily={FONT}>
                             {i + 1}
                           </text>
                         </g>
@@ -1046,110 +954,64 @@ export default function LogicThreadPage() {
               )
             })()}
 
-            {/* Hint & Live Socratic overlay */}
-            {showHint && (
-              <div className={styles.hintOverlay} style={{
-                position: 'absolute', inset: 0,
-                background: 'rgba(0,0,0,0.52)', zIndex: 30,
-                display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 18,
-              }}>
-                <div className={styles.hintCard} style={{
-                  background: C.cardPaper, border: `2px solid ${C.cardBdrIdle}`,
-                  borderRadius: 6, padding: '18px 20px 16px',
-                  maxWidth: 320, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
-                }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
-                    AGENT CRIT — SCAFFOLD HINT
-                  </div>
-                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: FONT }}>
-                    {hintText}
-                  </p>
-
-                  {socraticText && (
-                    <div style={{ background: '#FFF2D6', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '10px 12px', margin: '0 0 14px' }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: C.textMid, marginBottom: 4 }}>SOCRATIC GUIDANCE</div>
-                      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: C.textDark }}>{socraticText}</p>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button
-                      onClick={handleAskSocraticAdvice}
-                      disabled={socraticLoading}
-                      style={{
-                        fontSize: 10, fontWeight: 700, color: C.textDark,
-                        background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
-                        padding: '6px 12px', cursor: 'pointer',
-                        fontFamily: FONT, letterSpacing: '0.04em', borderRadius: 4,
-                      }}
-                    >
-                      {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
-                    </button>
-                    <button onClick={() => { setShowHint(false); setSocraticText('') }} style={{
-                      fontSize: 10, fontWeight: 700, color: C.textMid,
-                      background: 'transparent', border: `1px solid ${C.textMid}`,
-                      padding: '6px 12px', cursor: 'pointer',
-                      fontFamily: FONT, borderRadius: 4,
-                    }}>
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── Submit bar ── */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 24px 16px', background: C.board,
-            borderTop: `2px solid ${C.btnGoldBdr}`,
-          }}>
-            <span style={{ fontSize: 12, color: C.textMid, fontWeight: 700, letterSpacing: '0.08em', fontFamily: FONT }}>
+          <div className={styles.submitBar}>
+            <span className={styles.counter}>
               {chain.length} / {blocks.length} CONNECTED
-              {wrongCount > 0 && (
-                <span style={{ marginLeft: 14, color: C.accentRed }}>
-                  ATTEMPTS: {wrongCount}{wrongCount >= 2 && ' — HINT READY'}
+              {wrongCount > 0 && attemptsLeft > 0 && submitState !== 'correct' && (
+                <span className={styles.attemptMsg} role="status">
+                  Incorrect sequence. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
                 </span>
               )}
             </span>
+            <div className={styles.submitGroup} data-tutorial="submit">
+              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
+                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
+                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
+                <span className={styles.attemptPips} aria-hidden>
+                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => (
+                    <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />
+                  ))}
+                </span>
+              </span>
             <button
+              type="button"
               disabled={!allChained || submitState !== 'idle'}
               onClick={handleSubmit}
-              className={`${styles.submitBtn} ${allChained && submitState === 'idle' ? styles.submitBtnReady : ''}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                background:
-                  submitState === 'correct'   ? '#22aa55' :
-                  submitState === 'incorrect' ? '#cc3333' :
-                  allChained                  ? C.btnDark : 'rgba(67,40,24,0.35)',
-                color:
-                  submitState === 'correct'   ? '#fff' :
-                  submitState === 'incorrect' ? '#fff' :
-                  allChained                  ? C.btnGold : C.textMuted,
-                border: `1.5px solid ${allChained ? C.btnGoldBdr : 'transparent'}`,
-                borderRadius: 8, padding: '12px 28px',
-                fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
-                cursor: allChained && submitState === 'idle' ? 'pointer' : 'not-allowed',
-                fontFamily: FONT,
-              }}
+              className={`${styles.submitBtn} ${styles.submit} ${allChained && submitState === 'idle' ? styles.submitBtnReady : ''}
+                ${submitState === 'correct' ? styles.submitCorrect : submitState === 'incorrect' ? styles.submitIncorrect : ''}`}
             >
-              {submitState === 'submitting' ? 'CHECKING...' :
-               submitState === 'correct'    ? '✓ CORRECT!'  :
-               submitState === 'incorrect'  ? '✕ TRY AGAIN' :
-               <><span>SUBMIT</span><span style={{ fontSize: 20, lineHeight: 1 }}>→</span></>}
+              {submitState === 'submitting' ? 'CHECKING…' :
+               submitState === 'correct'    ? '✓ EVIDENCE VERIFIED' :
+               submitState === 'incorrect'  ? '✕ SEQUENCE DISPUTED' :
+               <><FileText size={16} aria-hidden /> SUBMIT <ArrowRight size={18} aria-hidden /></>}
             </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <TutorialPopup
-        open={tutorialOpen} step={tutorialStep}
-        onClose={() => setTutorialOpen(false)}
-        onBack={() => setTutorialStep(p => Math.max(p - 1, 0))}
-        onNext={() => setTutorialStep(p => Math.min(p + 1, TUTORIAL_STEPS.length - 1))}
-        onStart={() => setTutorialOpen(false)}
+      <LogicThreadTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+
+      <LessonManual open={manualOpen} onClose={closeManual} lesson={lesson} />
+
+      <CaseDebriefModal
+        debrief={debrief}
+        onRetry={handleRetryDocket}
+        onNext={handleNextDocket}
+        onReport={handleViewReport}
       />
+
+      {!debrief && (
+        <CritRemark
+          remark={remark}
+          onDismiss={() => setRemark(null)}
+          onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
+          asking={socraticLoading}
+        />
+      )}
     </div>
   )
 }
