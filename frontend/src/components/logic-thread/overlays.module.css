@@ -97,17 +97,21 @@
 .clip { position: absolute; color: #8d8a84; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3)); }
 
 /* ── Case debrief ── */
+/* Docket debrief: an aged dossier sheet (bg #FDFBF7, rounded-lg, border #D0C4A8, shadow-2xl, max-w-lg) */
 .debrief {
   position: relative;
-  width: min(92vw, 620px);
+  width: min(92vw, 512px);
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   color: var(--ink);
-  border: 1px solid #c9b48a;
-  border-radius: 4px;
-  box-shadow: 6px 6px 0 -1px #e3d4ae, 6px 6px 0 0 #b59c6c, 0 24px 50px rgba(0, 0, 0, 0.6);
+  background-color: #fdfbf7;
+  background-image: radial-gradient(rgba(78, 54, 41, 0.035) 1px, transparent 1.2px);
+  background-size: 9px 9px;
+  border: 1px solid #d0c4a8;
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.65);
   animation: pop 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -116,15 +120,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 22px 12px;
+  padding: 22px 24px 14px;
   border-bottom: 1px solid rgba(139, 115, 85, 0.35);
 }
 
 .debriefTitle { margin: 2px 0 0; font-family: var(--type); font-size: 16px; font-weight: 700; letter-spacing: 0.12em; }
 
-.debriefBody { display: flex; gap: 18px; padding: 18px 22px 8px; overflow-y: auto; }
+.debriefBody { display: flex; gap: 16px; padding: 18px 24px 8px; overflow-y: auto; }
 
-.crit { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 112px; }
+.crit { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 96px; }
 .critName { font-family: var(--type); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; }
 
 .speech {
@@ -170,7 +174,7 @@
   animation: stampIn 0.45s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
-.scoreRow { display: flex; align-items: center; gap: 12px; padding: 4px 22px 14px; font-family: var(--type); font-size: 12px; }
+.scoreRow { display: flex; align-items: center; gap: 12px; padding: 6px 24px 16px; font-family: var(--type); font-size: 12px; }
 .gauge { flex: 1; height: 8px; overflow: hidden; background: #d9ccad; border-radius: 9999px; }
 .gaugeFill { height: 100%; background: var(--lime); border-radius: 9999px; transition: width 0.6s ease; }
 .gaugeFillLow { background: #c0703a; }
@@ -197,7 +201,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 12px 22px 16px;
+  padding: 14px 24px 22px;
   border-top: 1px dashed rgba(139, 115, 85, 0.5);
 }
 
@@ -383,19 +387,20 @@
   opacity: 0.95;
 }
 
+/* Plain remark: a simple cream speech card, handwritten line only (no header, no close) */
 .remarkBubble {
   position: relative;
-  max-width: 210px;
+  max-width: 240px;
   margin-left: 6px;
-  padding: 7px 11px;
+  padding: 12px;
   font-family: var(--hand);
   font-size: 14px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--stamp);
-  background: var(--exhibit);
-  border: 1px solid var(--edge);
-  border-radius: 6px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  background: #fffdf7;
+  border: 1px solid #d9cfa8;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.18), 0 2px 4px -2px rgba(0, 0, 0, 0.14);
   animation: remarkLife 3.6s ease forwards;
 }
 
@@ -436,6 +441,7 @@
 /* The hint text scrolls inside the card, clear of DIG DEEPER
    (selector outranks the desk's global hidden-scrollbar rule) */
 .remark .remarkHint .remarkText {
+  white-space: pre-line;   /* keeps the blank line between feedback and its hint */
   flex: 1 1 auto;
   min-height: 0;
   margin: 2px 0 0;
@@ -544,7 +550,7 @@
   left: 20px;      /* points down at the avatar's head */
   bottom: -7px;
   border: 6px solid transparent;
-  border-top-color: var(--edge);
+  border-top-color: #d9cfa8;
   border-bottom: 0;
 }
 

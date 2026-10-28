@@ -290,6 +290,8 @@ export default function LogicThreadPage() {
   const [masteryData,  setMasteryData]  = useState<any>(null)
   const [errorMsg,     setErrorMsg]     = useState('')
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  // A wrong submission stays "disputed" (crimson badge in place of SUBMIT) until the chain changes
+  const [disputed,     setDisputed]     = useState(false)
 
   const [sessionQueue,     setSessionQueue]     = useState<string[]>([])
   const [questionIndex,    setQuestionIndex]    = useState(0)
@@ -332,7 +334,7 @@ export default function LogicThreadPage() {
           paragraph_blocks: ex.paragraph_blocks || prev.paragraph_blocks,
         }) : ex)
         setBlocks(shuffleBlocks(ex.paragraph_blocks))
-        setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+        setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
         setShowHint(false); setPhase('task')
         return
       }
@@ -341,7 +343,7 @@ export default function LogicThreadPage() {
       setNode(d)
       setLesson({ nodeId: d.node_id, title: d.title, focus: d.focus, text: d.micro_lesson_text })
       setBlocks(shuffleBlocks(d.paragraph_blocks))
-      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
       setShowHint(false); setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.'); setPhase('error')
@@ -392,7 +394,7 @@ export default function LogicThreadPage() {
       const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
       setSessionQueue(queue)
       setQuestionIndex(resumeIdx)
-      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0)
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
       setShowHint(false)
       
       if (forceFresh || resumeIdx === 0) {
@@ -534,6 +536,7 @@ export default function LogicThreadPage() {
   const handleCardClick = (blockId: string) => {
     if (suppressClickRef.current) { suppressClickRef.current = false; return }
     if (submitState !== 'idle') return
+    setDisputed(false)
     const idx = chain.indexOf(blockId)
     const nextChain = idx !== -1 ? chain.slice(0, idx) : [...chain, blockId]
     setChain(nextChain)
@@ -648,6 +651,7 @@ export default function LogicThreadPage() {
     if (!isCorrect && attemptsLeftAfter > 0) {
       playWrongSound()
       setWrongCount(c => c + 1)
+      setDisputed(true)
       setSubmitState('incorrect')
       say(pick(RETRY_REMARKS))
       setTimeout(() => setSubmitState('idle'), 1400)
@@ -660,6 +664,7 @@ export default function LogicThreadPage() {
     if (!isCorrect) {
       // Third strike: the case is filed as unsolved and Crit walks through the correct thread
       setWrongCount(c => c + 1)
+      setDisputed(true)
       writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
       const v = analyzeSequence(chain, blocks, answerKey)
       notes = [...missedCases.filter(m => m.caseNumber !== caseNumber),
@@ -961,7 +966,7 @@ export default function LogicThreadPage() {
             <span className={styles.counter}>
               {chain.length} / {blocks.length} CONNECTED
               {wrongCount > 0 && attemptsLeft > 0 && submitState !== 'correct' && (
-                <span className={styles.attemptMsg} role="status">
+                <span className={`${cardFont.className} ${styles.attemptMsg}`} role="status">
                   Incorrect sequence. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
                 </span>
               )}
@@ -976,6 +981,10 @@ export default function LogicThreadPage() {
                   ))}
                 </span>
               </span>
+            {disputed && submitState !== 'correct' ? (
+              // Wrong sequence: a crimson alert stands in for SUBMIT until the cadet re-threads
+              <span className={styles.disputedBadge} role="status">✕ SEQUENCE DISPUTED</span>
+            ) : (
             <button
               type="button"
               disabled={!allChained || submitState !== 'idle'}
@@ -988,6 +997,7 @@ export default function LogicThreadPage() {
                submitState === 'incorrect'  ? '✕ SEQUENCE DISPUTED' :
                <><FileText size={16} aria-hidden /> SUBMIT <ArrowRight size={18} aria-hidden /></>}
             </button>
+            )}
             </div>
           </div>
         </div>

@@ -15,7 +15,51 @@ import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
+import { MODULE_TITLES } from '@/lib/modules'
+import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import {
+  ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, Puzzle, RotateCcw,
+} from 'lucide-react'
+import { Montserrat } from 'next/font/google'
+import desk from '@/components/dashboard/desk.module.css'
 import styles from './page.module.css'
+
+// Exhibit and tile text: Montserrat, self-hosted by next/font
+const bodyFont = Montserrat({ subsets: ['latin'], weight: ['500', '600'], display: 'swap' })
+
+// Room kept free beside the dossier: the retracted side tabs only show their icons
+const SIDE_GUTTER = 64
+
+const HINT_FALLBACK = 'Re-read the two sentences and think about how they relate logically.'
+const THINKING_TEXT = 'Inspector Crit is examining the evidence trail'
+// Three tries per case; misses 1-2 get encouragement only, the third reveals the answer and moves on
+const MAX_ATTEMPTS = 3
+const REVEAL_MS = 4500   // how long the reveal stays on this case before auto-advancing
+const RETRY_REMARKS = [
+  'Keep digging, Cadet! Re-examine the relationship between Exhibit A and Exhibit B.',
+  'Almost there! Focus on the signal transition — does B add to A, push against it, or follow from it?',
+  'Not that one. Read Exhibit B again: is it a surprise, a consequence, or more of the same?',
+  'Steady, Cadet. Ask what job the gap word must do between the two exhibits.',
+]
+const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
+
+// Cases failed after three tries survive a reload, so a resumed docket can't close with an unsolved case
+const SKIPPED_KEY = (startId: string) => `critica_skipped_snap_gap_${startId}`
+function readSkipped(startId: string | null): number[] {
+  if (!startId) return []
+  try { return JSON.parse(localStorage.getItem(SKIPPED_KEY(startId)) || '[]') } catch { return [] }
+}
+function writeSkipped(startId: string | null, cases: number[]) {
+  if (!startId) return
+  try {
+    if (cases.length) localStorage.setItem(SKIPPED_KEY(startId), JSON.stringify(cases))
+    else localStorage.removeItem(SKIPPED_KEY(startId))
+  } catch { /* storage blocked */ }
+}
+
+const WRONG_TILE_FALLBACK = 'That transition does not fit here. Re-read both sentences.'
+const SOCRATIC_FALLBACK = 'Re-read both sentences and think about how the second one builds on, contrasts with, or results from the first.'
 
 
 // ── Types ─────────────────────────────────────────
@@ -491,19 +535,27 @@ export default function SnapInGapPage() {
   const [submitting,  setSubmitting]  = useState(false)
 
   // feedback state
-  const [fbText,        setFbText]        = useState('')
-  const [hintText,      setHintText]      = useState('')
   const [hintTier,      setHintTier]      = useState(0)
-  const [drawer,        setDrawer]        = useState(false)
   const [tutorialOpen,  setTutorialOpen]  = useState(false)
   const [tutorialStep,  setTutorialStep]  = useState(0)
 
-  // hint overlay state
-  const [hintOverlay,     setHintOverlay]     = useState(false)
-  const [hintOverlayText, setHintOverlayText] = useState('')
-  const [hintOverlayTier, setHintOverlayTier] = useState(0)
-  const [socraticText,    setSocraticText]    = useState('')
+  // hint state: hints are spoken by Inspector Crit's lower-left bubble
+  const [hintOverlay,     setHintOverlay]     = useState(false)   // a hint was used on this case
   const [socraticLoading, setSocraticLoading] = useState(false)
+  const [remark,          setRemark]          = useState<Remark | null>(null)
+  // After the third miss: the case is decided, the dock locks and the correct tile is shown
+  const [revealing,       setRevealing]       = useState<{ tile: string | null } | null>(null)
+  // A wrong tile stays "disputed" (crimson badge in place of SUBMIT) until the next tile is tried
+  const [disputed,        setDisputed]        = useState(false)
+  // End-of-docket debrief ("Docket Under Review") and the notes on cases failed along the way
+  const [debrief,         setDebrief]         = useState<DocketDebrief | null>(null)
+  const [missedCases,     setMissedCases]     = useState<MissedCase[]>([])
+  // Inspector Crit speaks from the lower-left corner: remarks fade, hints / feedback stay until dismissed
+  const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
+
+  // dossier scaled to fit the 100vh viewport
+  const [fitScale, setFitScale] = useState(1)
+  const fitRef = useRef<HTMLDivElement>(null)
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
@@ -539,14 +591,11 @@ export default function SnapInGapPage() {
         setLocked([])
         setTileState('idle')
         setWrongs(0)
-        setFbText('')
-        setHintText('')
+        setRevealing(null)
+        setDisputed(false)
         setHintTier(0)
-        setDrawer(false)
         setHintOverlay(false)
-        setSocraticText('')
-        setHintOverlayText('')
-        setHintOverlayTier(0)
+        setRemark(null)
         setPhase('task')
         return
       }
@@ -559,13 +608,11 @@ export default function SnapInGapPage() {
       setLocked([])
       setTileState('idle')
       setWrongs(0)
-      setFbText('')
-      setHintText('')
+      setRevealing(null)
+      setDisputed(false)
       setHintTier(0)
-      setDrawer(false)
       setHintOverlay(false)
-      setHintOverlayText('')
-      setHintOverlayTier(0)
+      setRemark(null)
       setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
@@ -584,7 +631,8 @@ export default function SnapInGapPage() {
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
 
-      const resumeIdx = Math.min(
+      // A fresh start (Retry / Fresh Case) always opens a new full docket at case 1
+      const resumeIdx = forceFresh ? 0 : Math.min(
         sessionData.current_index ?? 0,
         Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
       )
@@ -610,12 +658,13 @@ export default function SnapInGapPage() {
       setLocked([])
       setTileState('idle')
       setWrongs(0)
-      setFbText('')
-      setHintText('')
-      setDrawer(false)
+      setRevealing(null)
+      setDisputed(false)
       setHintOverlay(false)
       if (forceFresh || resumeIdx === 0) {
         setSessionResults([])
+        setMissedCases([])
+        writeSkipped(start, [])
         sessionStartTimeRef.current = Date.now()
       }
 
@@ -627,7 +676,8 @@ export default function SnapInGapPage() {
       setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
-      const saved = loadSession('snap_gap', start)
+      if (forceFresh) clearSession('snap_gap', start)
+      const saved = forceFresh ? null : loadSession('snap_gap', start)
       if (saved && saved.sessionQueue.length === 5) {
         setSessionQueue(saved.sessionQueue)
         setQuestionIndex(saved.questionIndex)
@@ -650,7 +700,7 @@ export default function SnapInGapPage() {
         apiFetch(`/nodes/snap-gap/${start}/`)
           .then((d: SnapNodeData) => {
             setSnapNode(d)
-            setPhase('micro_lesson')
+            setPhase(forceFresh ? 'task' : 'micro_lesson')
 
             apiFetch('/progression/dashboard/')
               .then((prog: any) => {
@@ -693,47 +743,33 @@ export default function SnapInGapPage() {
     setTutorialOpen(true)
   }, [phase, nodeId])
 
-  // ── feedback ──────────────────────────────────────
-  const callFeedback = useCallback(async (pair_id: string, tile: string, inactivity: boolean) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
-          method: 'POST',
-          body: JSON.stringify({ pair_id, selected_tile: tile, tier: 1 }),
-        })
-        setFbText(res.explanation ?? 'That transition does not fit here. Re-read both sentences.')
-        setHintText(res.hint ?? '')
-        setHintTier(res.hint_tier ?? 1)
-        setDrawer(true)
-        return
-      } catch {
-        setFbText('That transition does not fit here. Re-read both sentences.')
-        setHintText('')
-        setDrawer(true)
-        return
-      }
-    }
-
-    const activeNodeId = snapNode?.node_id ?? nodeId
+  // ── feedback (spoken by Inspector Crit, board stays visible) ──
+  /** Fetch the explanation + scaffold hint for a wrong tile; Crit says it unless `speak` is false. Returns the explanation. */
+  const callFeedback = useCallback(async (pair_id: string, tile: string, inactivity: boolean, speak = true) => {
+    let explanation = WRONG_TILE_FALLBACK
+    let hint = ''
     try {
-      const res = await apiFetch(`/nodes/snap-gap/${activeNodeId}/feedback/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          pair_id,
-          selected_tile: tile,
-          inactivity_seconds: inactivity ? 60 : inactiveRef.current,
-        }),
-      })
-      setFbText(res.explanation ?? '')
-      setHintText(res.hint ?? '')
-      setHintTier(res.hint_tier ?? 0)
-      setDrawer(true)
-    } catch {
-      setFbText('That transition does not fit here. Re-read both sentences.')
-      setHintText('')
-      setDrawer(true)
-    }
-  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex])
+      const res = sessionId && sessionExercises.length > questionIndex
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+            method: 'POST',
+            body: JSON.stringify({ pair_id, selected_tile: tile, tier: 1 }),
+          })
+        : await apiFetch(`/nodes/snap-gap/${snapNode?.node_id ?? nodeId}/feedback/`, {
+            method: 'POST',
+            body: JSON.stringify({
+              pair_id,
+              selected_tile: tile,
+              inactivity_seconds: inactivity ? 60 : inactiveRef.current,
+            }),
+          })
+      explanation = res.explanation || WRONG_TILE_FALLBACK
+      hint = res.hint ?? ''
+      setHintTier(res.hint_tier ?? (sessionId ? 1 : 0))
+    } catch { /* keep the fallback explanation */ }
+    const text = hint ? `${explanation}\n\nHint: ${hint}` : explanation
+    if (speak) say(text, 'feedback')
+    return explanation   // a follow-up hint replaces the first-tier hint, so only the explanation carries over
+  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex, say])
 
   // ── timer ─────────────────────────────────────────
   const resetTimer = useCallback(() => {
@@ -753,115 +789,191 @@ export default function SnapInGapPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [phase, resetTimer])
 
-  // ── fetch hint overlay ─────────────────────────────
-  // tier now scales with wrong-attempt count (mirrors logic-thread's fetchHint)
+  // ── hints (spoken by Inspector Crit) ──────────────
+  // tier scales with wrong-attempt count (mirrors logic-thread's fetchHint)
   const fetchHint = useCallback(async (tier: number) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
-          method: 'POST',
-          body: JSON.stringify({ tier }),
+    setHintOverlay(true)
+    say(THINKING_TEXT, 'thinking')
+    let text = HINT_FALLBACK
+    try {
+      const res = sessionId && sessionExercises.length > questionIndex
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+            method: 'POST',
+            body: JSON.stringify({ tier }),
+          })
+        : await apiFetch(`/nodes/snap-gap/${snapNode?.node_id ?? nodeId}/feedback/`, {
+            method: 'POST',
+            body: JSON.stringify({ pair_id: '', selected_tile: '', inactivity_seconds: 61 }),
+          })
+      text = res.hint || res.explanation || HINT_FALLBACK
+    } catch { /* keep the fallback hint */ }
+    say(text, 'hint')
+  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex, say])
+
+  // ── case outcome helpers ──────────────────────────
+  const totalCases = sessionId && sessionExercises.length > 0
+    ? sessionExercises.length
+    : (sessionQueue.length || 1)
+
+  /** Report numbers for the evaluation screen. */
+  const buildReport = (updated: CaseResult[], nextNode: string | null, streak: number | null, timeTakenSeconds: number) => ({
+    next_node: nextNode,
+    streak,
+    accuracy: Math.round((updated.filter(r => r.firstTry).length / Math.max(1, totalCases)) * 100),
+    totalCases,
+    correctCases: updated.filter(r => r.correct).length,
+    hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
+    timeTakenSeconds,
+    caseResults: updated,
+  })
+
+  /** Cases left unsolved this docket (this run's misses plus misses saved before a reload). */
+  const unsolvedCases = (updated: CaseResult[]) =>
+    new Set([...updated.filter(r => !r.correct).map(r => r.caseNumber), ...readSkipped(sessionStartId)]).size
+
+  /** Missed-case notes including `caseNumber` (its notes may still be in a pending state update). */
+  const missedCasesWith = (caseNumber: number, explanation: string): MissedCase[] => {
+    const listed = missedCases.find(m => m.caseNumber === caseNumber)
+    const current: MissedCase = listed ?? {
+      caseNumber, title: snapNode?.title ?? `Case ${caseNumber}`,
+      notes: explanation.split('\n\n'), correctSlots: null, total: snapNode?.sentence_pairs.length ?? 1,
+    }
+    return [...missedCases.filter(m => m.caseNumber !== caseNumber), current].sort((a, b) => a.caseNumber - b.caseNumber)
+  }
+
+  /** Third miss: file the case as unsolved and move on (or close the docket without mastery). */
+  const failCase = (explanation: string, decidedAt: number) => {
+    const caseNumber = questionIndex + 1
+    const res: CaseResult = {
+      caseNumber,
+      correct: false,
+      firstTry: false,
+      hintsUsed: (hintTier || 0) + (hintOverlay ? 1 : 0),
+      attempts: MAX_ATTEMPTS,
+    }
+    const updated = [...sessionResults.filter(r => r.caseNumber !== caseNumber), res]
+    setSessionResults(updated)
+    writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
+
+    const nextIdx = questionIndex + 1
+    if (nextIdx < totalCases) {
+      if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+      if (sessionStartId) {
+        saveSession('snap_gap', sessionStartId, {
+          sessionQueue,
+          questionIndex: nextIdx,
+          next_node: savedNextNode || undefined,
+          streak: savedStreak !== null ? savedStreak : undefined,
         })
-        const text = res.hint || res.explanation || 'Re-read the two sentences and think about how they relate logically.'
-        setHintOverlayText(text)
-        setHintOverlayTier(res.hint_tier ?? tier)
-        setHintOverlay(true)
-        return
-      } catch {
-        setHintOverlayText('Re-read the two sentences and think about how they relate logically.')
-        setHintOverlay(true)
-        return
       }
+      setQuestionIndex(nextIdx)
+      loadQuestion(nextIdx, sessionQueue)
+      say(explanation, 'explain')   // keep Crit's explanation up on the next case
+      return
+    }
+    // Last case: the docket closes unsolved, so no mastery call and no next node
+    const unsolved = unsolvedCases(updated)   // read before the saved misses are cleared
+    if (sessionStartId) clearSession('snap_gap', sessionStartId)
+    writeSkipped(sessionStartId, [])
+    const timeTakenSeconds = Math.max(1, Math.round((decidedAt - sessionStartTimeRef.current) / 1000))
+    setMasteryData(buildReport(updated, null, savedStreak, timeTakenSeconds))
+    setDebrief({
+      verdict: 'partial',
+      solved: Math.max(0, totalCases - unsolved),
+      total: totalCases,
+      xpAwarded: null,
+      nextNode: null,
+      missed: missedCasesWith(caseNumber, explanation),
+    })
+  }
+
+  /** Wrong tile: tries 1-2 get encouragement only; the third reveals the answer, explains, and advances. */
+  const handleWrongTile = async (pairId: string, tile: string, correctTile: string | null) => {
+    playWrongSound()
+    setTileState('incorrect')
+    setDisputed(true)
+    const nextWrongs = wrongs + 1
+    setWrongs(nextWrongs)
+
+    if (nextWrongs < MAX_ATTEMPTS) {
+      setTimeout(() => setTileState('idle'), 600)
+      // Telemetry for the miss (the explanation isn't fetched until the last try)
+      if (sessionId) {
+        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+          method: 'POST',
+          body: JSON.stringify({ is_correct: false }),
+        }).catch(() => {})
+      }
+      // A plain handwritten nudge; the attempts left are shown in the footer
+      say(pick(RETRY_REMARKS))
+      return
     }
 
-    const activeNodeId = snapNode?.node_id ?? nodeId
-    try {
-      const res = await apiFetch(`/nodes/snap-gap/${activeNodeId}/feedback/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          pair_id: '',
-          selected_tile: '',
-          inactivity_seconds: 61,
-        }),
-      })
-      const text = res.hint || res.explanation || 'Re-read the two sentences and think about how they relate logically.'
-      setHintOverlayText(text)
-      setHintOverlayTier(res.hint_tier ?? tier)
-      setHintOverlay(true)
-    } catch {
-      setHintOverlayText('Re-read the two sentences and think about how they relate logically.')
-      setHintOverlay(true)
-    }
-  }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex])
+    // Third strike: the dock stays locked (tileState stays 'incorrect') while Crit explains
+    setRevealing({ tile: correctTile })
+    const why = await callFeedback(pairId, tile, false, false)
+    const reveal = correctTile
+      ? `Three strikes, Cadet — this case is filed as unverified. The correct tile was “${correctTile}”.`
+      : 'Three strikes, Cadet — this case is filed as unverified.'
+    const explanation = `${reveal}\n\n${why}`
+    const caseNumber = questionIndex + 1
+    const notes = [correctTile ? `The correct tile was “${correctTile}”.` : 'The correct tile stays sealed in this file.', why]
+    setMissedCases(prev => [...prev.filter(m => m.caseNumber !== caseNumber),
+      { caseNumber, title: snapNode?.title ?? `Case ${caseNumber}`, notes, correctSlots: null, total: snapNode?.sentence_pairs.length ?? 1 }])
+    say(explanation, 'explain')
+    // eslint-disable-next-line react-hooks/purity -- runs from a tile click handler, never during render
+    const decidedAt = Date.now()
+    setTimeout(() => failCase(explanation, decidedAt), REVEAL_MS)
+  }
 
   // ── tile click ────────────────────────────────────
   const handleTile = async (tile: string) => {
-    if (!snapNode || tileState !== 'idle' || drawer) return
+    if (!snapNode || tileState !== 'idle' || revealing) return
+    setDisputed(false)
     resetTimer()
     const pair = snapNode.sentence_pairs[pairIdx]
     if (!pair) return
 
+    const placeCorrectTile = () => {
+      playRightAnswerSound()
+      setTileState('correct')
+      setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
+      setLocked(prev => [...prev, pair.pair_id])
+      setTimeout(() => {
+        setTileState('idle')
+        if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
+      }, 900)
+    }
+
     // AI Dynamic Exercise Evaluation
     if (sessionId && sessionExercises.length > questionIndex) {
       const currentEx = sessionExercises[questionIndex]
-      const correctTile = currentEx.correct_tile_map?.[pair.pair_id]
+      const correctTile: string | undefined = currentEx.correct_tile_map?.[pair.pair_id]
       const isCorrect = correctTile && (correctTile.trim().toLowerCase() === tile.trim().toLowerCase())
-
-      if (isCorrect) {
-        playRightAnswerSound()
-        setTileState('correct')
-        setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
-        setLocked(prev => [...prev, pair.pair_id])
-        setTimeout(() => {
-          setTileState('idle')
-          if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
-        }, 900)
-      } else {
-        playWrongSound()
-        setTileState('incorrect')
-        const nextWrongs = wrongs + 1
-        setWrongs(nextWrongs)
-        setTimeout(() => setTileState('idle'), 600)
-        await callFeedback(pair.pair_id, tile, false)
-        if (nextWrongs >= 2) fetchHint(Math.min(nextWrongs, 3))
-      }
+      if (isCorrect) placeCorrectTile()
+      else await handleWrongTile(pair.pair_id, tile, correctTile ?? null)
       return
     }
 
-    // Legacy Evaluation
+    // Legacy Evaluation (the answer key stays on the server, so the reveal can't name the tile)
     try {
       const res = await apiFetch(`/nodes/snap-gap/${snapNode.node_id}/evaluate-gap/`, {
         method: 'POST',
         body: JSON.stringify({ pair_id: pair.pair_id, selected_tile: tile }),
       })
-      if (res.result === 'correct') {
-        playRightAnswerSound()
-        setTileState('correct')
-        setBoard(prev => ({ ...prev, [pair.pair_id]: tile }))
-        setLocked(prev => [...prev, pair.pair_id])
-        setTimeout(() => {
-          setTileState('idle')
-          if (pairIdx < snapNode.sentence_pairs.length - 1) setPairIdx(i => i + 1)
-        }, 900)
-      } else {
-        playWrongSound()
-        setTileState('incorrect')
-        const nextWrongs = wrongs + 1
-        setWrongs(nextWrongs)
-        setTimeout(() => setTileState('idle'), 600)
-        await callFeedback(pair.pair_id, tile, false)
-        if (nextWrongs >= 2) fetchHint(Math.min(nextWrongs, 3))
-      }
+      if (res.result === 'correct') placeCorrectTile()
+      else await handleWrongTile(pair.pair_id, tile, null)
     } catch {
       playWrongSound()
       setErrorMsg('Evaluation failed.')
     }
   }
 
-  // ── ask Agent Crit for a live socratic hint ───────
+  // ── ask Inspector Crit for a live socratic hint ───
   const handleAskSocraticAdvice = useCallback(async () => {
     if (!sessionId) return
     setSocraticLoading(true)
+    say(THINKING_TEXT, 'thinking')
     try {
       const res = await fetchLiveSocraticHint(
         sessionId,
@@ -869,13 +981,29 @@ export default function SnapInGapPage() {
         { board_state: board, pair_id: snapNode?.sentence_pairs[pairIdx]?.pair_id },
         wrongs + 1,
       )
-      setSocraticText(res.socratic_hint || '')
+      say(res.socratic_hint || SOCRATIC_FALLBACK, 'hint')
     } catch {
-      setSocraticText('Re-read both sentences and think about how the second one builds on, contrasts with, or results from the first.')
+      say(SOCRATIC_FALLBACK, 'hint')
     } finally {
       setSocraticLoading(false)
     }
-  }, [sessionId, questionIndex, board, snapNode, pairIdx, wrongs])
+  }, [sessionId, questionIndex, board, snapNode, pairIdx, wrongs, say])
+
+  // ── fit the dossier inside the 100vh viewport ──────
+  useEffect(() => {
+    if (phase !== 'task') return
+    const el = fitRef.current
+    if (!el) return
+    const fit = () => {
+      const maxW = Math.min(window.innerWidth * 0.92, window.innerWidth - 2 * SIDE_GUTTER)   // w-[92vw]
+      const s = Math.min(1, maxW / el.offsetWidth, (window.innerHeight - 28) / el.offsetHeight)
+      setFitScale(s > 0 ? s : 1)
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    window.addEventListener('resize', fit)
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit) }
+  }, [phase])
 
   // ── submit ────────────────────────────────────────
   const handleSubmit = async () => {
@@ -927,11 +1055,17 @@ export default function SnapInGapPage() {
           loadQuestion(nextIdx, sessionQueue)
           setSubmitting(false)
         } else {
-          // Finished all 5 questions
+          // Finished all 5 questions; mastery only when no case was failed
           try {
-            playVictorySound()
-            const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
+            const cleared = unsolved === 0
+            let finalRes: { next_node?: string | null; streak?: number; xp_awarded?: number } = {}
+            if (cleared) {
+              playVictorySound()
+              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            }
             if (sessionStartId) clearSession('snap_gap', sessionStartId)
+            writeSkipped(sessionStartId, [])
             const totalCases = sessionExercises.length || sessionQueue.length || 5
             const correctCases = updatedCases.filter(r => r.correct).length
             const firstTryCases = updatedCases.filter(r => r.firstTry).length
@@ -940,7 +1074,7 @@ export default function SnapInGapPage() {
             const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
 
             setMasteryData({
-              next_node: finalRes.next_node,
+              next_node: cleared ? finalRes.next_node : null,
               streak: finalRes.streak ?? 1,
               accuracy,
               totalCases,
@@ -949,7 +1083,14 @@ export default function SnapInGapPage() {
               timeTakenSeconds,
               caseResults: updatedCases,
             })
-            setPhase('mastery')
+            setDebrief({
+              verdict: cleared ? 'perfect' : 'partial',
+              solved: totalCases - unsolved,
+              total: totalCases,
+              xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+              nextNode: cleared ? (finalRes.next_node ?? null) : null,
+              missed: missedCases,
+            })
           } catch {
             setSubmitting(false)
           }
@@ -957,9 +1098,7 @@ export default function SnapInGapPage() {
         return
       } else {
         playWrongSound()
-        setFbText('Some pairs are incorrect. Check and retry.')
-        setHintText('')
-        setDrawer(true)
+        say('Some pairs are incorrect. Check and retry.', 'feedback')
         setSubmitting(false)
         return
       }
@@ -1004,9 +1143,11 @@ export default function SnapInGapPage() {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
         } else {
-          playVictorySound()
+          const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
+          const cleared = unsolved === 0
+          if (cleared) playVictorySound()
           let finalRes = res
-          if (sessionStartId) {
+          if (sessionStartId && cleared) {
             finalRes = await apiFetch(
               `/nodes/snap-gap/${sessionStartId}/mastery/`,
               {
@@ -1018,10 +1159,11 @@ export default function SnapInGapPage() {
             )
           }
 
-          const newNextNode = savedNextNode || finalRes.next_node
+          const newNextNode = cleared ? (savedNextNode || finalRes.next_node) : null
           const newStreak = savedStreak !== null ? savedStreak : (finalRes.streak ?? null)
 
           if (sessionStartId) clearSession('snap_gap', sessionStartId)
+          writeSkipped(sessionStartId, [])
           const totalCases = sessionQueue.length || 5
           const correctCases = updatedCases.filter(r => r.correct).length
           const firstTryCases = updatedCases.filter(r => r.firstTry).length
@@ -1039,18 +1181,40 @@ export default function SnapInGapPage() {
             timeTakenSeconds,
             caseResults: updatedCases,
           })
-          setPhase('mastery')
+          setDebrief({
+            verdict: cleared ? 'perfect' : 'partial',
+            solved: totalCases - unsolved,
+            total: totalCases,
+            xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+            nextNode: newNextNode ?? null,
+            missed: missedCases,
+          })
         }
       }
     } catch (e: any) {
       playWrongSound()
-      setFbText(e?.status === 'incomplete'
+      say(e?.status === 'incomplete'
         ? 'Some pairs are incorrect. Check and retry.'
-        : 'Submission failed. Please try again.')
-      setHintText('')
-      setDrawer(true)
+        : 'Submission failed. Please try again.', 'feedback')
     } finally { setSubmitting(false) }
   }
+
+  // ── debrief actions ───────────────────────────────
+  /** RETRY CASE / Fresh Case: wipe the docket and load a brand-new 5-case set. */
+  const handleRetryDocket = () => {
+    setDebrief(null); setMissedCases([]); setRemark(null)
+    startSession(true)
+  }
+
+  /** NEXT DOCKET: on to the unlocked node, or the case report when nothing was unlocked. */
+  const handleNextDocket = () => {
+    const next = debrief?.nextNode
+    setDebrief(null)
+    if (next) router.push(`/nodes/snap-gap/${next}`)
+    else setPhase('mastery')
+  }
+
+  const handleViewReport = () => { setDebrief(null); setPhase('mastery') }
 
   // ── phase guards ──────────────────────────────────
   if (phase === 'loading')      return <BriefingGenerationScreen title={snapNode?.title} onCancel={() => router.push('/dashboard')} />
@@ -1081,213 +1245,143 @@ export default function SnapInGapPage() {
   // ── TASK PHASE ────────────────────────────────────
   const currentPair = snapNode!.sentence_pairs[pairIdx]
   const allDone     = locked.length === snapNode!.sentence_pairs.length
-  const canvasOutline = tileState === 'correct' ? '3px solid #55aaff' : '3px solid transparent'
+  const level       = snapNode!.difficulty ?? nodeDifficulty(nodeId)
+  const attemptsLeft = Math.max(0, MAX_ATTEMPTS - wrongs)   // wrongs resets to 0 on every new case
+  const sentenceB   = currentPair?.sentence_b
+    ? currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)
+    : ''
 
   const openTutorial  = () => { setTutorialStep(0); setTutorialOpen(true) }
   const closeTutorial = () => setTutorialOpen(false)
   const nextTutorialStep = () => setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
   const prevTutorialStep = () => setTutorialStep(prev => Math.max(prev - 1, 0))
 
-  return (
-    <div style={{ minHeight: '100vh', background: C.pageBg,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: F }}>
+  const endSession = () => {
+    if (sessionId) {
+      updateSessionProgress(sessionId, questionIndex).catch(() => {})
+    }
+    if (sessionStartId && sessionQueue.length > 0) {
+      saveSession('snap_gap', sessionStartId, {
+        sessionQueue,
+        questionIndex,
+        next_node: savedNextNode || undefined,
+        streak: savedStreak !== null ? savedStreak : undefined,
+      })
+    }
+    router.push('/dashboard')
+  }
 
-      {/* ── FIXED LEFT FOLDER TABS ── */}
-      <div style={{
-        position: 'fixed', left: 0, top: '20%',
-        transform: 'translateY(-20%)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'flex-start', gap: 6, zIndex: 100,
-      }}>
+  return (
+    <div className={`${desk.desk} ${styles.screen}`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
+
+      {/* ── Slide-out action tabs (icons peek from the left edge) ── */}
+      <div className={styles.sideTabs}>
         {[
-          { label: 'Hint', action: () => fetchHint(Math.min(wrongs + 1, 3)) },
-          { label: 'Fresh Case ↻', action: () => startSession(true) },
-          { label: 'End Session', action: () => {
-            if (sessionId) {
-              updateSessionProgress(sessionId, questionIndex).catch(() => {})
-            }
-            if (sessionStartId && sessionQueue.length > 0) {
-              saveSession('snap_gap', sessionStartId, {
-                sessionQueue,
-                questionIndex,
-                next_node: savedNextNode || undefined,
-                streak: savedStreak !== null ? savedStreak : undefined,
-              })
-            }
-            router.push('/dashboard')
-          }},
-        ].map(({ label, action }) => (
-          <button key={label} onClick={action} className={styles.folderTab} style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: F, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
-          >
-            {label}
+          { label: 'Hint',        icon: Lightbulb, action: () => fetchHint(Math.min(wrongs + 1, 3)) },
+          { label: 'Fresh Case',  icon: RotateCcw, action: handleRetryDocket },
+          { label: 'End Session', icon: LogOut,    action: endSession },
+        ].map(({ label, icon: Icon, action }) => (
+          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label}>
+            <span className={styles.sideTabLabel}>{label}</span>
+            <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
           </button>
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'stretch', boxShadow: '0 12px 48px rgba(0,0,0,0.7)', borderRadius: 8, width: '100%', maxWidth: 1080 }}>
+      {/* ── Dossier (scaled to fit the viewport) ── */}
+      <div ref={fitRef} className={`${styles.boardEnter} ${styles.dossier}`} style={{ transform: `scale(${fitScale})` }}>
 
-        {/* ── BOARD WRAPPER ── */}
-        <div className={styles.boardEnter} style={{
-          background: C.board, border: canvasOutline,
-          borderRadius: 8, overflow: 'hidden',
-          transition: 'border-color 0.4s',
-          display: 'flex', flexDirection: 'column', width: '100%', minHeight: 560,
-        }}>
-
-          {/* ── Header row 1: objective ── */}
-          <div style={{ padding: '12px 24px 10px', textAlign: 'center', borderBottom: `1px solid rgba(0,0,0,0.12)` }}>
-            <div style={{
-              display: 'inline-block', border: `1.5px solid ${C.accentRed}`,
-              padding: '7px 28px', fontSize: 13, fontWeight: 700,
-              letterSpacing: '0.12em', background: 'rgba(255,255,255,0.3)', fontFamily: F,
-            }}>
-              <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-              <span style={{ color: C.accentRed }}>SELECT THE CORRECT TRANSITION TILE TO BRIDGE THE GAP</span>
-            </div>
+        {/* Folder tabs */}
+        <div className={styles.dossierTabs}>
+          <div className={`${styles.dossierTab} ${styles.dossierTabActive}`}>
+            <Paperclip size={22} strokeWidth={1.75} className={styles.tabClip} aria-hidden />
+            <span className={styles.tabIndex}>[2] CASE 02:</span>
+            <span className={styles.tabLabel}><Puzzle size={13} aria-hidden /> {MODULE_TITLES.snap_gap}</span>
           </div>
-
-          {/* ── Header row 2: meta ── */}
-          <div style={{ padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.12)', borderRadius: 20, padding: '5px 14px' }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: DIFFICULTY_COLORS[snapNode!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: F }}>
-                LVL {snapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[snapNode!.difficulty ?? nodeDifficulty(nodeId)]} ({snapNode!.sentence_pairs.length} PAIRS)
-              </span>
+          {sessionQueue.length > 0 && (
+            <div className={styles.dossierTab}>
+              <span className={styles.tabIndex}>DOCKET</span>
+              <span className={styles.tabLabel}>CASE {questionIndex + 1} / {sessionQueue.length}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {sessionQueue.length > 0 && (
-                <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, background: 'rgba(0,0,0,0.1)', borderRadius: 20, padding: '5px 14px' }}>
-                  CASE {questionIndex + 1} / {sessionQueue.length}
-                </span>
-              )}
-              <button
-                onClick={openTutorial}
-                className={styles.tutorialBtn}
-                style={{ padding: '7px 18px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 8, color: C.textDark, fontFamily: F, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}
-              >
-                TUTORIAL
+          )}
+          <div className={styles.dossierTab}>
+            <span className={styles.tabIndex}>CLEARANCE</span>
+            <span className={styles.tabLabel}>
+              <span className={styles.levelDot} style={{ background: DIFFICULTY_COLORS[level] }} />
+              LVL {level} — {DIFFICULTY_LABELS[level]}
+            </span>
+          </div>
+        </div>
+
+        <div className={`${desk.folder} ${styles.folder}`}>
+          <Paperclip size={34} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
+
+          {/* Header bar */}
+          <header className={styles.header}>
+            <div className={styles.headerLeft}>
+              <span className={styles.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} EVIDENCE BRIDGE
+              </span>
+              <h1 className={styles.title}>{snapNode!.title}</h1>
+            </div>
+            <div className={styles.headerRight}>
+              <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`} onClick={openTutorial}>
+                <HelpCircle size={14} aria-hidden /> Tutorial
               </button>
             </div>
-          </div>
+          </header>
 
-          {/* Progress bar */}
+          {/* Objective stamp + progress */}
+          <div className={styles.objectiveRow}>
+            <span className={styles.objective}>
+              OBJECTIVE: SELECT THE CORRECT TRANSITION TILE TO BRIDGE THE GAP
+            </span>
+            <span className={`${desk.handwritten} ${styles.objectiveNote}`}>contrast? result? addition? →</span>
+          </div>
           {sessionQueue.length > 0 && (
-            <div style={{ padding: '0 24px 10px' }}>
-              <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${((questionIndex + 1) / sessionQueue.length) * 100}%`,
-                  height: '100%',
-                  background: DIFFICULTY_COLORS[snapNode!.difficulty ?? nodeDifficulty(nodeId)] ?? '#4ddd94',
-                  transition: 'width 0.4s ease',
-                }} />
-              </div>
+            <div className={styles.progress} aria-hidden>
+              <div className={styles.progressFill} style={{ width: `${((questionIndex + 1) / sessionQueue.length) * 100}%` }} />
             </div>
           )}
 
-          {/* Pair progress indicators */}
-          {snapNode!.sentence_pairs.length > 0 && (
-            <div style={{ padding: '2px 24px 8px', display: 'flex', gap: 6, justifyContent: 'center' }}>
+          {/* Pair progress pips */}
+          {snapNode!.sentence_pairs.length > 1 && (
+            <div className={styles.pairPips} aria-label={`Pair ${pairIdx + 1} of ${snapNode!.sentence_pairs.length}`}>
               {snapNode!.sentence_pairs.map((p, i) => (
-                <div key={p.pair_id} style={{
-                  width: 24, height: 5, borderRadius: 3,
-                  background: locked.includes(p.pair_id)
-                    ? C.tileGreen
-                    : i === pairIdx
-                      ? C.btnDark
-                      : 'rgba(0,0,0,0.15)',
-                  transition: 'background 0.3s',
-                }} />
+                <i key={p.pair_id}
+                  className={locked.includes(p.pair_id) ? styles.pipDone : i === pairIdx ? styles.pipActive : ''} />
               ))}
             </div>
           )}
 
-          {/* ── 3-COLUMN LAYOUT: sentence A | tile dock | sentence B ── */}
-          <div style={{ display: 'flex', gap: 22, padding: '24px 28px 4px', background: C.canvas, alignItems: 'stretch', flex: 1, minHeight: 380, position: 'relative' }}>
+          {/* ── Evidence board: Exhibit A | tile dock | Exhibit B ── */}
+          <div className={`${styles.board} ${tileState === 'correct' ? styles.boardCorrect : ''}`}>
+            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(-0.8deg)' }}>
+              <span className={styles.pushPin} aria-hidden />
+              <span className={styles.exhibitNo}>EXHIBIT A</span>
+              <p className={`${bodyFont.className} ${styles.exhibitText}`}>{currentPair ? currentPair.sentence_a : ''}</p>
+            </article>
 
-            {/* LEFT — Sentence A */}
-            <div style={{
-              flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
-              borderRadius: 8, padding: '22px 24px',
-              fontSize: 15, lineHeight: 1.85, color: C.textDark, fontFamily: F,
-              minHeight: 340, maxHeight: 420, overflowY: 'auto', wordBreak: 'break-word',
-            }}>
-              {currentPair ? currentPair.sentence_a : ''}
-            </div>
-
-            {/* MIDDLE — Scrollable tile dock */}
-            <div style={{ width: 180, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              {/* dock label */}
-              <div style={{
-                fontSize: 10, fontWeight: 700, letterSpacing: '0.13em',
-                color: C.textMid, fontFamily: F, textAlign: 'center',
-              }}>
-                TRANSITION TILE DOCK
+            <div className={styles.dock}>
+              <div className={styles.dockLabel}>TRANSITION TILE DOCK</div>
+              <div className={`${styles.dockStatus} ${tileState === 'correct' ? styles.dockStatusOk : tileState === 'incorrect' ? styles.dockStatusBad : ''}`}
+                role="status">
+                {revealing
+                  ? 'CASE FILED — NEXT CASE INCOMING'
+                  : tileState === 'correct'
+                    ? `✓ ${currentPair ? (board[currentPair.pair_id] ?? '') : ''}`
+                    : tileState === 'incorrect' ? '✕ WRONG TILE' : 'bridge the gap'}
               </div>
-
-              {/* gap state indicator */}
-              <div style={{
-                fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', fontFamily: F,
-                textAlign: 'center', minHeight: 18, transition: 'all 0.25s',
-                color: tileState === 'correct'   ? C.tileGreen
-                     : tileState === 'incorrect' ? C.tileRed
-                     : 'transparent',
-              }}>
-                {tileState === 'correct'
-                  ? `✓ ${currentPair ? (board[currentPair.pair_id] ?? '') : ''}`
-                  : tileState === 'incorrect' ? '✕ WRONG' : '·'}
-              </div>
-
-              {/* scrollable tile list */}
-              <div style={{
-                flex: 1, overflowY: 'auto', width: '100%',
-                background: '#F4E6CC',
-                border: `1.5px solid ${C.cardBdr}`,
-                borderRadius: 8,
-                display: 'flex', flexDirection: 'column',
-                boxShadow: `inset 0 0 0 1px rgba(0,0,0,0.06), 3px 0 0 ${C.cardBdr}`,
-                minHeight: 340, maxHeight: 420,
-              }}>
-                {snapNode!.transition_tile_dock.map((tile, idx) => (
+              <div className={styles.tiles}>
+                {snapNode!.transition_tile_dock.map(tile => (
                   <button
                     key={tile}
-                    disabled={tileState !== 'idle' || allDone}
+                    type="button"
+                    disabled={tileState !== 'idle' || allDone || !!revealing}
                     onClick={() => handleTile(tile)}
-                    style={{
-                      padding: '13px 14px',
-                      background: 'transparent',
-                      border: 'none',
-                      borderBottom: idx < snapNode!.transition_tile_dock.length - 1
-                        ? `1px solid ${C.cardBdr}` : 'none',
-                      fontSize: 12, fontWeight: 700, fontFamily: F,
-                      color: C.textDark,
-                      cursor: tileState !== 'idle' || allDone ? 'not-allowed' : 'pointer',
-                      opacity: tileState !== 'idle' || allDone ? 0.45 : 1,
-                      textAlign: 'center',
-                      letterSpacing: '0.05em',
-                      transition: 'background 0.15s, color 0.15s',
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={e => {
-                      if (tileState === 'idle' && !allDone) {
-                        e.currentTarget.style.background = C.btnGold
-                        e.currentTarget.style.color = C.textDark
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.color = C.textDark
-                    }}
+                    className={`${bodyFont.className} ${styles.tile} ${revealing?.tile && revealing.tile.trim().toLowerCase() === tile.trim().toLowerCase() ? styles.tileReveal : ''}`}
                   >
                     {tile}
                   </button>
@@ -1295,137 +1389,46 @@ export default function SnapInGapPage() {
               </div>
             </div>
 
-            {/* RIGHT — Sentence B */}
-            <div style={{
-              flex: 1, background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`,
-              borderRadius: 8, padding: '22px 24px',
-              fontSize: 15, lineHeight: 1.85, color: C.textDark, fontFamily: F,
-              minHeight: 340, maxHeight: 420, overflowY: 'auto', wordBreak: 'break-word',
-            }}>
-              {currentPair ? (
-                currentPair.sentence_b ? (currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)) : ''
-              ) : ''}
-            </div>
-
-            {/* Hint & Live Socratic overlay positioned on canvas */}
-            {hintOverlay && (
-              <div className={styles.hintOverlay} style={{
-                position: 'absolute', inset: 0,
-                background: 'rgba(0,0,0,0.58)', zIndex: 30,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-                backdropFilter: 'blur(2px)',
-              }}>
-                <div className={styles.hintCard} style={{
-                  background: C.cardPaper, border: `2px solid ${C.cardBdr}`,
-                  borderRadius: 8, padding: '22px 26px 20px',
-                  width: '100%', maxWidth: 500,
-                  maxHeight: '94%',
-                  boxShadow: '0 12px 36px rgba(0,0,0,0.45)',
-                  display: 'flex', flexDirection: 'column',
-                  overflowY: 'auto',
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: F, flexShrink: 0 }}>
-                    AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
-                  </div>
-                  <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: F, flexShrink: 0 }}>
-                    {hintOverlayText}
-                  </p>
-
-                  {socraticText && (
-                    <div style={{
-                      background: '#FFF2D6', border: `1.5px solid ${C.btnGoldBdr}`,
-                      borderRadius: 6, padding: '12px 14px', margin: '0 0 16px',
-                      maxHeight: 180, overflowY: 'auto', flexShrink: 0,
-                    }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.textMid, marginBottom: 6, fontFamily: F, letterSpacing: '0.08em' }}>
-                        SOCRATIC GUIDANCE
-                      </div>
-                      <p style={{ margin: 0, fontSize: 12, lineHeight: 1.65, color: C.textDark, fontFamily: F }}>
-                        {socraticText}
-                      </p>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0, paddingTop: 4 }}>
-                    <button
-                      onClick={handleAskSocraticAdvice}
-                      disabled={socraticLoading}
-                      style={{
-                        fontSize: 11, fontWeight: 700, color: C.textDark,
-                        background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
-                        padding: '8px 16px', cursor: socraticLoading ? 'wait' : 'pointer',
-                        fontFamily: F, letterSpacing: '0.04em', borderRadius: 6,
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
-                    </button>
-                    <button
-                      onClick={() => { setHintOverlay(false); setSocraticText('') }}
-                      style={{
-                        fontSize: 11, fontWeight: 700, color: C.textMid,
-                        background: 'transparent', border: `1px solid ${C.btnGoldBdr}`,
-                        padding: '8px 16px', cursor: 'pointer',
-                        fontFamily: F, borderRadius: 6,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(0.7deg)' }}>
+              <span className={styles.pushPin} aria-hidden />
+              <span className={styles.exhibitNo}>EXHIBIT B</span>
+              <p className={`${bodyFont.className} ${styles.exhibitText}`}>{sentenceB}</p>
+            </article>
           </div>
 
-          {/* all done message + bottom padding */}
-          <div style={{ background: C.canvas, padding: '10px 28px 18px', minHeight: 36, textAlign: 'center' }}>
-            {allDone && (
-              <div style={{
-                fontSize: 13, color: C.tileGreen,
-                fontWeight: 700, letterSpacing: '0.1em', fontFamily: F,
-              }}>
-                ALL GAPS BRIDGED — SUBMIT WHEN READY
-              </div>
-            )}
-          </div>
-
-          {/* ── Submit bar ── */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 24px 16px', background: C.board,
-            borderTop: `2px solid ${C.btnGoldBdr}`,
-          }}>
-            <span style={{ fontSize: 12, color: C.textMid, fontWeight: 700, letterSpacing: '0.08em', fontFamily: F }}>
+          {/* ── Footer bar ── */}
+          <div className={styles.submitBar}>
+            <span className={styles.counter}>
               {locked.length} / {snapNode!.sentence_pairs.length} PAIRS BRIDGED
-              {wrongs > 0 && (
-                <span style={{ marginLeft: 14, color: C.accentRed }}>
-                  ATTEMPTS: {wrongs}{wrongs >= 2 && ' — HINT READY'}
+              {allDone && <span className={styles.allDone}>ALL GAPS BRIDGED — SUBMIT WHEN READY</span>}
+              {!allDone && !revealing && wrongs > 0 && attemptsLeft > 0 && (
+                <span className={`${bodyFont.className} ${styles.attemptMsg}`} role="status">
+                  Incorrect bridge. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
                 </span>
               )}
             </span>
-            <button
-              disabled={!allDone || submitting}
-              onClick={handleSubmit}
-              className={`${styles.submitBtn} ${allDone && !submitting ? styles.submitBtnReady : ''}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                background:
-                  submitting ? C.textMuted :
-                  allDone    ? C.btnDark : 'rgba(67,40,24,0.35)',
-                color:
-                  submitting ? '#fff' :
-                  allDone    ? C.btnGold : C.textMuted,
-                border: `1.5px solid ${allDone ? C.btnGoldBdr : 'transparent'}`,
-                borderRadius: 8, padding: '12px 28px',
-                fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
-                cursor: allDone && !submitting ? 'pointer' : 'not-allowed',
-                fontFamily: F,
-              }}
-            >
-              {submitting ? 'CHECKING...' : <><span>SUBMIT</span><span style={{ fontSize: 20, lineHeight: 1 }}>→</span></>}
-            </button>
+            <div className={styles.submitGroup}>
+              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
+                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
+                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
+                <span className={styles.attemptPips} aria-hidden>
+                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />)}
+                </span>
+              </span>
+              {disputed && !allDone ? (
+                // Wrong tile: a crimson alert stands in for SUBMIT until the next tile is tried
+                <span className={styles.disputedBadge} role="status">✕ BRIDGE DISPUTED</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!allDone || submitting}
+                  onClick={handleSubmit}
+                  className={`${styles.submitBtn} ${styles.submit} ${allDone && !submitting ? styles.submitBtnReady : ''}`}
+                >
+                  {submitting ? 'CHECKING…' : <><FileText size={16} aria-hidden /> SUBMIT <ArrowRight size={18} aria-hidden /></>}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1439,44 +1442,20 @@ export default function SnapInGapPage() {
         onStart={() => setTutorialOpen(false)}
       />
 
-      {/* feedback drawer */}
-      {drawer && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: C.pageBg, border: `2px solid ${C.accentRed}`, borderBottom: 'none',
-          padding: '20px 36px 28px', zIndex: 200, maxHeight: 300,
-          overflowY: 'auto', fontFamily: F,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ ...S.stamp, color: C.accentRed, borderColor: C.accentRed, marginBottom: 0 }}>
-              FEEDBACK
-            </div>
-            <button
-              onClick={() => { setDrawer(false); resetTimer() }}
-              style={{ background: 'none', border: 'none', color: C.accentRed, fontSize: 20, cursor: 'pointer', fontFamily: F }}
-            >
-              ✕
-            </button>
-          </div>
-          {fbText && (
-            <p style={{ fontSize: 14, color: C.canvas, lineHeight: 1.7, marginBottom: 12, fontFamily: F }}>
-              {fbText}
-            </p>
-          )}
-          {hintText && (
-            <div style={{ background: '#3D1A00', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.textLight, marginBottom: 6, fontFamily: F }}>
-                SCAFFOLD HINT — TIER {hintTier}
-              </div>
-              <p style={{ fontSize: 13, color: C.canvas, lineHeight: 1.7, margin: 0, fontFamily: F }}>
-                {hintText}
-              </p>
-            </div>
-          )}
-          <button style={S.btnSm} onClick={() => { setDrawer(false); resetTimer() }}>
-            Close and reattempt
-          </button>
-        </div>
+      <CaseDebriefModal
+        debrief={debrief}
+        onRetry={handleRetryDocket}
+        onNext={handleNextDocket}
+        onReport={handleViewReport}
+      />
+
+      {!debrief && (
+        <CritRemark
+          remark={remark}
+          onDismiss={() => setRemark(null)}
+          onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
+          asking={socraticLoading}
+        />
       )}
     </div>
   )

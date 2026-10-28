@@ -67,13 +67,13 @@ export default function CaseDebriefModal({ debrief, onRetry, onNext, onReport }:
             </h2>
           </div>
           <span className={`${styles.stamp} ${perfect ? styles.stampOk : ''}`} style={{ fontSize: 11, transform: 'rotate(-3deg)' }}>
-            {perfect ? 'All Cases Solved' : 'Re-examine'}
+            {perfect ? 'Verified' : 'Re-examine'}
           </span>
         </header>
 
         <div className={styles.debriefBody}>
           <div className={styles.crit}>
-            <InspectorCrit height={120} />
+            <InspectorCrit height={100} />
             <span className={styles.critName}>INSP. CRIT</span>
           </div>
 

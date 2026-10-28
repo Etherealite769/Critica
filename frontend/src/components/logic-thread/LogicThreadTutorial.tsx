@@ -5,18 +5,23 @@ import { ArrowLeft, ArrowRight, FileText, X } from 'lucide-react'
 import InspectorCrit from '@/components/brand/InspectorCrit'
 import styles from './overlays.module.css'
 
-/** localStorage flag: the Node 01 walkthrough has been finished or skipped. */
+/** localStorage flag: the Logic Thread Node 01 walkthrough has been finished or skipped. */
 export const LOGIC_THREAD_TUTORIAL_KEY = 'hasSeenLogicThreadTutorial'
 
+/** True once the walkthrough stored under `key` was finished or skipped. */
+export function hasSeenTutorial(key: string): boolean {
+  try { return localStorage.getItem(key) === 'true' } catch { return false }
+}
+
 export function hasSeenLogicThreadTutorial(): boolean {
-  try { return localStorage.getItem(LOGIC_THREAD_TUTORIAL_KEY) === 'true' } catch { return false }
+  return hasSeenTutorial(LOGIC_THREAD_TUTORIAL_KEY)
 }
 
-function markSeen() {
-  try { localStorage.setItem(LOGIC_THREAD_TUTORIAL_KEY, 'true') } catch { /* storage blocked */ }
+function markSeen(key: string) {
+  try { localStorage.setItem(key, 'true') } catch { /* storage blocked */ }
 }
 
-interface Step {
+export interface TutorialStep {
   /** `data-tutorial` values to spotlight (their union). */
   targets: string[]
   /** Marked on <html data-lt-tutorial> so the page can animate small details (e.g. pulsing pegs). */
@@ -25,7 +30,7 @@ interface Step {
   text: string
 }
 
-const STEPS: Step[] = [
+const STEPS: TutorialStep[] = [
   {
     targets: ['exhibits'],
     title: 'Arranging Exhibits',
@@ -96,14 +101,29 @@ interface LogicThreadTutorialProps {
   onClose: () => void
 }
 
-/** Inspector Crit's spotlight walkthrough of Node 01 (auto on first visit, replayable via TUTORIAL). */
+/** Inspector Crit's spotlight walkthrough of Logic Thread Node 01 (auto on first visit, replayable via TUTORIAL). */
 export default function LogicThreadTutorial({ open, onClose }: LogicThreadTutorialProps) {
-  // Mounted only while open, so each run starts at step 1
-  if (!open) return null
-  return <Walkthrough onClose={onClose} />
+  return <SpotlightTutorial open={open} onClose={onClose} steps={STEPS} storageKey={LOGIC_THREAD_TUTORIAL_KEY} heading="NODE 01 BRIEFING" />
 }
 
-function Walkthrough({ onClose }: { onClose: () => void }) {
+interface SpotlightTutorialProps {
+  open: boolean
+  onClose: () => void
+  steps: TutorialStep[]
+  /** localStorage key set to 'true' when the walkthrough is finished or skipped. */
+  storageKey: string
+  /** Label in the card header, e.g. "NODE 01 BRIEFING". */
+  heading: string
+}
+
+/** Inspector Crit hosts a step-by-step spotlight walkthrough over `[data-tutorial]` targets. */
+export function SpotlightTutorial({ open, ...rest }: SpotlightTutorialProps) {
+  // Mounted only while open, so each run starts at step 1
+  if (!open) return null
+  return <Walkthrough {...rest} />
+}
+
+function Walkthrough({ onClose, steps: STEPS, storageKey, heading }: Omit<SpotlightTutorialProps, 'open'>) {
   const [step, setStep] = useState(0)
   const [spot, setSpot] = useState<Box | null>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
@@ -114,8 +134,8 @@ function Walkthrough({ onClose }: { onClose: () => void }) {
   const isFirst = step === 0
   const isLast = step === STEPS.length - 1
 
-  const finish = useCallback(() => { markSeen(); onClose() }, [onClose])
-  const goTo = useCallback((n: number) => { if (n >= 0 && n < STEPS.length) setStep(n) }, [])
+  const finish = useCallback(() => { markSeen(storageKey); onClose() }, [onClose, storageKey])
+  const goTo = useCallback((n: number) => { if (n >= 0 && n < STEPS.length) setStep(n) }, [STEPS.length])
 
   // Follow the target while the board settles (entrance animation, fit-to-viewport scaling) and on resize
   useEffect(() => {
@@ -190,7 +210,7 @@ function Walkthrough({ onClose }: { onClose: () => void }) {
         className={`${styles.tutorialCard} ${styles.paper}`}
         style={{ top: pos.top, left: pos.left, visibility: measured ? 'visible' : 'hidden' }}>
         <header className={styles.tutorialHead}>
-          <span className={styles.tutorialStep}>NODE 01 BRIEFING {'//'} {step + 1} OF {STEPS.length}</span>
+          <span className={styles.tutorialStep}>{heading} {'//'} {step + 1} OF {STEPS.length}</span>
           <button type="button" className={styles.tutorialSkip} onClick={finish} title="Skip the tutorial (Esc)">
             <X size={12} aria-hidden /> Skip Tutorial
           </button>

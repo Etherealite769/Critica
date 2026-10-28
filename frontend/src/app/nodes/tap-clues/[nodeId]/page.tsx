@@ -16,7 +16,19 @@ import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
+import { MODULE_TITLES } from '@/lib/modules'
+import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
+import {
+  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Search, X,
+} from 'lucide-react'
+import { Montserrat } from 'next/font/google'
+import desk from '@/components/dashboard/desk.module.css'
 import styles from './page.module.css'
+
+// Passage, clue and definition text: Montserrat, self-hosted by next/font
+const bodyFont = Montserrat({ subsets: ['latin'], weight: ['500', '600'], display: 'swap' })
 
 
 // ── Palette (identical to Logic Thread) ───────────
@@ -41,18 +53,6 @@ const C: Record<string, string> = {
 const FONT = "'Courier New', Courier, monospace"
 
 // ── Shared style atoms ─────────────────────────────
-const stamp: React.CSSProperties = {
-  display: 'inline-block', border: `2px solid ${C.btnGoldBdr}`,
-  padding: '3px 14px', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.15em', color: C.textMid,
-  marginBottom: 12, fontFamily: FONT,
-}
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 24px', background: C.btnGold,
-  border: `2px solid ${C.btnGoldBdr}`, borderRadius: 8,
-  color: C.textDark, fontFamily: FONT, fontSize: 11,
-  fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em',
-}
 const btnSm: React.CSSProperties = {
   padding: '7px 16px', background: 'transparent',
   border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6,
@@ -91,14 +91,82 @@ interface DefinitionPanel {
 }
 type Phase = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 
-const TAP_CLUES_TUTORIAL_KEY = 'critica_tutorial_seen_tap_clues_first_node'
+// Inspector Crit's spotlight walkthrough (first visit to tap_node_01, or the TUTORIAL button)
+const CLUE_EXTRACTION_TUTORIAL_KEY = 'hasSeenClueExtractionTutorial'
+const CLUE_EXTRACTION_TUTORIAL: TutorialStep[] = [
+  {
+    targets: ['clue-cards'],
+    title: 'Arranging Evidence',
+    text: 'Welcome to Clue Extraction, Cadet! The target-word card and every clue you pin are evidence cards — drag them anywhere on the board. The threads follow.',
+  },
+  {
+    targets: ['passage'],
+    title: 'Tapping Clues',
+    text: 'The gold-underlined word is locked. Tap the surrounding words that prove what it means — each correct clue is pinned to your board. Tap a pinned clue again to remove it.',
+  },
+  {
+    targets: ['sidebar'],
+    title: 'Hints',
+    text: "Stuck? Hover over 'HINT' on the left and I'll examine the evidence trail with you.",
+  },
+  {
+    targets: ['submit'],
+    title: 'Submission & Tries',
+    text: 'You have 3 wrong taps per case. Unlock every word, then submit to close the case!',
+  },
+]
 
-const TUTORIAL_STEPS = [
-  { label: 'Overview',    code: 'TUT-TTC-001', text: 'In Clue Extraction, a target word in the passage is locked. Its meaning is hidden. Your job is to find surrounding words that implicitly reveal its definition, then tap them to fill the Found Clues Tracker.', board: 'target',     notes: ['Gold underline = target word', 'Teal highlight = your clue', 'Locked stamp = not yet solved'] },
-  { label: 'Find clues',  code: 'TUT-TTC-002', text: 'Look for words that indirectly describe the target word. Think about synonyms, cause-effect, or tone clues. Words like command, dismissing, and imperious all hint at meaning even if they are not direct definitions.', board: 'strongWeak', notes: ['Strong clues match the meaning', 'Weak clues are too general', 'Need 3-4 strong clues'] },
-  { label: 'Tap words',   code: 'TUT-TTC-003', text: 'Click any word in the passage to add it as a clue. It highlights and fills a slot in the Found Clues Tracker on the right. Fill all slots before you can submit. You cannot tap the target word itself.', board: 'tracker',    notes: ['Slot fills on each tap', 'Tap filled slot or ✕ to remove', 'Fill all required clue slots'] },
-  { label: 'Unlock word', code: 'TUT-TTC-004', text: 'With all clue slots filled, hit Submit Clues. If your clues are strong enough, the LOCKED stamp becomes UNLOCKED and the definition is revealed. Weak clues trigger a retry with a hint about what to look for.', board: 'unlock',     notes: ['Stamp flips to OPEN', 'Weak clues = retry + hint', 'Definition revealed on unlock'] },
-] as const
+// Three tries per case; wrong taps 1-2 get encouragement only, the third reveals the clues and moves on
+const MAX_ATTEMPTS = 3
+const REVEAL_MS = 4500
+const RETRY_REMARKS = [
+  'Close, Cadet. Re-examine the text and give it another go.',
+  'Not that one. Which words would only make sense if you knew the meaning?',
+  'Keep digging — look for a synonym, an example or a contrast near the locked word.',
+  'Steady, Cadet. Read the whole sentence around the gold word again.',
+]
+const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
+const HINT_FALLBACK = 'Look for words near the locked word that hint at its meaning.'
+const THINKING_TEXT = 'Inspector Crit is examining the evidence trail'
+const SOCRATIC_FALLBACK = 'Focus on words in the sentence that provide direct context or cause-and-effect signals.'
+
+// Cases failed after three tries survive a reload, so a resumed docket can't close with an unsolved case
+const SKIPPED_KEY = (startId: string) => `critica_skipped_tap_clues_${startId}`
+function readSkipped(startId: string | null): number[] {
+  if (!startId) return []
+  try { return JSON.parse(localStorage.getItem(SKIPPED_KEY(startId)) || '[]') } catch { return [] }
+}
+function writeSkipped(startId: string | null, cases: number[]) {
+  if (!startId) return
+  try {
+    if (cases.length) localStorage.setItem(SKIPPED_KEY(startId), JSON.stringify(cases))
+    else localStorage.removeItem(SKIPPED_KEY(startId))
+  } catch { /* storage blocked */ }
+}
+
+/** Fields read from the mastery endpoints' responses. */
+interface MasteryResponse {
+  status?: string; next_node?: string | null; streak?: number; streak_new_day?: boolean
+  xp_awarded?: number; total_xp?: number; level?: number; level_title?: string; level_up?: boolean; progress_pct?: number
+}
+
+// ── Evidence board geometry ──────────────────────
+// Room kept free beside the dossier: the retracted side tabs only show their icons
+const SIDE_GUTTER = 64
+const BOARD_W = 1100, BOARD_H = 460
+const TARGET_CARD = '__target'
+const TARGET_W = 380, TARGET_H = 196
+const TARGET_DEFAULT = { x: 680, y: 20 }
+const CLUE_W = 170, CLUE_H = 62
+/** Default spot for the i-th pinned clue: two columns under the target card. */
+const clueDefault = (i: number) => ({ x: 680 + (i % 2) * 205, y: 244 + Math.floor(i / 2) * 72 })
+
+function bezierPath(x1: number, y1: number, x2: number, y2: number) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+  const dx = x2 - x1, dy = y2 - y1
+  const L  = Math.sqrt(dx * dx + dy * dy) || 1
+  return `M${x1},${y1} Q${mx + (-dy / L) * 40},${my + (dx / L) * 40} ${x2},${y2}`
+}
 
 // ── Sub-screens ────────────────────────────────────
 function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCancel?: () => void }) {
@@ -107,7 +175,7 @@ function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCance
 
 function ErrorScreen({ msg, onBack }: { msg: string; onBack: () => void }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
       <p style={{ color: '#ff8888', fontSize: 14 }}>{msg}</p>
       <button onClick={onBack} style={btnSm}>← DASHBOARD</button>
     </div>
@@ -154,7 +222,7 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }: {
   node: TapNodeData; data: any; onDashboard: () => void; onNext: () => void; onReplay?: () => void
 }) {
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
       <NodeEvaluationReport
         moduleKey="tap_clues"
         title={node.title}
@@ -170,135 +238,6 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }: {
         onReplay={onReplay}
         onDashboard={onDashboard}
       />
-    </div>
-  )
-}
-
-// ── Tutorial ───────────────────────────────────────
-function TapCluesTutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
-  open: boolean; step: number
-  onBack: () => void; onNext: () => void
-  onClose: () => void; onStart: () => void
-}) {
-  if (!open) return null
-  const current = TUTORIAL_STEPS[step]
-  const isFirst = step === 0
-  const isLast  = step === TUTORIAL_STEPS.length - 1
-
-  const renderBoard = () => {
-    if (current.board === 'target') return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 12, letterSpacing: '0.1em' }}>THE TARGET WORD</div>
-        <div style={{ fontFamily: FONT, fontSize: 14, lineHeight: 1.7, color: C.textDark }}>
-          A tone of{' '}
-          <span style={{ color: C.btnGoldBdr, fontWeight: 700, textDecoration: 'underline' }}>peremptory</span>
-          {' '}authority is often associated with those who{' '}
-          <span style={{ color: C.green, fontWeight: 700 }}>command</span>
-          {' '}without question.
-        </div>
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ display: 'inline-block', transform: 'rotate(-8deg)', color: C.accentRed, border: `2px solid ${C.accentRed}`, borderRadius: '50%', padding: '6px 8px', fontSize: 10, fontWeight: 700, fontFamily: FONT }}>LOCKED</span>
-          <span style={{ fontSize: 12, color: C.textDark, fontFamily: FONT }}>→ tap clues to unlock</span>
-        </div>
-      </div>
-    )
-    if (current.board === 'strongWeak') return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 12, letterSpacing: '0.1em' }}>STRONG VS WEAK CLUES</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ padding: '8px 12px', border: `1.5px solid ${C.green}`, background: '#f0fff4', color: C.greenDark, fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.4, borderRadius: 4 }}>
-            ✓ Strong: "command", "imperious" — signal authority/abruptness
-          </div>
-          <div style={{ padding: '8px 12px', border: `1.5px solid ${C.cardBdr}`, background: C.canvas, color: C.textMuted, fontFamily: FONT, fontSize: 12, fontWeight: 700, lineHeight: 1.4, borderRadius: 4 }}>
-            ✗ Weak: "tone", "often" — too generic, no semantic link
-          </div>
-        </div>
-      </div>
-    )
-    if (current.board === 'tracker') return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 12, letterSpacing: '0.1em' }}>FOUND CLUES TRACKER</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontFamily: FONT, fontSize: 13, color: C.textDark }}>
-          <div><span style={{ color: C.green, fontWeight: 700 }}>[1]</span> command</div>
-          <div><span style={{ color: C.green, fontWeight: 700 }}>[2]</span> imperious</div>
-          <div><span style={{ color: C.cardBdr, fontWeight: 700 }}>[3]</span> <span style={{ color: C.textMuted, fontStyle: 'italic' }}>— tap a word —</span></div>
-        </div>
-      </div>
-    )
-    return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 12, letterSpacing: '0.1em' }}>LOCK STATE CHANGE</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontFamily: FONT, fontSize: 13 }}>
-          <span style={{ color: C.accentRed, border: `2px solid ${C.accentRed}`, borderRadius: '50%', padding: '6px 8px', transform: 'rotate(-6deg)', fontWeight: 700, fontSize: 11 }}>LOCKED</span>
-          <span style={{ color: C.textMid, fontSize: 18 }}>→</span>
-          <span style={{ color: C.green, border: `2px solid ${C.green}`, borderRadius: '50%', padding: '6px 5px', transform: 'rotate(6deg)', fontWeight: 700, fontSize: 10 }}>UNLOCKED</span>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={styles.tutorialOverlay} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
-      <div className={styles.tutorialModal} style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 8, overflow: 'hidden', boxShadow: '0 18px 44px rgba(0,0,0,0.55)' }}>
-        <div style={{ background: C.pageBg, padding: '14px 28px', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: C.canvas }}>CRITICA — FIELD BRIEFING</span>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: C.canvas }}>{current.code}</span>
-        </div>
-        <div style={{ padding: '28px 28px 24px' }}>
-          {/* step nav */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-            {TUTORIAL_STEPS.map((s, i) => (
-              <div key={s.label} className={styles.tutorialNavItem} style={{
-                flex: 1, padding: '8px 4px', textAlign: 'center',
-                background: i < step ? '#b9dfbf' : i === step ? C.cardPaper : C.board,
-                border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3,
-                fontFamily: FONT, fontSize: 11, fontWeight: 700,
-                color: i < step ? '#fff' : C.textDark,
-              }}>
-                {i < step ? '✓' : i + 1}. {s.label}
-              </div>
-            ))}
-          </div>
-          {/* agent bubble */}
-          <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-            <div style={{ flexShrink: 0, textAlign: 'center', width: 80 }}>
-              <div style={{ width: 48, height: 48, border: `2px solid ${C.btnGoldBdr}`, background: C.cardPaper, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
-                <div style={{ width: 30, height: 30, background: C.btnDark, borderRadius: 3, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderRadius: '50%', background: C.canvas }} />
-                  <div style={{ position: 'absolute', bottom: 5, left: 4, right: 4, height: 8, borderRadius: '8px 8px 3px 3px', background: C.canvas }} />
-                </div>
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: C.textDark }}>AGENT CRIT</div>
-            </div>
-            <div style={{ flex: 1, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 5, padding: '14px 18px', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: -9, top: 18, width: 16, height: 16, background: C.cardPaper, borderLeft: `1px solid ${C.btnGoldBdr}`, borderBottom: `1px solid ${C.btnGoldBdr}`, transform: 'rotate(45deg)' }} />
-              <p style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.65, color: C.textDark, margin: 0, whiteSpace: 'pre-line' }}>{current.text}</p>
-            </div>
-          </div>
-          {/* board + notes */}
-          <div style={{ background: C.board, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 5, marginBottom: 22, padding: '10px 12px' }}>
-            <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', color: C.accentRed, marginBottom: 8 }}>QUICK NOTES</div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: 4, minHeight: 90 }}>
-                {renderBoard()}
-              </div>
-              <div style={{ width: 110, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: 4, padding: '10px 12px' }}>
-                {current.notes.map((n, i) => (
-                  <div key={i} style={{ fontFamily: FONT, fontSize: 11, color: C.textDark, lineHeight: 1.6, marginBottom: i < current.notes.length - 1 ? 8 : 0 }}>• {n}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button onClick={isFirst ? onClose : onBack} className={styles.tutorialSecondaryBtn} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
-              {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
-            </button>
-            <button onClick={isLast ? onStart : onNext} className={styles.tutorialPrimaryBtn} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
-              {isLast ? 'START TRAINING →' : 'NEXT →'}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -319,6 +258,14 @@ function tokenizePassage(
     wordIdx++
   })
   return tokens
+}
+
+/** A tapped word matches a clue: exact, a word of a multi-word clue, or a stem (4+ letters, so "a" never matches "detail"). */
+function clueMatches(clue: string, tapped: string): boolean {
+  const c = clue.toLowerCase().trim(), w = tapped.toLowerCase().trim()
+  if (!c || !w) return false
+  if (c === w || c.split(/\s+/).includes(w)) return true
+  return Math.min(c.length, w.length) >= 4 && (c.includes(w) || w.includes(c))
 }
 
 // ── Main component ─────────────────────────────────
@@ -348,18 +295,30 @@ export default function TapCluesPage() {
 
   // session accuracy evaluation state
   const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
-  const sessionStartTimeRef = useRef<number>(Date.now())
+  const [sessionStartedAt, setSessionStartedAt] = useState(() => Date.now())
 
-  const [fbText,       setFbText]       = useState('')
-  const [drawer,       setDrawer]       = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
 
-  const [hintOverlay,     setHintOverlay]     = useState(false)
-  const [hintOverlayText, setHintOverlayText] = useState('')
-  const [hintOverlayTier, setHintOverlayTier] = useState(0)
-  const [socraticText,    setSocraticText]    = useState('')
+  // Hints and feedback are spoken by Inspector Crit's lower-left bubble
+  const [hintOverlay,     setHintOverlay]     = useState(false)   // a hint was used on this case
   const [socraticLoading, setSocraticLoading] = useState(false)
+  const [remark,          setRemark]          = useState<Remark | null>(null)
+  const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
+
+  // Attempts: a wrong tap stays "disputed" until the next tap; the third reveals the clues (word id → clues)
+  const [disputed,  setDisputed]  = useState(false)
+  const [revealing, setRevealing] = useState<Record<string, string[]> | null>(null)
+
+  // End-of-docket debrief and notes on cases failed along the way
+  const [debrief,     setDebrief]     = useState<DocketDebrief | null>(null)
+  const [missedCases, setMissedCases] = useState<MissedCase[]>([])
+
+  // Evidence board: dossier scaled to the viewport, draggable target / clue cards
+  const [fitScale,   setFitScale]   = useState(1)
+  const fitRef = useRef<HTMLDivElement>(null)
+  const [cardPos,    setCardPos]    = useState<Record<string, { x: number; y: number }>>({})
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number; w: number; h: number; moved: boolean } | null>(null)
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
@@ -383,8 +342,7 @@ export default function TapCluesPage() {
         setFoundClues({})
         setDefPanel(null)
         setWrongs(0)
-        setFbText('')
-        setDrawer(false)
+        setDisputed(false); setRevealing(null); setCardPos({})
         setHintOverlay(false)
         setPhase('task')
         return
@@ -398,8 +356,7 @@ export default function TapCluesPage() {
       setFoundClues({})
       setDefPanel(null)
       setWrongs(0)
-      setFbText('')
-      setDrawer(false)
+      setDisputed(false); setRevealing(null); setCardPos({})
       setHintOverlay(false)
       setPhase('task')
     } catch (e: any) {
@@ -419,7 +376,8 @@ export default function TapCluesPage() {
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
 
-      const resumeIdx = Math.min(
+      // A fresh start (Retry / Fresh Case) always opens a new full docket at case 1
+      const resumeIdx = forceFresh ? 0 : Math.min(
         sessionData.current_index ?? 0,
         Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
       )
@@ -444,12 +402,13 @@ export default function TapCluesPage() {
       setFoundClues({})
       setDefPanel(null)
       setWrongs(0)
-      setFbText('')
-      setDrawer(false)
+      setDisputed(false); setRevealing(null); setCardPos({})
       setHintOverlay(false)
       if (forceFresh || resumeIdx === 0) {
         setSessionResults([])
-        sessionStartTimeRef.current = Date.now()
+        setMissedCases([])
+        writeSkipped(start, [])
+        setSessionStartedAt(Date.now())
       }
 
       saveSession('tap_clues', start, {
@@ -460,7 +419,8 @@ export default function TapCluesPage() {
       setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
-      const saved = loadSession('tap_clues', start)
+      if (forceFresh) clearSession('tap_clues', start)
+      const saved = forceFresh ? null : loadSession('tap_clues', start)
       if (saved && saved.sessionQueue.length === 5) {
         setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
         if (saved.next_node) setSavedNextNode(saved.next_node)
@@ -476,7 +436,7 @@ export default function TapCluesPage() {
       } else {
         apiFetch(`/nodes/tap-clues/${start}/`)
           .then((d: TapNodeData) => {
-            setTapNode(d); setPhase('micro_lesson')
+            setTapNode(d); setPhase(forceFresh ? 'task' : 'micro_lesson')
             apiFetch('/progression/dashboard/')
               .then((prog: any) => {
                 const unlocked: string[] = prog.unlocked_nodes ?? []
@@ -511,71 +471,55 @@ export default function TapCluesPage() {
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'tap_node_01') return
-    const seen = localStorage.getItem(TAP_CLUES_TUTORIAL_KEY)
-    if (seen === '1') return
-    localStorage.setItem(TAP_CLUES_TUTORIAL_KEY, '1')
-    setTutorialStep(0); setTutorialOpen(true)
+    // First visit to Node 01: Inspector Crit walks the cadet through the board
+    if (hasSeenTutorial(CLUE_EXTRACTION_TUTORIAL_KEY)) return
+    setTutorialOpen(true)
   }, [phase, nodeId])
 
-  const callFeedback = useCallback(async (word_id: string, clue_word: string, inactivity: boolean) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
-          method: 'POST',
-          body: JSON.stringify({ word_id, clue_word, tier: 1 }),
-        })
-        setFbText(res.explanation ?? 'That word is not a valid context clue.'); setDrawer(true)
-        return
-      } catch {
-        setFbText('That word is not a valid context clue. Look for synonyms or definitions nearby.'); setDrawer(true)
-        return
-      }
-    }
-
-    const activeNodeId = tapNode?.node_id ?? nodeId
+  /** Explanation for a wrong clue (used in the third-strike reveal). Also logs the attempt server-side. */
+  const callFeedback = useCallback(async (word_id: string, clue_word: string, inactivity: boolean): Promise<string> => {
+    const fallback = 'That word is not a valid context clue. Look for synonyms or definitions nearby.'
     try {
-      const res = await apiFetch(`/nodes/tap-clues/${activeNodeId}/feedback/`, {
-        method: 'POST',
-        body: JSON.stringify({ word_id, clue_word, inactivity_seconds: inactivity ? 60 : inactiveRef.current }),
-      })
-      setFbText(res.explanation ?? 'That word is not a valid context clue.'); setDrawer(true)
+      const res = sessionId && sessionExercises.length > questionIndex
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+            method: 'POST',
+            body: JSON.stringify({ word_id, clue_word, tier: 1 }),
+          })
+        : await apiFetch(`/nodes/tap-clues/${tapNode?.node_id ?? nodeId}/feedback/`, {
+            method: 'POST',
+            body: JSON.stringify({ word_id, clue_word, inactivity_seconds: inactivity ? 60 : inactiveRef.current }),
+          })
+      return res.explanation || fallback
     } catch {
-      setFbText('That word is not a valid context clue. Look for synonyms or definitions nearby.'); setDrawer(true)
+      return fallback
     }
   }, [nodeId, tapNode, sessionId, sessionExercises, questionIndex])
 
+  /** HINT: Crit thinks, then speaks the scaffold hint. */
   const fetchHint = useCallback(async (tier = 1) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
-          method: 'POST',
-          body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier }),
-        })
-        setHintOverlayText(res.hint || res.explanation || 'Look for words near the locked word that hint at its meaning.')
-        setHintOverlayTier(res.hint_tier ?? tier); setHintOverlay(true)
-        return
-      } catch {
-        setHintOverlayText('Look for words near the locked word that hint at its meaning.'); setHintOverlay(true)
-        return
-      }
-    }
-
-    const activeNodeId = tapNode?.node_id ?? nodeId
+    setHintOverlay(true)
+    say(THINKING_TEXT, 'thinking')
+    let text = HINT_FALLBACK
     try {
-      const res = await apiFetch(`/nodes/tap-clues/${activeNodeId}/feedback/`, {
-        method: 'POST',
-        body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', inactivity_seconds: 61 }),
-      })
-      setHintOverlayText(res.hint || res.explanation || 'Look for words near the locked word that hint at its meaning.')
-      setHintOverlayTier(res.hint_tier ?? tier); setHintOverlay(true)
-    } catch {
-      setHintOverlayText('Look for words near the locked word that hint at its meaning.'); setHintOverlay(true)
-    }
-  }, [nodeId, activeWordId, tapNode, sessionId, sessionExercises, questionIndex])
+      const res = sessionId && sessionExercises.length > questionIndex
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
+            method: 'POST',
+            body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier }),
+          })
+        : await apiFetch(`/nodes/tap-clues/${tapNode?.node_id ?? nodeId}/feedback/`, {
+            method: 'POST',
+            body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', inactivity_seconds: 61 }),
+          })
+      text = res.hint || res.explanation || HINT_FALLBACK
+    } catch { /* keep the fallback hint */ }
+    say(text, 'hint')
+  }, [nodeId, activeWordId, tapNode, sessionId, sessionExercises, questionIndex, say])
 
+  /** Dig deeper: a live Socratic clue from the AI. */
   const handleAskSocraticAdvice = useCallback(async () => {
     if (!sessionId) return
     setSocraticLoading(true)
+    say(THINKING_TEXT, 'thinking')
     try {
       const res = await fetchLiveSocraticHint(
         sessionId,
@@ -583,13 +527,13 @@ export default function TapCluesPage() {
         { word_id: activeWordId, found_clues: activeWordId ? (foundClues[activeWordId] ?? []) : [] },
         wrongs + 1,
       )
-      setSocraticText(res.socratic_hint || '')
+      say(res.socratic_hint || SOCRATIC_FALLBACK, 'hint')
     } catch {
-      setSocraticText('Focus on words in the sentence that provide direct context or cause-and-effect signals.')
+      say(SOCRATIC_FALLBACK, 'hint')
     } finally {
       setSocraticLoading(false)
     }
-  }, [sessionId, questionIndex, activeWordId, foundClues, wrongs])
+  }, [sessionId, questionIndex, activeWordId, foundClues, wrongs, say])
 
   const resetTimer = useCallback(() => {
     inactiveRef.current = 0
@@ -624,7 +568,8 @@ export default function TapCluesPage() {
   }
 
   const handleWordTap = async (word: string, token: { text: string; isLocked: boolean; word_id?: string; idx: number }) => {
-    if (!tapNode) return
+    if (!tapNode || revealing) return
+    setDisputed(false)
     resetTimer()
 
     // 1. Tapping a locked word directly selects it
@@ -644,7 +589,7 @@ export default function TapCluesPage() {
       const currentFound = foundClues[targetWordId] ?? []
 
       // If clue already found, tapping it removes it
-      if (currentFound.some(c => c.toLowerCase() === cleanWord || cleanWord.includes(c.toLowerCase()) || c.toLowerCase().includes(cleanWord))) {
+      if (currentFound.some(c => clueMatches(c, cleanWord))) {
         handleRemoveClue(cleanWord)
         return
       }
@@ -655,7 +600,7 @@ export default function TapCluesPage() {
         const targetLockedWord = currentEx.locked_words?.find((lw: any) => lw.word_id === targetWordId)
         const rawClues = targetLockedWord?.correct_clue_ids || targetLockedWord?.context_clues || []
         const correctClues = rawClues.map((c: string) => c.toLowerCase().trim())
-        const isClueCorrect = correctClues.some((c: string) => c === cleanWord || c.split(/\s+/).includes(cleanWord) || cleanWord.includes(c) || c.includes(cleanWord))
+        const isClueCorrect = correctClues.some((c: string) => clueMatches(c, cleanWord))
 
         if (isClueCorrect) {
           playRightAnswerSound()
@@ -667,7 +612,7 @@ export default function TapCluesPage() {
           }).catch(() => {})
           const updatedFound = Array.from(new Set([...currentFound, cleanWord]))
           const requiredCount = targetLockedWord?.target_clues_count || correctClues.length || 2
-          const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => c === f || c.includes(f) || f.includes(c))))
+          const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => clueMatches(c, f))))
 
           setFoundClues(prev => ({ ...prev, [targetWordId]: updatedFound }))
 
@@ -687,11 +632,7 @@ export default function TapCluesPage() {
             await logWordToLexical(wordToLog, defToLog, usageToLog, transToLog)
           }
         } else {
-          playWrongSound()
-          const nextWrongs = wrongs + 1
-          setWrongs(nextWrongs)
-          await callFeedback(targetWordId, cleanWord, false)
-          if (nextWrongs >= 3) fetchHint()
+          await handleWrongClue(targetWordId, cleanWord)
         }
         return
       }
@@ -715,11 +656,7 @@ export default function TapCluesPage() {
             await logWordToLexical(res.word, res.definition, res.contextual_usage, res.translation)
           }
         } else {
-          playWrongSound()
-          const nextWrongs = wrongs + 1
-          setWrongs(nextWrongs)
-          await callFeedback(targetWordId, cleanWord, false)
-          if (nextWrongs >= 3) fetchHint()
+          await handleWrongClue(targetWordId, cleanWord)
         }
       } catch {
         playWrongSound()
@@ -782,18 +719,24 @@ export default function TapCluesPage() {
           setSubmitting(false)
         } else {
           try {
-            playVictorySound()
-            const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
+            const cleared = unsolved === 0
+            let finalRes: MasteryResponse = {}
+            if (cleared) {
+              playVictorySound()
+              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+            }
             if (sessionStartId) clearSession('tap_clues', sessionStartId)
+            writeSkipped(sessionStartId, [])
             const totalCases = sessionExercises.length || sessionQueue.length || 5
             const correctCases = updatedCases.filter(r => r.correct).length
             const firstTryCases = updatedCases.filter(r => r.firstTry).length
             const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
             const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-            const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+            const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
 
             setMasteryData({
-              next_node: finalRes.next_node,
+              next_node: cleared ? finalRes.next_node : null,
               streak: finalRes.streak ?? 1,
               accuracy,
               totalCases,
@@ -802,18 +745,27 @@ export default function TapCluesPage() {
               timeTakenSeconds,
               caseResults: updatedCases,
             })
-            notifyProgressionUpdated({
-              action: 'node_mastered',
-              streak: finalRes.streak,
-              streak_new_day: finalRes.streak_new_day,
-              xp_awarded: finalRes.xp_awarded,
-              total_xp: finalRes.total_xp,
-              level: finalRes.level,
-              level_title: finalRes.level_title,
-              level_up: finalRes.level_up,
-              progress_pct: finalRes.progress_pct,
+            if (cleared) {
+              notifyProgressionUpdated({
+                action: 'node_mastered',
+                streak: finalRes.streak,
+                streak_new_day: finalRes.streak_new_day,
+                xp_awarded: finalRes.xp_awarded,
+                total_xp: finalRes.total_xp,
+                level: finalRes.level,
+                level_title: finalRes.level_title,
+                level_up: finalRes.level_up,
+                progress_pct: finalRes.progress_pct,
+              })
+            }
+            setDebrief({
+              verdict: cleared ? 'perfect' : 'partial',
+              solved: totalCases - unsolved,
+              total: totalCases,
+              xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+              nextNode: cleared ? (finalRes.next_node ?? null) : null,
+              missed: missedCases,
             })
-            setPhase('mastery')
           } catch {
             setSubmitting(false)
           }
@@ -821,8 +773,7 @@ export default function TapCluesPage() {
         return
       } else {
         playWrongSound()
-        setFbText('Some words are still locked. Discover all clue words first.')
-        setDrawer(true)
+        say('Some words are still locked. Discover all clue words first.', 'feedback')
         setSubmitting(false)
         return
       }
@@ -862,22 +813,25 @@ export default function TapCluesPage() {
           })
           setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
         } else {
-          playVictorySound()
-          let finalRes = res
-          if (sessionStartId) {
+          const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
+          const cleared = unsolved === 0
+          if (cleared) playVictorySound()
+          let finalRes: MasteryResponse = res
+          if (sessionStartId && cleared) {
             finalRes = await apiFetch(`/nodes/tap-clues/${sessionStartId}/mastery/`,
               { method: 'POST', body: JSON.stringify({ commit_only: true }) })
           }
           if (sessionStartId) clearSession('tap_clues', sessionStartId)
+          writeSkipped(sessionStartId, [])
           const totalCases = sessionQueue.length || 5
           const correctCases = updatedCases.filter(r => r.correct).length
           const firstTryCases = updatedCases.filter(r => r.firstTry).length
           const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
           const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-          const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+          const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
 
           setMasteryData({
-            next_node: savedNextNode || finalRes.next_node,
+            next_node: cleared ? (savedNextNode || finalRes.next_node) : null,
             streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
             accuracy,
             totalCases,
@@ -886,28 +840,203 @@ export default function TapCluesPage() {
             timeTakenSeconds,
             caseResults: updatedCases,
           })
-          notifyProgressionUpdated({
-            action: 'node_mastered',
-            streak: finalRes.streak,
-            streak_new_day: finalRes.streak_new_day,
-            xp_awarded: finalRes.xp_awarded,
-            total_xp: finalRes.total_xp,
-            level: finalRes.level,
-            level_title: finalRes.level_title,
-            level_up: finalRes.level_up,
-            progress_pct: finalRes.progress_pct,
+          if (cleared) {
+            notifyProgressionUpdated({
+              action: 'node_mastered',
+              streak: finalRes.streak,
+              streak_new_day: finalRes.streak_new_day,
+              xp_awarded: finalRes.xp_awarded,
+              total_xp: finalRes.total_xp,
+              level: finalRes.level,
+              level_title: finalRes.level_title,
+              level_up: finalRes.level_up,
+              progress_pct: finalRes.progress_pct,
+            })
+          }
+          setDebrief({
+            verdict: cleared ? 'perfect' : 'partial',
+            solved: totalCases - unsolved,
+            total: totalCases,
+            xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+            nextNode: cleared ? (savedNextNode || finalRes.next_node || null) : null,
+            missed: missedCases,
           })
-          setPhase('mastery')
         }
       } else {
         playWrongSound()
+        say('Some words are still locked. Discover all clue words first.', 'feedback')
       }
     } catch (e: any) {
       playWrongSound()
-      setFbText(e?.status === 'incomplete' ? 'Some words are still locked.' : 'Submission failed.')
-      setDrawer(true)
+      say(e?.status === 'incomplete' ? 'Some words are still locked.' : 'Submission failed.', 'feedback')
     } finally { setSubmitting(false) }
   }
+
+  // ── Case outcome helpers ───────────────────────
+  const totalCases = sessionId && sessionExercises.length > 0
+    ? sessionExercises.length
+    : (sessionQueue.length || 1)
+
+  /** Cases left unsolved this docket (this run's misses plus misses saved before a reload). */
+  const unsolvedCases = (updated: CaseResult[]) =>
+    new Set([...updated.filter(r => !r.correct).map(r => r.caseNumber), ...readSkipped(sessionStartId)]).size
+
+  /** Correct clues for every word still locked on this case (word id → clues). */
+  const cluesToReveal = (): Record<string, string[]> => {
+    const source: LockedWordMeta[] = (sessionId && sessionExercises.length > questionIndex
+      ? sessionExercises[questionIndex].locked_words
+      : tapNode?.locked_words) ?? []
+    const out: Record<string, string[]> = {}
+    for (const lw of source) {
+      if (unlockedWords.includes(lw.word_id)) continue
+      out[lw.word_id] = (lw.correct_clue_ids || lw.context_clues || []).map(c => c.toLowerCase().trim()).filter(Boolean)
+    }
+    return out
+  }
+
+  /** Third miss: file the case as unsolved and move on (or close the docket without mastery). */
+  const failCase = (explanation: string, notes: MissedCase, decidedAt: number) => {
+    const caseNumber = questionIndex + 1
+    const res: CaseResult = { caseNumber, correct: false, firstTry: false, hintsUsed: hintOverlay ? 1 : 0, attempts: MAX_ATTEMPTS }
+    const updated = [...sessionResults.filter(r => r.caseNumber !== caseNumber), res]
+    setSessionResults(updated)
+    writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
+    const missed = [...missedCases.filter(m => m.caseNumber !== caseNumber), notes].sort((a, b) => a.caseNumber - b.caseNumber)
+
+    const nextIdx = questionIndex + 1
+    if (nextIdx < totalCases) {
+      if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+      if (sessionStartId) {
+        saveSession('tap_clues', sessionStartId, {
+          sessionQueue, questionIndex: nextIdx,
+          next_node: savedNextNode || undefined,
+          streak: savedStreak !== null ? savedStreak : undefined,
+        })
+      }
+      setQuestionIndex(nextIdx)
+      loadQuestion(nextIdx, sessionQueue)
+      say(explanation, 'explain')   // keep Crit's explanation up on the next case
+      return
+    }
+    // Last case: the docket closes unsolved, so no mastery call and no next node
+    const unsolved = unsolvedCases(updated)   // read before the saved misses are cleared
+    if (sessionStartId) clearSession('tap_clues', sessionStartId)
+    writeSkipped(sessionStartId, [])
+    setMasteryData({
+      next_node: null,
+      streak: savedStreak,
+      accuracy: Math.round((updated.filter(r => r.firstTry).length / Math.max(1, totalCases)) * 100),
+      totalCases,
+      correctCases: updated.filter(r => r.correct).length,
+      hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
+      timeTakenSeconds: Math.max(1, Math.round((decidedAt - sessionStartedAt) / 1000)),
+      caseResults: updated,
+    })
+    setDebrief({ verdict: 'partial', solved: Math.max(0, totalCases - unsolved), total: totalCases, xpAwarded: null, nextNode: null, missed })
+  }
+
+  /** Wrong clue: taps 1-2 get encouragement only; the third reveals the clues, explains, and advances. */
+  const handleWrongClue = async (wordId: string, clue: string) => {
+    playWrongSound()
+    setDisputed(true)
+    const nextWrongs = wrongs + 1
+    setWrongs(nextWrongs)
+
+    if (nextWrongs < MAX_ATTEMPTS) {
+      if (sessionId) {
+        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+          method: 'POST',
+          body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue }),
+        }).catch(() => {})
+      }
+      say(pick(RETRY_REMARKS))
+      return
+    }
+
+    // Third strike: highlight the correct clues, explain, then move on
+    const reveal = cluesToReveal()
+    setRevealing(reveal)
+    const why = await callFeedback(wordId, clue, false)
+    const wordOf = (id: string) => tapNode?.locked_words.find(lw => lw.word_id === id)?.word ?? 'the locked word'
+    const lines = Object.entries(reveal).filter(([, c]) => c.length > 0)
+      .map(([id, c]) => `for “${wordOf(id)}”: ${c.map(x => `“${x}”`).join(', ')}`)
+    const cluesLine = lines.length ? `The context clues were ${lines.join('; ')}.` : 'The context clues stay sealed in this file.'
+    const explanation = `Three strikes, Cadet — this case is filed as unverified. ${cluesLine}\n\n${why}`
+    const caseNumber = questionIndex + 1
+    const notes: MissedCase = {
+      caseNumber, title: tapNode?.title ?? `Case ${caseNumber}`,
+      notes: [cluesLine, why], correctSlots: null, total: tapNode?.locked_words.length ?? 1,
+    }
+    setMissedCases(prev => [...prev.filter(m => m.caseNumber !== caseNumber), notes])
+    say(explanation, 'explain')
+    // eslint-disable-next-line react-hooks/purity -- runs from a word tap handler, never during render
+    const decidedAt = Date.now()
+    setTimeout(() => failCase(explanation, notes, decidedAt), REVEAL_MS)
+  }
+
+  // ── Card dragging (pointer events: mouse, pen and touch) ──
+  const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>, id: string, pos: { x: number; y: number }, w: number, h: number) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return   // buttons keep their clicks
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, originX: pos.x, originY: pos.y, w, h, moved: false }
+  }
+
+  const handleCardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    // Pointer deltas are screen pixels; the dossier is scaled to fit, so convert to board pixels
+    const dx = (e.clientX - drag.startX) / fitScale
+    const dy = (e.clientY - drag.startY) / fitScale
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < 5) return
+      drag.moved = true
+      setDraggingId(drag.id)
+    }
+    // Keep the whole card inside the evidence board (inside its 1px border)
+    const x = Math.min(Math.max(0, drag.originX + dx), BOARD_W - 2 - drag.w)
+    const y = Math.min(Math.max(0, drag.originY + dy), BOARD_H - 2 - drag.h)
+    setCardPos(prev => ({ ...prev, [drag.id]: { x, y } }))
+  }
+
+  const handleCardPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    dragRef.current = null
+    setDraggingId(null)
+  }
+
+  // ── Fit the dossier inside the 100vh viewport ──
+  useEffect(() => {
+    if (phase !== 'task') return
+    const el = fitRef.current
+    if (!el) return
+    const fit = () => {
+      const maxW = Math.min(window.innerWidth * 0.92, window.innerWidth - 2 * SIDE_GUTTER)
+      const s = Math.min(1, maxW / el.offsetWidth, (window.innerHeight - 28) / el.offsetHeight)
+      setFitScale(s > 0 ? s : 1)
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    window.addEventListener('resize', fit)
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit) }
+  }, [phase])
+
+  // ── Debrief actions ────────────────────────────
+  /** RETRY CASE / Fresh Case: wipe the docket and load a brand-new 5-case set. */
+  const handleRetryDocket = () => {
+    setDebrief(null); setMissedCases([]); setRemark(null)
+    startSession(true)
+  }
+
+  /** NEXT DOCKET: on to the unlocked node, or the case report when nothing was unlocked. */
+  const handleNextDocket = () => {
+    const next = debrief?.nextNode
+    setDebrief(null)
+    if (next) router.push(`/nodes/tap-clues/${next}`)
+    else setPhase('mastery')
+  }
+
+  const handleViewReport = () => { setDebrief(null); setPhase('mastery') }
 
   // ── Phase guards ───────────────────────────────
   if (phase === 'loading')      return <BriefingGenerationScreen title={tapNode?.title} onCancel={() => router.push('/dashboard')} />
@@ -940,460 +1069,297 @@ export default function TapCluesPage() {
   const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
   const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
   const requiredCluesCount = activeWordMeta?.target_clues_count
-    || (activeWordMeta as any)?.correct_clue_ids?.length
-    || (activeWordMeta as any)?.context_clues?.length
+    || activeWordMeta?.correct_clue_ids?.length
+    || activeWordMeta?.context_clues?.length
     || 2
-  const totalSlots     = Math.max(requiredCluesCount, activeClues.length, 1)
+  const level          = tapNode!.difficulty ?? nodeDifficulty(nodeId)
+  const attemptsLeft   = Math.max(0, MAX_ATTEMPTS - wrongs)   // wrongs resets to 0 on every new case
+  const activeUnlocked = activeWordMeta ? unlockedWords.includes(activeWordMeta.word_id) : false
+  const revealedWords  = revealing ? Object.values(revealing).flat() : []
+  const isRevealedClue = (clean: string) => revealedWords.some(c => clueMatches(c, clean))
+
+  // Evidence cards on the board: the target-word card plus one pinned card per found clue
+  const targetPos = cardPos[TARGET_CARD] ?? TARGET_DEFAULT
+  const clueCards = activeClues.map((clue, i) => {
+    const key = `${activeWordId}:${clue}`
+    return { key, clue, pos: cardPos[key] ?? clueDefault(i) }
+  })
+
+  const endSession = () => {
+    if (sessionId) {
+      updateSessionProgress(sessionId, questionIndex).catch(() => {})
+    }
+    if (sessionStartId && sessionQueue.length > 0) {
+      saveSession('tap_clues', sessionStartId, {
+        sessionQueue, questionIndex,
+        next_node: savedNextNode || undefined,
+        streak: savedStreak !== null ? savedStreak : undefined,
+      })
+    }
+    router.push('/dashboard')
+  }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, padding: '20px 12px' }}>
+    <div className={`${desk.desk} ${styles.screen}`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
 
-      {/* ── Fixed folder tabs (same as Logic Thread) ── */}
-      <div style={{ position: 'fixed', left: 0, top: '20%', transform: 'translateY(-20%)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, zIndex: 100 }}>
+      {/* ── Slide-out action tabs (icons peek from the left edge) ── */}
+      <div className={styles.sideTabs}>
         {[
-          { label: 'Hint', action: () => fetchHint(Math.min(wrongs + 1, 3)) },
-          { label: 'Fresh Case ↻', action: () => startSession(true) },
-          { label: 'End Session', action: () => {
-            if (sessionId) {
-              updateSessionProgress(sessionId, questionIndex).catch(() => {})
-            }
-            if (sessionStartId && sessionQueue.length > 0) {
-              saveSession('tap_clues', sessionStartId, {
-                sessionQueue, questionIndex,
-                next_node: savedNextNode || undefined,
-                streak: savedStreak !== null ? savedStreak : undefined,
-              })
-            }
-            router.push('/dashboard')
-          }},
-        ].map(({ label, action }) => (
-          <button key={label} onClick={action} className={styles.folderTab} style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: FONT, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.btnGoldBdr }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.btnGold }}
-          >
-            {label}
+          { label: 'Hint',        icon: Lightbulb, action: () => fetchHint(Math.min(wrongs + 1, 3)) },
+          { label: 'Fresh Case',  icon: RotateCcw, action: handleRetryDocket },
+          { label: 'End Session', icon: LogOut,    action: endSession },
+        ].map(({ label, icon: Icon, action }) => (
+          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
+            <span className={styles.sideTabLabel}>{label}</span>
+            <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
           </button>
         ))}
       </div>
 
-      {/* ── Main shell ── */}
-      <div className={styles.boardEnter} style={{
-        display: 'flex', flexDirection: 'column',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
-        borderRadius: 8, overflow: 'hidden',
-        width: '100%', maxWidth: 1020, minHeight: 600,
-      }}>
+      {/* ── Dossier (scaled to fit the viewport) ── */}
+      <div ref={fitRef} className={`${styles.boardEnter} ${styles.dossier}`} style={{ transform: `scale(${fitScale})` }}>
 
-        {/* ── HEADER: matching Logic Thread ── */}
-        <div style={{ background: C.board, display: 'flex', flexDirection: 'column', borderBottom: `2px solid ${C.btnGoldBdr}` }}>
-          {/* row 1: objective */}
-          <div style={{ padding: '12px 24px 10px', textAlign: 'center', borderBottom: `1px solid rgba(0,0,0,0.12)` }}>
-            <div style={{
-              display: 'inline-block', border: `1.5px solid ${C.accentRed}`,
-              padding: '7px 28px', fontSize: 13, fontWeight: 700,
-              letterSpacing: '0.12em', background: 'rgba(255,255,255,0.3)', fontFamily: FONT,
-            }}>
-              <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-              <span style={{ color: C.accentRed }}>TAP THE CONTEXT CLUES TO UNLOCK THE HIDDEN WORD</span>
-            </div>
+        {/* Folder tabs */}
+        <div className={styles.dossierTabs}>
+          <div className={`${styles.dossierTab} ${styles.dossierTabActive}`}>
+            <Paperclip size={22} strokeWidth={1.75} className={styles.tabClip} aria-hidden />
+            <span className={styles.tabIndex}>[3] CASE 03:</span>
+            <span className={styles.tabLabel}><Search size={13} aria-hidden /> {MODULE_TITLES.tap_clues}</span>
           </div>
-          {/* row 2: meta */}
-          <div style={{ padding: '8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,0,0,0.12)', borderRadius: 20, padding: '5px 14px' }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)], flexShrink: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, fontFamily: FONT }}>
-                LVL {tapNode!.difficulty ?? nodeDifficulty(nodeId)} — {DIFFICULTY_LABELS[tapNode!.difficulty ?? nodeDifficulty(nodeId)]} ({tapNode!.locked_words.length} WORDS)
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {sessionQueue.length > 0 && (
-                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: C.btnDark, background: 'rgba(0,0,0,0.1)', borderRadius: 20, padding: '5px 14px' }}>
-                  CASE {questionIndex + 1} / {sessionQueue.length}
-                </span>
-              )}
-              <button
-                onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
-                className={styles.tutorialBtn}
-                style={{ padding: '7px 18px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 8, color: C.textDark, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', cursor: 'pointer' }}
-              >
-                TUTORIAL
-              </button>
-            </div>
-          </div>
-          {/* progress bar */}
           {sessionQueue.length > 0 && (
-            <div style={{ padding: '0 24px 10px' }}>
-              <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.15)', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  width: `${((questionIndex + 1) / sessionQueue.length) * 100}%`,
-                  height: '100%',
-                  background: DIFFICULTY_COLORS[tapNode!.difficulty ?? nodeDifficulty(nodeId)] ?? '#4ddd94',
-                  transition: 'width 0.4s ease',
-                }} />
-              </div>
+            <div className={styles.dossierTab}>
+              <span className={styles.tabIndex}>DOCKET</span>
+              <span className={styles.tabLabel}>CASE {questionIndex + 1} / {sessionQueue.length}</span>
             </div>
           )}
-        </div>
-
-        {/* ── CANVAS ── */}
-        <div style={{ background: C.canvas, display: 'flex', flexDirection: 'column', flex: 1, position: 'relative' }}>
-
-          {/* word unlock dots */}
-          <div style={{ padding: '12px 24px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
-            {tapNode!.locked_words.map(lw => (
-              <div key={lw.word_id} style={{
-                height: 7, borderRadius: 4, flex: 1,
-                background: unlockedWords.includes(lw.word_id) ? C.green
-                  : activeWordId === lw.word_id ? C.btnGoldBdr
-                  : C.cardBdr,
-                transition: 'background 0.3s',
-              }} />
-            ))}
-            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, whiteSpace: 'nowrap', marginLeft: 10 }}>
-              {unlockedWords.length} / {tapNode!.locked_words.length} UNLOCKED
+          <div className={styles.dossierTab}>
+            <span className={styles.tabIndex}>CLEARANCE</span>
+            <span className={styles.tabLabel}>
+              <span className={styles.levelDot} style={{ background: DIFFICULTY_COLORS[level] }} />
+              LVL {level} — {DIFFICULTY_LABELS[level]}
             </span>
           </div>
-
-          {/* instruction line */}
-          <div style={{ textAlign: 'center', padding: '0 24px 10px', fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: C.accentRed }}>
-            {activeWordId
-              ? `FINDING CLUES FOR: "${activeWordMeta?.word.toUpperCase()}" — TAP SURROUNDING WORDS`
-              : allUnlocked
-              ? 'ALL WORDS UNLOCKED — SUBMIT TO COMPLETE'
-              : 'TAP A GOLD-UNDERLINED WORD TO BEGIN'}
-          </div>
-
-          {/* ── two-column: passage | right panel ── */}
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '0 24px 16px', gap: 18 }}>
-
-            {/* LEFT: passage */}
-            <div style={{
-              flex: 1,
-              background: C.cardPaper,
-              border: `1.5px solid ${C.cardBdr}`,
-              borderRadius: 10,
-              padding: '24px 28px',
-              fontSize: 16, lineHeight: 2.2,
-              color: C.textDark, fontFamily: FONT,
-              overflowY: 'auto',
-              boxShadow: '0 3px 12px rgba(0,0,0,0.1)',
-            }}>
-              {tokens.map((token, i) => {
-                if (/^\s+$/.test(token.text)) return <span key={i}>{token.text}</span>
-                const isLocked   = token.isLocked
-                const wordId     = token.word_id
-                const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
-                const isActive   = wordId ? activeWordId === wordId : false
-                const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
-                const isPulse    = pulseClue === cleanWord
-                const isFoundClue = activeClues.some((c: string) => {
-                  const cClean = c.toLowerCase().trim().replace(/[^a-zA-Z']/g, '')
-                  return cClean === cleanWord || cleanWord.includes(cClean) || cClean.includes(cleanWord)
-                })
-
-                let color  = C.textDark, bg = 'transparent', border = 'none'
-                let fw     = 400, cursor = 'pointer', td = 'none'
-
-                if (isLocked && isUnlocked)  { color = C.green;      fw = 700; td = 'underline' }
-                else if (isLocked && isActive){ color = C.btnGoldBdr; fw = 700; bg = 'rgba(196,154,90,0.2)'; border = `1.5px solid ${C.btnGold}` }
-                else if (isLocked)            { color = C.btnGoldBdr; fw = 700; td = 'underline' }
-                else if (isFoundClue)         { color = '#1E522B'; bg = 'rgba(46, 107, 58, 0.2)'; border = `1.5px solid ${C.green}`; fw = 700 }
-                else if (activeWordId && !isLocked && isPulse) { bg = 'rgba(34,170,85,0.35)'; border = `2px solid ${C.green}`; color = C.greenDark; fw = 700 }
-
-                return (
-                  <span
-                    key={i}
-                    onClick={() => handleWordTap(token.text, token)}
-                    title={isFoundClue ? 'Found context clue (click to remove)' : undefined}
-                    style={{
-                      color, background: bg, border, borderRadius: border !== 'none' ? 4 : 0,
-                      fontWeight: fw, cursor, textDecoration: td,
-                      padding: border !== 'none' ? '1px 5px' : '0',
-                      margin: border !== 'none' ? '0 1px' : '0',
-                      transition: 'all 0.2s', display: 'inline',
-                    }}
-                  >
-                    {token.text}
-                  </span>
-                )
-              })}
-            </div>
-
-            {/* RIGHT: clue panel */}
-            <div style={{
-              width: 240, flexShrink: 0,
-              display: 'flex', flexDirection: 'column', gap: 14,
-            }}>
-              {/* target word card */}
-              <div style={{ background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`, borderRadius: 10, padding: '16px 18px', boxShadow: '0 3px 10px rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, fontFamily: FONT, marginBottom: 2 }}>TARGET WORD</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.textMuted, fontFamily: FONT }}>STATUS</div>
-                  </div>
-                  {activeWordMeta ? (
-                    unlockedWords.includes(activeWordMeta.word_id) ? (
-                      <div style={{ border: `2px solid ${C.green}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.green, fontFamily: FONT, transform: 'rotate(6deg)', lineHeight: 1.2, textAlign: 'center' }}>UN<br/>LOCKED</div>
-                    ) : (
-                      <div style={{ border: `2px solid ${C.accentRed}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.accentRed, fontFamily: FONT, transform: 'rotate(-8deg)', lineHeight: 1.2, textAlign: 'center' }}>LOCK<br/>ED</div>
-                    )
-                  ) : (
-                    <div style={{ border: `2px solid ${C.cardBdr}`, borderRadius: '50%', padding: '6px 8px', fontSize: 9, fontWeight: 700, color: C.cardBdr, fontFamily: FONT, transform: 'rotate(-8deg)', lineHeight: 1.2, textAlign: 'center' }}>LOCK<br/>ED</div>
-                  )}
-                </div>
-                <div style={{ fontSize: activeWordMeta ? 20 : 14, fontWeight: 700, color: activeWordMeta ? (unlockedWords.includes(activeWordMeta.word_id) ? C.green : C.btnGoldBdr) : C.cardBdr, fontFamily: FONT, marginBottom: 6 }}>
-                  {activeWordMeta?.word ?? '— select a word —'}
-                </div>
-                <div style={{ borderTop: `1px solid ${C.cardBdr}`, margin: '8px 0' }} />
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.accentRed, fontFamily: FONT, marginBottom: 6 }}>INSTRUCTIONS</div>
-                <div style={{ fontSize: 11, color: C.textDark, fontFamily: FONT, lineHeight: 1.55 }}>
-                  Tap surrounding words that prove the target word&apos;s meaning.
-                </div>
-              </div>
-
-              {/* found clues tracker */}
-              <div style={{ background: C.cardPaper, border: `1.5px solid ${C.cardBdr}`, borderRadius: 10, padding: '16px 18px', boxShadow: '0 3px 10px rgba(0,0,0,0.1)', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', color: C.accentRed, fontFamily: FONT }}>
-                    FOUND CLUES TRACKER ({activeClues.length}/{totalSlots})
-                  </div>
-                  {activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: C.greenDark, background: '#E8F5E9', border: `1px solid ${C.green}`, borderRadius: 4, padding: '2px 6px' }}>
-                      ✓ UNLOCKED
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {Array.from({ length: totalSlots }).map((_, i) => {
-                    const clue = activeClues[i]
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          background: clue ? 'rgba(46, 107, 58, 0.08)' : 'transparent',
-                          borderRadius: 6,
-                          padding: '6px 10px',
-                          border: clue ? `1.5px solid ${C.green}` : `1px dashed ${C.cardBdr}`,
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        <span style={{ fontSize: 11, fontWeight: 700, color: clue ? C.green : C.cardBdr, fontFamily: FONT, flexShrink: 0, minWidth: 24 }}>
-                          [{i + 1}]
-                        </span>
-                        <div style={{ flex: 1, fontSize: 12, color: clue ? '#1E522B' : C.textMuted, fontFamily: FONT, fontWeight: clue ? 700 : 400, fontStyle: clue ? 'normal' : 'italic', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span>{clue || '— tap clue in passage —'}</span>
-                          {clue && <span style={{ color: C.green, fontSize: 11, marginLeft: 4 }}>✓</span>}
-                        </div>
-                        {clue && !unlockedWords.includes(activeWordId ?? '') && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleRemoveClue(clue) }}
-                            title="Remove clue"
-                            style={{ background: 'none', border: 'none', color: '#8C5A3C', cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: '0 2px' }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Status banner when word is unlocked */}
-                {activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
-                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${C.cardBdr}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 11, color: C.greenDark, fontWeight: 700, fontFamily: FONT }}>
-                      ✓ All clues verified for this term!
-                    </div>
-                    <button
-                      onClick={() => setDefPanel({
-                        word_id: activeWordMeta.word_id,
-                        word: activeWordMeta.word,
-                        definition: (activeWordMeta as any).definition || 'Target academic vocabulary unlocked.',
-                        contextual_usage: (activeWordMeta as any).contextual_usage || '',
-                        translation: (activeWordMeta as any).translation || '',
-                      })}
-                      style={{
-                        padding: '7px 12px', background: C.btnGold, border: `1.5px solid ${C.btnGoldBdr}`,
-                        borderRadius: 6, fontSize: 11, fontWeight: 700, fontFamily: FONT, color: C.textDark, cursor: 'pointer'
-                      }}
-                    >
-                      📖 View Definition Card
-                    </button>
-                  </div>
-                )}
-
-                {/* Other unlocked words */}
-                {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).length > 0 && (
-                  <div style={{ marginTop: 16, borderTop: `1px solid ${C.cardBdr}`, paddingTop: 12 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.green, fontFamily: FONT, marginBottom: 8 }}>COMPLETED WORDS</div>
-                    {tapNode!.locked_words.filter(lw => unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).map(lw => (
-                      <div
-                        key={lw.word_id}
-                        onClick={() => setActiveWordId(lw.word_id)}
-                        style={{ fontSize: 11, color: C.greenDark, fontFamily: FONT, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, fontWeight: 700, cursor: 'pointer', padding: '4px 6px', borderRadius: 4, background: 'rgba(46, 107, 58, 0.06)' }}
-                      >
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 10 }}>✓</span>{lw.word}
-                        </span>
-                        <span style={{ fontSize: 10, color: C.textMuted }}>view clues →</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Other unsolved words prompt */}
-                {tapNode!.locked_words.filter(lw => !unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).length > 0 && activeWordMeta && unlockedWords.includes(activeWordMeta.word_id) && (
-                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${C.cardBdr}` }}>
-                    {tapNode!.locked_words.filter(lw => !unlockedWords.includes(lw.word_id) && lw.word_id !== activeWordId).map(nextWord => (
-                      <button
-                        key={nextWord.word_id}
-                        onClick={() => setActiveWordId(nextWord.word_id)}
-                        style={{
-                          width: '100%', padding: '8px 12px', background: C.btnDark, color: C.btnGold,
-                          border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 6, fontSize: 11, fontWeight: 700,
-                          fontFamily: FONT, cursor: 'pointer', textAlign: 'center', letterSpacing: '0.08em'
-                        }}
-                      >
-                        Target Next Word: &quot;{nextWord.word}&quot; →
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Hint & Live Socratic overlay positioned on canvas */}
-          {hintOverlay && (
-            <div className={styles.hintOverlay} style={{
-              position: 'absolute', inset: 0,
-              background: 'rgba(0,0,0,0.52)', zIndex: 30,
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', padding: 18,
-            }}>
-              <div className={styles.hintCard} style={{
-                background: C.cardPaper, border: `2px solid ${C.cardBdr}`,
-                borderRadius: 6, padding: '18px 20px 16px',
-                maxWidth: 320, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, marginBottom: 10, fontFamily: FONT }}>
-                  AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
-                </div>
-                <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.7, margin: '0 0 14px', fontFamily: FONT }}>
-                  {hintOverlayText}
-                </p>
-
-                {socraticText && (
-                  <div style={{ background: '#FFF2D6', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '10px 12px', margin: '0 0 14px' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: C.textMid, marginBottom: 4, fontFamily: FONT }}>SOCRATIC GUIDANCE</div>
-                    <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: C.textDark, fontFamily: FONT }}>{socraticText}</p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button
-                    onClick={handleAskSocraticAdvice}
-                    disabled={socraticLoading}
-                    style={{
-                      fontSize: 10, fontWeight: 700, color: C.textDark,
-                      background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`,
-                      padding: '6px 12px', cursor: 'pointer',
-                      fontFamily: FONT, letterSpacing: '0.04em', borderRadius: 4,
-                    }}
-                  >
-                    {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
-                  </button>
-                  <button
-                    onClick={() => { setHintOverlay(false); setSocraticText('') }}
-                    style={{
-                      fontSize: 10, fontWeight: 700, color: C.textMid,
-                      background: 'transparent', border: `1px solid ${C.textMid}`,
-                      padding: '6px 12px', cursor: 'pointer',
-                      fontFamily: FONT, borderRadius: 4,
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* ── SUBMIT BAR ── */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '12px 24px 16px', background: C.board,
-          borderTop: `2px solid ${C.btnGoldBdr}`,
-        }}>
-          <span style={{ fontSize: 12, color: C.textMid, fontWeight: 700, letterSpacing: '0.08em', fontFamily: FONT }}>
-            {unlockedWords.length} / {tapNode!.locked_words.length} WORDS UNLOCKED
-            {wrongs > 0 && (
-              <span style={{ marginLeft: 14, color: C.accentRed }}>
-                ATTEMPTS: {wrongs}{wrongs >= 2 && ' — HINT READY'}
+        <div className={`${desk.folder} ${styles.folder}`}>
+          <Paperclip size={34} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
+
+          {/* Header bar */}
+          <header className={styles.header}>
+            <div className={styles.headerLeft}>
+              <span className={styles.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} {tapNode!.title}
               </span>
-            )}
-          </span>
-          <button
-            disabled={!allUnlocked || submitting}
-            onClick={handleSubmitMastery}
-            className={`${styles.submitBtn} ${allUnlocked && !submitting ? styles.submitBtnReady : ''}`}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 14,
-              background:
-                submitting ? C.textMuted :
-                allUnlocked ? C.btnDark : 'rgba(67,40,24,0.35)',
-              color:
-                submitting ? '#fff' :
-                allUnlocked ? C.btnGold : C.textMuted,
-              border: `1.5px solid ${allUnlocked ? C.btnGoldBdr : 'transparent'}`,
-              borderRadius: 8, padding: '12px 28px',
-              fontSize: 14, fontWeight: 700, letterSpacing: '0.14em',
-              cursor: allUnlocked && !submitting ? 'pointer' : 'not-allowed',
-              fontFamily: FONT,
-            }}
-          >
-            {submitting ? 'CHECKING...' : <><span>SUBMIT</span><span style={{ fontSize: 20, lineHeight: 1 }}>→</span></>}
-          </button>
+              <h1 className={styles.title}>{MODULE_TITLES.tap_clues}</h1>
+            </div>
+            <div className={styles.headerRight}>
+              <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`} onClick={() => setTutorialOpen(true)}>
+                <HelpCircle size={14} aria-hidden /> Tutorial
+              </button>
+            </div>
+          </header>
+
+          {/* Objective stamp + progress */}
+          <div className={styles.objectiveRow}>
+            <span className={styles.objective}>
+              OBJECTIVE: TAP THE CONTEXT CLUES TO UNLOCK THE HIDDEN WORD
+            </span>
+            <span className={`${desk.handwritten} ${styles.objectiveNote}`}>
+              {activeWordMeta && !activeUnlocked ? `clues for “${activeWordMeta.word}” →` : 'find what proves the meaning →'}
+            </span>
+          </div>
+          {sessionQueue.length > 0 && (
+            <div className={styles.progress} aria-hidden>
+              <div className={styles.progressFill} style={{ width: `${((questionIndex + 1) / sessionQueue.length) * 100}%` }} />
+            </div>
+          )}
+
+          {/* ── Evidence board ── */}
+          <div className={styles.board} style={{ width: BOARD_W, height: BOARD_H }}>
+            {/* Passage exhibit (fixed reading surface; tap words to collect clues) */}
+            <article className={`${desk.indexCard} ${styles.passage}`} data-tutorial="passage">
+              <span className={styles.pushPin} aria-hidden />
+              <span className={styles.exhibitNo}>EXHIBIT A {'//'} WITNESS STATEMENT</span>
+              <div className={`${bodyFont.className} ${styles.passageText}`}>
+                {tokens.map((token, i) => {
+                  if (/^\s+$/.test(token.text)) return <span key={i}>{token.text}</span>
+                  const wordId     = token.word_id
+                  const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
+                  const isActive   = wordId ? activeWordId === wordId : false
+                  const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
+                  const isFoundClue = !!cleanWord && activeClues.some((c: string) => clueMatches(c, cleanWord))
+                  const cls =
+                    token.isLocked && isUnlocked ? styles.wordUnlocked :
+                    token.isLocked && isActive   ? styles.wordTargetActive :
+                    token.isLocked               ? styles.wordTarget :
+                    isFoundClue                  ? styles.wordClue :
+                    revealing && cleanWord && isRevealedClue(cleanWord) ? styles.wordRevealed :
+                    pulseClue === cleanWord      ? styles.wordPulse : ''
+                  return (
+                    <span
+                      key={i}
+                      onClick={() => handleWordTap(token.text, token)}
+                      title={isFoundClue ? 'Found context clue (click to remove)' : undefined}
+                      className={`${styles.word} ${cls}`}
+                    >
+                      {token.text}
+                    </span>
+                  )
+                })}
+              </div>
+            </article>
+
+            {/* Crimson threads: each clue card → the target-word card */}
+            <svg className={styles.threads} width={BOARD_W} height={BOARD_H} aria-hidden>
+              {clueCards.map(({ key, pos }) => (
+                <path
+                  key={key}
+                  className={styles.threadPath}
+                  d={bezierPath(pos.x + CLUE_W / 2, pos.y + 4, targetPos.x + TARGET_W / 2, targetPos.y + TARGET_H - 4)}
+                  stroke={activeUnlocked ? '#2f6418' : '#a83232'}
+                  strokeWidth={2.4}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              ))}
+            </svg>
+
+            {/* Target-word card (draggable) */}
+            <div
+              className={`${desk.indexCard} ${styles.targetCard} ${draggingId === TARGET_CARD ? styles.dragging : ''}`}
+              style={{ left: targetPos.x, top: targetPos.y, width: TARGET_W, height: TARGET_H }}
+              onPointerDown={e => handleCardPointerDown(e, TARGET_CARD, targetPos, TARGET_W, TARGET_H)}
+              onPointerMove={handleCardPointerMove}
+              onPointerUp={handleCardPointerUp}
+              onPointerCancel={handleCardPointerUp}
+              data-tutorial="clue-cards"
+            >
+              <span className={styles.pushPin} aria-hidden />
+              <div className={styles.targetHead}>
+                <span className={styles.exhibitNo} style={{ position: 'static' }}>TARGET WORD</span>
+                <span className={`${styles.lockStamp} ${activeUnlocked ? styles.lockStampOpen : ''}`}>
+                  {activeUnlocked ? 'UNLOCKED' : 'LOCKED'}
+                </span>
+              </div>
+              <div className={`${bodyFont.className} ${styles.targetWord} ${activeUnlocked ? styles.targetWordOpen : ''}`}>
+                {activeWordMeta?.word ?? '— select a word —'}
+              </div>
+              <div className={styles.targetMeta}>
+                CLUES FOUND {Math.min(activeClues.length, requiredCluesCount)}/{requiredCluesCount}
+                {activeUnlocked && activeWordMeta && (
+                  <button type="button" className={styles.linkBtn}
+                    onClick={() => setDefPanel({
+                      word_id: activeWordMeta.word_id,
+                      word: activeWordMeta.word,
+                      definition: activeWordMeta.definition || 'Target academic vocabulary unlocked.',
+                      contextual_usage: activeWordMeta.contextual_usage || '',
+                      translation: activeWordMeta.translation || '',
+                    })}>
+                    <BookOpen size={12} aria-hidden /> Definition
+                  </button>
+                )}
+              </div>
+              {tapNode!.locked_words.length > 1 && (
+                <div className={styles.wordChips}>
+                  {tapNode!.locked_words.map(lw => (
+                    <button key={lw.word_id} type="button"
+                      className={`${styles.wordChip} ${lw.word_id === activeWordId ? styles.wordChipActive : ''} ${unlockedWords.includes(lw.word_id) ? styles.wordChipDone : ''}`}
+                      onClick={() => setActiveWordId(lw.word_id)}>
+                      {unlockedWords.includes(lw.word_id) ? '✓ ' : ''}{lw.word}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Found clues, pinned as small index cards (draggable) */}
+            {clueCards.map(({ key, clue, pos }) => (
+              <div
+                key={key}
+                className={`${desk.indexCard} ${styles.clueCard} ${draggingId === key ? styles.dragging : ''}`}
+                style={{ left: pos.x, top: pos.y, width: CLUE_W, height: CLUE_H }}
+                onPointerDown={e => handleCardPointerDown(e, key, pos, CLUE_W, CLUE_H)}
+                onPointerMove={handleCardPointerMove}
+                onPointerUp={handleCardPointerUp}
+                onPointerCancel={handleCardPointerUp}
+                data-tutorial="clue-cards"
+              >
+                <span className={styles.pushPinSm} aria-hidden />
+                <span className={styles.clueLabel}>CLUE</span>
+                <span className={`${bodyFont.className} ${styles.clueText}`}>{clue}</span>
+                {!activeUnlocked && (
+                  <button type="button" className={styles.clueRemove} title="Remove clue" aria-label={`Remove clue ${clue}`}
+                    onClick={() => handleRemoveClue(clue)}>
+                    <X size={12} aria-hidden />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Footer bar ── */}
+          <div className={styles.submitBar}>
+            <span className={styles.counter}>
+              {unlockedWords.length} / {tapNode!.locked_words.length} WORDS UNLOCKED
+              {allUnlocked && <span className={styles.allDone}>ALL WORDS UNLOCKED — SUBMIT WHEN READY</span>}
+              {!allUnlocked && !revealing && wrongs > 0 && attemptsLeft > 0 && (
+                <span className={`${bodyFont.className} ${styles.attemptMsg}`} role="status">
+                  Incorrect clue. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
+                </span>
+              )}
+            </span>
+            <div className={styles.submitGroup} data-tutorial="submit">
+              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
+                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
+                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
+                <span className={styles.attemptPips} aria-hidden>
+                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />)}
+                </span>
+              </span>
+              {(disputed || revealing) && !allUnlocked ? (
+                // Wrong clue: a crimson alert stands in for SUBMIT until the next tap
+                <span className={styles.disputedBadge} role="status">✕ CLUES DISPUTED</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!allUnlocked || submitting}
+                  onClick={handleSubmitMastery}
+                  className={`${styles.submitBtn} ${styles.submit} ${allUnlocked && !submitting ? styles.submitBtnReady : ''}`}
+                >
+                  {submitting ? 'CHECKING…' : <><FileText size={16} aria-hidden /> SUBMIT <ArrowRight size={18} aria-hidden /></>}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Tutorial ── */}
-      <TapCluesTutorialPopup
-        open={tutorialOpen} step={tutorialStep}
-        onClose={() => setTutorialOpen(false)}
-        onBack={() => setTutorialStep(p => Math.max(p - 1, 0))}
-        onNext={() => setTutorialStep(p => Math.min(p + 1, TUTORIAL_STEPS.length - 1))}
-        onStart={() => setTutorialOpen(false)}
-      />
-
-      {/* ── Definition panel ── */}
+      {/* ── Word unlocked: definition card ── */}
       {defPanel && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: C.cardPaper, border: `2px solid ${C.green}`, borderRadius: 10, padding: '28px 32px', maxWidth: 420, width: '90%', boxShadow: '0 12px 48px rgba(0,0,0,0.45)', fontFamily: FONT }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.green, marginBottom: 6 }}>✓ WORD UNLOCKED</div>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: C.textDark, margin: '0 0 4px', fontFamily: FONT, textTransform: 'uppercase' }}>{defPanel.word}</h3>
-            <div style={{ fontSize: 10, color: C.textMuted, fontStyle: 'italic', marginBottom: 14 }}>noun / verb / adjective</div>
-            <div style={{ borderTop: `1px solid ${C.cardBdr}`, margin: '0 0 14px' }} />
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>DEFINITION</div>
-            <p style={{ fontSize: 14, color: C.textDark, lineHeight: 1.65, margin: '0 0 14px' }}>{defPanel.definition}</p>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>IN CONTEXT</div>
-            <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.65, margin: '0 0 14px', fontStyle: 'italic' }}>&ldquo;{defPanel.contextual_usage}&rdquo;</p>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.textMuted, marginBottom: 4 }}>TRANSLATION (FILIPINO)</div>
-            <p style={{ fontSize: 13, color: C.textMid, margin: '0 0 22px' }}>{defPanel.translation}</p>
+        <div className={styles.defBackdrop}>
+          <div className={`${desk.indexCard} ${styles.defCard}`} role="dialog" aria-labelledby="tc-def-title">
+            <span className={styles.pushPin} aria-hidden />
+            <div className={styles.defStamp}>✓ WORD UNLOCKED</div>
+            <h3 id="tc-def-title" className={`${bodyFont.className} ${styles.defWord}`}>{defPanel.word}</h3>
+            <div className={styles.defLabel}>DEFINITION</div>
+            <p className={`${bodyFont.className} ${styles.defText}`}>{defPanel.definition}</p>
+            {defPanel.contextual_usage && (
+              <>
+                <div className={styles.defLabel}>IN CONTEXT</div>
+                <p className={`${bodyFont.className} ${styles.defText} ${styles.defItalic}`}>&ldquo;{defPanel.contextual_usage}&rdquo;</p>
+              </>
+            )}
+            {defPanel.translation && (
+              <>
+                <div className={styles.defLabel}>TRANSLATION (FILIPINO)</div>
+                <p className={`${bodyFont.className} ${styles.defText}`}>{defPanel.translation}</p>
+              </>
+            )}
             <button
+              type="button"
+              className={styles.caseBtn}
               onClick={() => {
                 setDefPanel(null)
                 if (tapNode) {
@@ -1401,27 +1367,35 @@ export default function TapCluesPage() {
                   if (nextUnsolved) setActiveWordId(nextUnsolved.word_id)
                 }
               }}
-              style={{ ...btnPrimary, width: '100%', textAlign: 'center' }}
             >
-              Got it — Continue
+              Got it — Continue <ArrowRight size={14} aria-hidden />
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Feedback drawer ── */}
-      {drawer && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#2A1200', border: `2px solid ${C.btnGoldBdr}`, borderBottom: 'none', padding: '22px 36px 30px', zIndex: 200, maxHeight: 280, overflowY: 'auto', fontFamily: FONT }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', color: C.btnGold, border: `1.5px solid ${C.btnGold}`, padding: '4px 16px', borderRadius: 2 }}>FEEDBACK</div>
-            <button onClick={() => { setDrawer(false); resetTimer() }} style={{ background: 'none', border: 'none', color: C.btnGold, fontSize: 20, cursor: 'pointer', fontFamily: FONT }}>✕</button>
-          </div>
-          <p style={{ fontSize: 15, color: C.canvas, lineHeight: 1.75, marginBottom: 18, fontFamily: FONT }}>{fbText}</p>
-          <button style={{ padding: '10px 22px', background: 'transparent', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3, color: C.textLight, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em' }}
-            onClick={() => { setDrawer(false); resetTimer() }}>
-            Close and reattempt
-          </button>
-        </div>
+      <SpotlightTutorial
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+        steps={CLUE_EXTRACTION_TUTORIAL}
+        storageKey={CLUE_EXTRACTION_TUTORIAL_KEY}
+        heading="CLUE EXTRACTION BRIEFING"
+      />
+
+      <CaseDebriefModal
+        debrief={debrief}
+        onRetry={handleRetryDocket}
+        onNext={handleNextDocket}
+        onReport={handleViewReport}
+      />
+
+      {!debrief && (
+        <CritRemark
+          remark={remark}
+          onDismiss={() => setRemark(null)}
+          onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
+          asking={socraticLoading}
+        />
       )}
     </div>
   )
