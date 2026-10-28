@@ -18,6 +18,7 @@ import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/so
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
   ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, Puzzle, RotateCcw,
 } from 'lucide-react'
@@ -93,55 +94,30 @@ function shuffleArray<T>(arr: T[]): T[] {
   return copy
 }
 
-const SNAP_GAP_TUTORIAL_KEY =
-  'critica_tutorial_seen_snap_gap_first_node'
-
-const TUTORIAL_STEPS = [
+// Inspector Crit's spotlight walkthrough (first visit to snp_node_01, or the TUTORIAL button)
+const SCENE_RECONSTRUCTION_TUTORIAL_KEY = 'hasSeenSceneReconstructionTutorial'
+const SCENE_RECONSTRUCTION_TUTORIAL: TutorialStep[] = [
   {
-    label: 'Read the passage',
-    code: 'TUT-SIG-001',
-    text: 'In Scene Reconstruction, you will see a passage with blank gaps missing transition words. A tile bank on the right holds word options.\n\nYour mission: drag or click the correct tile into each gap to restore the paragraph\'s logical flow.',
-    board: 'passage',
-    notes: [
-      'Drag a tile to fill the gap',
-      'Gap turns teal when filled',
-      'Click gap to clear it',
-    ],
+    targets: ['exhibits'],
+    title: 'The Exhibits',
+    text: 'Welcome to Scene Reconstruction, Cadet! Your objective is to examine the initial scene state (Exhibit A) and concluding state (Exhibit B).',
   },
   {
-    label: 'Pick a tile',
-    code: 'TUT-SIG-002',
-    text: 'Look at the word tile bank on the right. Read the context before and after each gap. Ask yourself: is this a contrast? A result? An addition? Then click a tile to select it, it will highlight gold.',
-    board: 'tiles',
-    notes: [
-      'Gold outline = current selected',
-      'Faded tiles are already used',
-      'Drag or click to place in gap',
-    ],
+    targets: ['dock'],
+    title: 'The Transition Dock',
+    text: 'Analyze the logical relationship between the two exhibits—is it contrast, addition, or result? Drag or select the correct transition tile to bridge the gap.',
   },
   {
-    label: 'Fill the gap',
-    code: 'TUT-SIG-003',
-    text: 'After selecting a tile, click a gap in the passage to place it or drag the tile directly onto the gap. The gap will snap closed and turn teal. Click a filled gap to clear it and try again.',
-    board: 'beforeAfter',
-    notes: [
-      'Teal snap = tile placed',
-      'Click filled gap to clear',
-      'One tile per gap only',
-    ],
+    targets: ['sidebar'],
+    title: 'Sidebar & Socratic Hints',
+    text: "Stuck on the evidence? Hover over 'HINT' on the left and I'll analyze the transition signals for you.",
   },
   {
-    label: 'Submit',
-    code: 'TUT-SIG-004',
-    text: 'When all gaps are filled, the Submit button activates. Hit it to check your answers. Correct gaps stay teal, wrong gaps turn red and clear giving you a chance to retry only the incorrect ones.',
-    board: 'submit',
-    notes: [
-      'Bar fills as gaps are placed',
-      'Submit unlocks at 4/4 filled',
-      'Partial retry on wrong answers',
-    ],
+    targets: ['submit'],
+    title: '3-Attempt System & Submission',
+    text: "You have 3 attempts per case. If your bridge holds, you advance; if it snaps 3 times, I'll reveal the solution and walk you through the deduction!",
   },
-] as const
+]
 
 // ── Color palette ─────────────────────────────────
 const C = {
@@ -334,188 +310,6 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }:
   )
 }
 
-// ── Tutorial Popup ────────────────────────────────
-function SnapGapTutorialPopup({
-  open,
-  step,
-  onBack,
-  onNext,
-  onClose,
-  onStart,
-}: {
-  open: boolean
-  step: number
-  onBack: () => void
-  onNext: () => void
-  onClose: () => void
-  onStart: () => void
-}) {
-  if (!open) return null
-
-  const current = TUTORIAL_STEPS[step]
-  const isFirst = step === 0
-  const isLast = step === TUTORIAL_STEPS.length - 1
-
-  const stepBox = (label: string, index: number) => {
-    const complete = index < step
-    const active = index === step
-    return (
-      <div key={label} className={styles.tutorialNavItem} style={{
-        width: 156, height: 76,
-        border: `1px solid ${C.cardBdr}`,
-        background: complete ? '#b9dfbf' : active ? C.cardPaper : C.canvas,
-        color: C.textDark,
-        boxShadow: active ? '0 3px 0 rgba(0,0,0,0.35)' : 'none',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', textAlign: 'center',
-        fontFamily: F, fontSize: 12, fontWeight: 700,
-      }}>
-        <div style={{ position: 'absolute', top: 7, left: '50%', transform: 'translateX(-50%)' }}>
-          <div style={{
-            width: 24, height: 24, borderRadius: '50%',
-            background: complete ? '#36b24a' : active ? C.btnGold : C.board,
-            color: complete ? '#fff' : C.textDark, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700,
-          }}>{complete ? '✓' : index + 1}</div>
-        </div>
-        <span style={{ marginTop: 20, lineHeight: 1.15 }}>{label}</span>
-      </div>
-    )
-  }
-
-  const renderBoard = () => {
-    if (current.board === 'passage') {
-      return (
-        <div style={{ padding: '18px 16px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 10 }}>EXAMPLE GAP</div>
-          <div style={{ fontFamily: F, fontSize: 12, color: C.textDark, lineHeight: 1.4 }}>
-            Reading is essential.
-            <span style={{ display: 'inline-block', width: 96, height: 20, border: `1px dashed ${C.cardBdr}`, background: C.canvas, verticalAlign: 'middle', margin: '0 6px' }} />
-            it builds critical thinking.
-          </div>
-        </div>
-      )
-    }
-
-    if (current.board === 'tiles') {
-      return (
-        <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>WORD TILE BANK</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {['FURTHERMORE', 'HOWEVER', 'ALTHOUGH', 'HENCE'].map((tile, i) => (
-              <div key={tile} style={{
-                padding: '8px 12px', minWidth: 92, textAlign: 'center',
-                border: `2px solid ${i === 0 ? C.btnGoldBdr : C.cardBdr}`,
-                background: i === 3 ? C.canvas : C.cardPaper,
-                color: i === 3 ? C.textMuted : C.textDark,
-                fontFamily: F, fontWeight: 700, fontSize: 11,
-              }}>{tile}</div>
-            ))}
-          </div>
-        </div>
-      )
-    }
-
-    if (current.board === 'beforeAfter') {
-      return (
-        <div style={{ padding: '16px 14px 12px' }}>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>BEFORE & AFTER</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '70px 1fr', rowGap: 12, alignItems: 'center' }}>
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>BEFORE :</div>
-            <div style={{ width: 88, height: 20, border: `1px dashed ${C.cardBdr}`, background: C.canvas }} />
-            <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>AFTER :</div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 8px', border: `1px solid ${C.btnGoldBdr}`, background: C.btnGold, color: C.textDark, fontFamily: F, fontSize: 11, fontWeight: 700, width: 'fit-content' }}>FURTHERMORE</div>
-          </div>
-        </div>
-      )
-    }
-
-    return (
-      <div style={{ padding: '16px 14px 12px' }}>
-        <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textMid, marginBottom: 12 }}>PROGRESS BAR</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <div style={{ flex: 1, height: 10, background: C.canvas, border: `1px solid ${C.cardBdr}`, overflow: 'hidden' }}>
-            <div style={{ width: '75%', height: '100%', background: C.progressFg }} />
-          </div>
-          <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: C.textDark, minWidth: 28, textAlign: 'right' }}>3 / 4</div>
-        </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '8px 12px', background: C.btnGold, border: `1px solid ${C.btnGoldBdr}`, fontFamily: F, fontSize: 12, fontWeight: 700, color: C.textDark }}>SUBMIT →</div>
-      </div>
-    )
-  }
-
-  const primaryLabel = isLast ? 'START TRAINING →' : 'NEXT →'
-  const secondaryLabel = isFirst ? 'EXIT TUTORIAL' : 'BACK'
-
-  return (
-    <div className={styles.tutorialOverlay} style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-      zIndex: 150, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20, fontFamily: F,
-    }}>
-      <div className={styles.tutorialModal} style={{ width: '100%', maxWidth: 840, background: C.canvas, border: `1px solid ${C.cardBdr}`, boxShadow: '0 18px 44px rgba(0,0,0,0.4)', padding: '10px 14px 14px', borderRadius: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.28em', color: C.textDark }}>CRITICA - FIELD BRIEFING DOCUMENT</div>
-          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '0.18em', color: C.textDark }}>{current.code}</div>
-        </div>
-
-        <div style={{ background: C.cardPaper, border: `1px solid ${C.cardBdr}`, borderRadius: '16px 16px 10px 10px', padding: '30px 24px 22px', position: 'relative' }}>
-          <div style={{ position: 'absolute', top: -1, left: -1, width: 54, height: 24, borderRadius: '16px 0 14px 0', background: C.cardPaper, borderLeft: `1px solid ${C.cardBdr}`, borderTop: `1px solid ${C.cardBdr}` }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 42, marginBottom: 30 }}>
-            <div style={{ width: 120, textAlign: 'center' }}>
-              <div style={{ width: 56, height: 56, border: `2px solid ${C.btnGoldBdr}`, background: C.canvas, margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
-                <div style={{ width: 34, height: 34, background: C.btnDark, borderRadius: 4, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 14, height: 14, borderRadius: '50%', background: C.btnGold }} />
-                  <div style={{ position: 'absolute', bottom: 6, left: 5, right: 5, height: 10, borderRadius: '10px 10px 4px 4px', background: C.btnGold }} />
-                </div>
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '0.08em', color: C.textDark }}>AGENT CRIT</div>
-              <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.06em' }}>FIELD INSTRUCTOR</div>
-            </div>
-
-            <div style={{ position: 'relative', flex: 1, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, boxShadow: '0 3px 12px rgba(0,0,0,0.12)', padding: '12px 16px', minHeight: 96, borderRadius: 4 }}>
-              <div style={{ position: 'absolute', left: -9, top: 38, width: 18, height: 18, background: C.cardPaper, borderLeft: `1px solid ${C.cardBdr}`, borderBottom: `1px solid ${C.cardBdr}`, transform: 'rotate(45deg)' }} />
-              <div style={{ fontSize: 13, lineHeight: 1.35, color: C.textDark, whiteSpace: 'pre-line' }}>{current.text}</div>
-            </div>
-          </div>
-
-          <div style={{ border: `1px solid ${C.cardBdr}`, background: C.canvas, padding: 10, marginBottom: 28, borderRadius: 4 }}>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
-              {TUTORIAL_STEPS.map((stepItem, index) => stepBox(stepItem.label, index))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: 12, alignItems: 'stretch', background: C.canvas, border: `1px solid ${C.cardBdr}`, padding: 14, borderRadius: 4 }}>
-            <div style={{ flex: 1, minHeight: 202, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, padding: 18, position: 'relative', borderRadius: 4 }}>
-              {renderBoard()}
-            </div>
-
-            <div style={{ width: 112, background: C.cardPaper, border: `1px solid ${C.cardBdr}`, padding: '10px 10px 12px', borderRadius: 4 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: C.textMid, marginBottom: 10 }}>QUICK NOTES</div>
-              {current.notes.map((note, index) => (
-                <div key={note} style={{ fontSize: 9, lineHeight: 1.45, color: C.textDark }}>
-                  {note}
-                  {index < current.notes.length - 1 && <div style={{ height: 10 }} />}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-            <button onClick={isFirst ? onClose : onBack} className={styles.tutorialSecondaryBtn} style={{ ...S.btnSm, minWidth: 160, background: C.canvas, color: C.textDark, border: `1px solid ${C.btnGoldBdr}`, fontSize: 11, letterSpacing: '0.06em' }}>
-              {secondaryLabel}
-            </button>
-            <button onClick={isLast ? onStart : onNext} className={styles.tutorialPrimaryBtn} style={{ ...S.btnPrimary, minWidth: 170, fontSize: 11, letterSpacing: '0.06em' }}>
-              {primaryLabel}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main component ─────────────────────────────────
 export default function SnapInGapPage() {
   const router = useRouter()
@@ -537,7 +331,6 @@ export default function SnapInGapPage() {
   // feedback state
   const [hintTier,      setHintTier]      = useState(0)
   const [tutorialOpen,  setTutorialOpen]  = useState(false)
-  const [tutorialStep,  setTutorialStep]  = useState(0)
 
   // hint state: hints are spoken by Inspector Crit's lower-left bubble
   const [hintOverlay,     setHintOverlay]     = useState(false)   // a hint was used on this case
@@ -557,8 +350,6 @@ export default function SnapInGapPage() {
   const [fitScale, setFitScale] = useState(1)
   const fitRef = useRef<HTMLDivElement>(null)
 
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const inactiveRef = useRef(0)
 
   // session state
   const [sessionQueue,   setSessionQueue]   = useState<string[]>([])
@@ -734,12 +525,8 @@ export default function SnapInGapPage() {
 
   useEffect(() => {
     if (phase !== 'task' || nodeId !== 'snp_node_01') return
-
-    const seen = localStorage.getItem(SNAP_GAP_TUTORIAL_KEY)
-    if (seen === '1') return
-
-    localStorage.setItem(SNAP_GAP_TUTORIAL_KEY, '1')
-    setTutorialStep(0)
+    // First visit to Node 01: Inspector Crit walks the cadet through the board
+    if (hasSeenTutorial(SCENE_RECONSTRUCTION_TUTORIAL_KEY)) return
     setTutorialOpen(true)
   }, [phase, nodeId])
 
@@ -759,7 +546,7 @@ export default function SnapInGapPage() {
             body: JSON.stringify({
               pair_id,
               selected_tile: tile,
-              inactivity_seconds: inactivity ? 60 : inactiveRef.current,
+              inactivity_seconds: inactivity ? 60 : 0,
             }),
           })
       explanation = res.explanation || WRONG_TILE_FALLBACK
@@ -770,24 +557,6 @@ export default function SnapInGapPage() {
     if (speak) say(text, 'feedback')
     return explanation   // a follow-up hint replaces the first-tier hint, so only the explanation carries over
   }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex, say])
-
-  // ── timer ─────────────────────────────────────────
-  const resetTimer = useCallback(() => {
-    inactiveRef.current = 0
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(() => {
-      inactiveRef.current += 1
-      if (inactiveRef.current >= 60) {
-        clearInterval(timerRef.current!)
-        callFeedback('', '', true)
-      }
-    }, 1000)
-  }, [callFeedback])
-
-  useEffect(() => {
-    if (phase === 'task') resetTimer()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [phase, resetTimer])
 
   // ── hints (spoken by Inspector Crit) ──────────────
   // tier scales with wrong-attempt count (mirrors logic-thread's fetchHint)
@@ -930,7 +699,6 @@ export default function SnapInGapPage() {
   const handleTile = async (tile: string) => {
     if (!snapNode || tileState !== 'idle' || revealing) return
     setDisputed(false)
-    resetTimer()
     const pair = snapNode.sentence_pairs[pairIdx]
     if (!pair) return
 
@@ -1251,10 +1019,8 @@ export default function SnapInGapPage() {
     ? currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)
     : ''
 
-  const openTutorial  = () => { setTutorialStep(0); setTutorialOpen(true) }
+  const openTutorial  = () => setTutorialOpen(true)
   const closeTutorial = () => setTutorialOpen(false)
-  const nextTutorialStep = () => setTutorialStep(prev => Math.min(prev + 1, TUTORIAL_STEPS.length - 1))
-  const prevTutorialStep = () => setTutorialStep(prev => Math.max(prev - 1, 0))
 
   const endSession = () => {
     if (sessionId) {
@@ -1283,7 +1049,7 @@ export default function SnapInGapPage() {
           { label: 'Fresh Case',  icon: RotateCcw, action: handleRetryDocket },
           { label: 'End Session', icon: LogOut,    action: endSession },
         ].map(({ label, icon: Icon, action }) => (
-          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label}>
+          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
             <span className={styles.sideTabLabel}>{label}</span>
             <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
           </button>
@@ -1358,13 +1124,13 @@ export default function SnapInGapPage() {
 
           {/* ── Evidence board: Exhibit A | tile dock | Exhibit B ── */}
           <div className={`${styles.board} ${tileState === 'correct' ? styles.boardCorrect : ''}`}>
-            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(-0.8deg)' }}>
+            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(-0.8deg)' }} data-tutorial="exhibits">
               <span className={styles.pushPin} aria-hidden />
               <span className={styles.exhibitNo}>EXHIBIT A</span>
               <p className={`${bodyFont.className} ${styles.exhibitText}`}>{currentPair ? currentPair.sentence_a : ''}</p>
             </article>
 
-            <div className={styles.dock}>
+            <div className={styles.dock} data-tutorial="dock">
               <div className={styles.dockLabel}>TRANSITION TILE DOCK</div>
               <div className={`${styles.dockStatus} ${tileState === 'correct' ? styles.dockStatusOk : tileState === 'incorrect' ? styles.dockStatusBad : ''}`}
                 role="status">
@@ -1389,7 +1155,7 @@ export default function SnapInGapPage() {
               </div>
             </div>
 
-            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(0.7deg)' }}>
+            <article className={`${desk.indexCard} ${styles.exhibit}`} style={{ transform: 'rotate(0.7deg)' }} data-tutorial="exhibits">
               <span className={styles.pushPin} aria-hidden />
               <span className={styles.exhibitNo}>EXHIBIT B</span>
               <p className={`${bodyFont.className} ${styles.exhibitText}`}>{sentenceB}</p>
@@ -1407,7 +1173,7 @@ export default function SnapInGapPage() {
                 </span>
               )}
             </span>
-            <div className={styles.submitGroup}>
+            <div className={styles.submitGroup} data-tutorial="submit">
               <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
                 aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
                 ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
@@ -1433,13 +1199,12 @@ export default function SnapInGapPage() {
         </div>
       </div>
 
-      <SnapGapTutorialPopup
+      <SpotlightTutorial
         open={tutorialOpen}
-        step={tutorialStep}
         onClose={closeTutorial}
-        onBack={prevTutorialStep}
-        onNext={nextTutorialStep}
-        onStart={() => setTutorialOpen(false)}
+        steps={SCENE_RECONSTRUCTION_TUTORIAL}
+        storageKey={SCENE_RECONSTRUCTION_TUTORIAL_KEY}
+        heading="SCENE RECONSTRUCTION BRIEFING"
       />
 
       <CaseDebriefModal

@@ -217,8 +217,6 @@ export default function FactScannerPage() {
   const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number; w: number; h: number; moved: boolean } | null>(null)
   const suppressClickRef = useRef(false)   // a drag ends with a click on the card; don't treat it as a pick
 
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const inactiveRef = useRef(0)
 
   const [sessionId,        setSessionId]        = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<FactExercise[]>([])
@@ -365,7 +363,7 @@ export default function FactScannerPage() {
         ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`,
             { method: 'POST', body: JSON.stringify({ sentence_id, tier: 1 }) })
         : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
-            { method: 'POST', body: JSON.stringify({ sentence_id, inactivity_seconds: inactiveRef.current }) })
+            { method: 'POST', body: JSON.stringify({ sentence_id, inactivity_seconds: 0 }) })
       return fb.explanation || fallback
     } catch {
       return fallback
@@ -373,7 +371,7 @@ export default function FactScannerPage() {
   }, [aiCase, sessionId, questionIndex, factNode, nodeId])
 
   // ── Hint: Crit thinks, then speaks the scaffold hint ───────
-  const fetchHint = useCallback(async (isInactivity = false) => {
+  const fetchHint = useCallback(async () => {
     say(THINKING_TEXT, 'thinking')
     let text = HINT_FALLBACK
     try {
@@ -381,7 +379,7 @@ export default function FactScannerPage() {
         ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`,
             { method: 'POST', body: JSON.stringify({ tier: 2 }) })
         : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
-            { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: isInactivity ? 61 : inactiveRef.current }) })
+            { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: 61 }) })
       text = res.hint || res.explanation || HINT_FALLBACK
       setHintsUsed(h => h + 1)
     } catch { /* keep the fallback hint */ }
@@ -407,21 +405,6 @@ export default function FactScannerPage() {
       setSocraticLoading(false)
     }
   }
-
-  // ── Timer ────────────────────────────────────────────────
-  const resetTimer = useCallback(() => {
-    inactiveRef.current = 0
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(() => {
-      inactiveRef.current += 1
-      if (inactiveRef.current >= 60) { clearInterval(timerRef.current!); fetchHint(true) }
-    }, 1000)
-  }, [fetchHint])
-
-  useEffect(() => {
-    if (phase === 'task') resetTimer()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [phase, resetTimer])
 
   // ── Case outcome helpers ───────────────────────────────────
   const totalCases = sessionExercises.length || sessionQueue.length || 1
@@ -561,7 +544,6 @@ export default function FactScannerPage() {
   const handleSelectSentence = (sentence_id: string) => {
     if (!factNode || evaluating || revealing || quarantined.includes(sentence_id)) return
     setDisputed(false)
-    resetTimer()
     setSelected(prev => prev === sentence_id ? null : sentence_id)
   }
 
@@ -578,7 +560,7 @@ export default function FactScannerPage() {
   const handleScanAndQuarantine = async () => {
     if (!factNode || !selected || evaluating || revealing) return
     const pickedId = selected
-    resetTimer(); setEvaluating(true); setAttempts(a => a + 1)
+    setEvaluating(true); setAttempts(a => a + 1)
 
     // AI Dynamic Exercise Evaluation
     if (aiCase) {

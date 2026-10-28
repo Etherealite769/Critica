@@ -562,7 +562,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, onUserUpdated }:
             <span className={styles.headerBadge}>Dossier File</span>
             <h2 className={styles.headerTitle}>
               <InspectorCrit height={24} decorative />
-              Cadet Personnel Dossier &amp; Bureau Settings
+              Cadet Personnel Dossier
             </h2>
           </div>
           <button

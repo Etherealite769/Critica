@@ -11,6 +11,7 @@ import QuickReviewModal       from './QuickReviewModal'
 import MetricLogModal         from './MetricLogModal'
 import ProfileSettingsModal   from './ProfileSettingsModal'
 import ThemeMusicPlayer       from './ThemeMusicPlayer'
+import SettingsModal          from '@/components/SettingsModal'
 import { playClickSound }     from '@/lib/sound-effects'
 import desk                   from './desk.module.css'
 import CaseLoadingLobby       from '@/components/shared/CaseLoadingLobby'
@@ -20,9 +21,9 @@ import {
 } from '@/lib/realtime-sync'
 import InspectorCrit          from '@/components/brand/InspectorCrit'
 import {
-  Activity, BookOpen, CircleCheck, Clipboard, Crosshair, FileText, Flame,
-  FolderOpen, Lock, LogOut, Network, Paperclip, Pin, Puzzle, RotateCcw,
-  ScanSearch, Search, ShieldAlert, Sliders, Zap, type LucideIcon,
+  Activity, CircleCheck, Clipboard, Crosshair, DoorOpen, FileText, Flame,
+  FolderOpen, Lock, Network, Paperclip, Pin, Puzzle, RotateCcw,
+  ScanSearch, Search, Settings, ShieldAlert, UserRound, Zap, type LucideIcon,
 } from 'lucide-react'
 
 interface NodeStatus {
@@ -471,6 +472,7 @@ export default function StudentDashboard() {
   const [showProfileModal, setShowProfileModal]     = useState(false)
   const [streakPulse, setStreakPulse] = useState(false)
   const [showTour, setShowTour] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -725,7 +727,7 @@ export default function StudentDashboard() {
           </span>
         </div>
 
-        {/* ── CENTER: stat badges + field guide ── */}
+        {/* ── CENTER: stat badges ── */}
         <div className="flex flex-1 min-w-0 items-center justify-center gap-3 whitespace-nowrap">
           <div data-tour="cadet-stats" className="flex items-center gap-3">
           {/* ── REALTIME STREAK ── */}
@@ -763,21 +765,8 @@ export default function StudentDashboard() {
           </button>
           </div>
 
-          {/* ── FIELD GUIDE BUTTON ── */}
-          <button
-            data-tour="field-guide-btn"
-            onClick={() => {
-              setShowMenu(false)
-              setShowTour(true)
-            }}
-            className={`${TOPBAR_BADGE} text-[#e3d6bd] hover:text-[var(--parchment)] hover:border-white/25 cursor-pointer`}
-            title="Tour the Bureau with Inspector Crit">
-            <BookOpen size={14} aria-hidden />
-            <span className="hidden xl:inline">Field Guide</span>
-          </button>
-
-          {/* ── THEME MUSIC / MUTE CONTROLS ── */}
-          <ThemeMusicPlayer />
+          {/* Theme music keeps playing; its controls live in Settings (profile menu) */}
+          <ThemeMusicPlayer headless />
         </div>
 
         {/* ── RIGHT: user profile (mascot avatar) ── */}
@@ -820,8 +809,19 @@ export default function StudentDashboard() {
               setShowProfileModal(true)
             }}
             className="w-full text-left px-4 py-2.5 text-xs font-mono text-[var(--ink)]
+              hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
+            <UserRound size={14} aria-hidden /> Cadet Profile
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => {
+              setShowMenu(false)
+              playClickSound()
+              setShowSettings(true)
+            }}
+            className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--ink)]
               hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2 border-b border-[#bea791]/35">
-            <Sliders size={14} aria-hidden /> Cadet Profile &amp; Settings
+            <Settings size={14} aria-hidden /> Settings
           </button>
           <button
             role="menuitem"
@@ -831,14 +831,14 @@ export default function StudentDashboard() {
             }}
             className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--ink)]
               hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
-            <BookOpen size={14} aria-hidden /> Tour with Inspector Crit
+            <Search size={14} aria-hidden /> Tour with Inspector Crit
           </button>
           <button
             role="menuitem"
             onClick={handleLogout}
             className="w-full text-left px-4 py-2 text-xs font-mono text-[var(--crimson)]
               hover:bg-[var(--manila)]/60 transition-colors flex items-center gap-2">
-            <LogOut size={14} aria-hidden /> Logout
+            <DoorOpen size={14} aria-hidden /> Logout
           </button>
         </div>
       )}
@@ -1223,6 +1223,10 @@ export default function StudentDashboard() {
       <MetricLogModal
         isOpen={showMetricLogModal}
         onClose={() => setShowMetricLogModal(false)}
+      />
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
       />
       <ProfileSettingsModal
         isOpen={showProfileModal}
