@@ -14,9 +14,11 @@ import styles from './theme-audio.module.css';
 
 interface ThemeMusicPlayerProps {
   className?: string;
+  /** Play the theme music without rendering any controls (they live in Settings). */
+  headless?: boolean;
 }
 
-export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerProps) {
+export default function ThemeMusicPlayer({ className = '', headless = false }: ThemeMusicPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,10 +242,9 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
   const ThemeVolumeIcon = isThemeMuted || themeVolume === 0 ? VolumeX : themeVolume < 0.4 ? Volume1 : Volume2;
   const SfxVolumeIcon = isSfxMuted ? VolumeX : MousePointerClick;
 
-  return (
-    <div ref={containerRef} className={`${styles.audioWidget} ${className}`}>
-      {/* Hidden audio element with multiple source fallbacks */}
-      <audio
+  // Hidden audio element with multiple source fallbacks
+  const audioEl = (
+    <audio
         ref={audioRef}
         loop
         preload="auto"
@@ -259,6 +260,13 @@ export default function ThemeMusicPlayer({ className = '' }: ThemeMusicPlayerPro
         <source src="/theme_music/critica-theme.mp3" type="audio/mpeg" />
         <source src="/api/theme-music" type="audio/mpeg" />
       </audio>
+  );
+
+  if (headless) return audioEl;
+
+  return (
+    <div ref={containerRef} className={`${styles.audioWidget} ${className}`}>
+      {audioEl}
 
       {/* ── Theme Music Mute/Toggle Button ── */}
       <button

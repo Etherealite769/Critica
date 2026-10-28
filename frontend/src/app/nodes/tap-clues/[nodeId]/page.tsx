@@ -320,8 +320,6 @@ export default function TapCluesPage() {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number; w: number; h: number; moved: boolean } | null>(null)
 
-  const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const inactiveRef = useRef(0)
 
   const [sessionId,        setSessionId]        = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<any[]>([])
@@ -487,7 +485,7 @@ export default function TapCluesPage() {
           })
         : await apiFetch(`/nodes/tap-clues/${tapNode?.node_id ?? nodeId}/feedback/`, {
             method: 'POST',
-            body: JSON.stringify({ word_id, clue_word, inactivity_seconds: inactivity ? 60 : inactiveRef.current }),
+            body: JSON.stringify({ word_id, clue_word, inactivity_seconds: inactivity ? 60 : 0 }),
           })
       return res.explanation || fallback
     } catch {
@@ -535,20 +533,6 @@ export default function TapCluesPage() {
     }
   }, [sessionId, questionIndex, activeWordId, foundClues, wrongs, say])
 
-  const resetTimer = useCallback(() => {
-    inactiveRef.current = 0
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(() => {
-      inactiveRef.current += 1
-      if (inactiveRef.current >= 60) { clearInterval(timerRef.current!); fetchHint(1) }
-    }, 1000)
-  }, [fetchHint])
-
-  useEffect(() => {
-    if (phase === 'task') resetTimer()
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [phase, resetTimer])
-
   const logWordToLexical = useCallback(async (word: string, definition: string, contextual_usage: string, translation: string) => {
     const activeNodeId = tapNode?.node_id ?? nodeId
     try {
@@ -570,7 +554,6 @@ export default function TapCluesPage() {
   const handleWordTap = async (word: string, token: { text: string; isLocked: boolean; word_id?: string; idx: number }) => {
     if (!tapNode || revealing) return
     setDisputed(false)
-    resetTimer()
 
     // 1. Tapping a locked word directly selects it
     if (token.isLocked && token.word_id) {

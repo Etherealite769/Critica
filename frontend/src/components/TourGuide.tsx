@@ -45,14 +45,9 @@ const STEPS: TourStep[] = [
     text: 'Your daily streak, cases closed and XP live up here. Show up every day to keep the streak burning, and close cases to earn XP — enough of it raises your clearance rank from Novice Analyst all the way to Bureau Chief.',
   },
   {
-    targets: ['field-guide-btn'],
-    title: 'The Field Guide',
-    text: "Lost your bearings? Press the Field Guide any time and I'll walk you through the Bureau again, step by step.",
-  },
-  {
     targets: ['user-profile'],
     title: 'Your Credentials',
-    text: 'Your clearance credentials are pinned here. Open this menu for your account settings, another tour with me, or to sign off duty.',
+    text: 'Your clearance credentials are pinned here. Open this menu for Settings (Manila or Dark Noir theme, sound on or off), another tour with me, or to sign off duty.',
   },
   {
     targets: ['game-mode-tabs'],
