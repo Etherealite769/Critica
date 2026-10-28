@@ -11,15 +11,39 @@ import {
   nodeDifficulty, DIFFICULTY_LABELS, DIFFICULTY_COLORS,
   fetchNodeSession, fetchLiveSocraticHint, updateSessionProgress,
 } from '@/lib/nodeSession'
+import { notifyProgressionUpdated } from '@/lib/realtime-sync'
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
+import { MODULE_TITLES } from '@/lib/modules'
+import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
+import {
+  ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Scale, ShieldAlert,
+} from 'lucide-react'
+import { Montserrat } from 'next/font/google'
+import desk from '@/components/dashboard/desk.module.css'
 import styles from './page.module.css'
+
+// Testimony and evidence text: Montserrat, self-hosted by next/font
+const bodyFont = Montserrat({ subsets: ['latin'], weight: ['500', '600'], display: 'swap' })
 
 interface ArticleSentence {
   sentence_id: string
   text:        string
+}
+/** An AI exercise sentence carries its answer key. */
+interface ExerciseSentence extends ArticleSentence {
+  is_flawed?:   boolean
+  flaw_reason?: string
+}
+interface FactExercise {
+  topic_title?:       string
+  reading_passage?:   string
+  craap_criterion?:   string
+  article_sentences?: ExerciseSentence[]
 }
 interface FactNodeData {
   node_id:            string
@@ -34,26 +58,13 @@ interface FactNodeData {
 }
 type Phase = 'loading' | 'micro_lesson' | 'deep_dive' | 'task' | 'mastery' | 'error'
 
-const FACT_SCANNER_TUTORIAL_KEY = 'critica_tutorial_seen_fact_scanner_first_node'
-const FONT = "'Courier New', Courier, monospace"
+/** Fields read from the mastery endpoints' responses. */
+interface MasteryResponse {
+  status?: string; next_node?: string | null; streak?: number; streak_new_day?: boolean
+  xp_awarded?: number; total_xp?: number; level?: number; level_title?: string; level_up?: boolean; progress_pct?: number
+}
 
-// ── Shared palette (matches Logic Thread) ────────────────────
-const C = {
-  pageBg:      'radial-gradient(ellipse at center, #566049 0%, #4a543f 45%, #414833 100%)',
-  board:       '#D4A86A',
-  canvas:      '#E8D5B0',
-  cardPaper:   '#FFFBF0',
-  cardBdrIdle: '#C9A06A',
-  btnGold:     '#FFDFA7',
-  btnDark:     '#432818',
-  btnGoldBdr:  '#8C5A3C',
-  textDark:    '#1C0800',
-  textMid:     '#8C5A3C',
-  textLight:   '#C49A5A',
-  textMuted:   '#A07850',
-  accentRed:   '#800020',
-  panel:       '#CBA070',
-} as const
+const FONT = "'Courier New', Courier, monospace"
 
 const CRAAP_TABS = ['CURRENCY', 'RELEVANCE', 'AUTHORITY', 'ACCURACY', 'PURPOSE']
 
@@ -65,106 +76,87 @@ const CRITERION_QUESTIONS: Record<string, string> = {
   PURPOSE:   'Why does this information exist?',
 }
 
-const TUTORIAL_STEPS = [
-  { label: 'Overview',       code: 'TUT-FS-001', text: 'Witness Cross Examination gives you a passage containing flaws, unsupported claims, or false statements. Identify and quarantine the flawed sentences.',    notes: ['Beige = unscanned', 'Red border = quarantined', 'Scan carefully'] },
-  { label: 'Read Carefully', code: 'TUT-FS-002', text: 'Read each sentence. Ask: Is this claim supported? Does it contradict evidence? Watch for absolute language: "always," "never," "all," "none."', notes: ['Watch for absolutes', 'Unsupported = flaw', 'Context matters'] },
-  { label: 'Mark Flaws',     code: 'TUT-FS-003', text: 'Click a sentence you believe is flawed. The right panel shows the SCAN AND QUARANTINE button. Click it to evaluate your selection.',              notes: ['Select sentence first', 'Then click button', 'Counter updates live'] },
-  { label: 'Submit Report',  code: 'TUT-FS-004', text: "When you've quarantined all flaws, hit Submit Report. Stats show your attempts, flaws found, and hints used.",                                   notes: ['Attempts = total taps', 'Flaws found = correct', 'Hints used = scaffold'] },
-] as const
-
-// ── Shared button styles (same as Logic Thread) ──────────────
-const btnPrimary: React.CSSProperties = {
-  padding: '10px 24px', background: C.btnGold,
-  border: `2px solid ${C.btnGoldBdr}`, borderRadius: 10,
-  color: C.textDark, fontFamily: FONT, fontSize: 11,
-  fontWeight: 700, cursor: 'pointer', letterSpacing: '0.08em',
-}
 const btnSm: React.CSSProperties = {
   padding: '7px 16px', background: 'transparent',
-  border: `1px solid ${C.textMid}`, borderRadius: 2,
-  color: C.textLight, fontFamily: FONT, fontSize: 10,
+  border: '1px solid #8C5A3C', borderRadius: 2,
+  color: '#C49A5A', fontFamily: FONT, fontSize: 10,
   fontWeight: 700, cursor: 'pointer',
 }
-const stampS: React.CSSProperties = {
-  display: 'inline-block', border: `2px solid ${C.textMid}`,
-  padding: '3px 14px', fontSize: 10, fontWeight: 700,
-  letterSpacing: '0.15em', color: C.textMid,
-  marginBottom: 12, fontFamily: FONT,
+
+// Inspector Crit's spotlight walkthrough (first visit, or the TUTORIAL button)
+const CROSS_EXAM_TUTORIAL_KEY = 'hasSeenCrossExamTutorial'
+const CROSS_EXAM_TUTORIAL: TutorialStep[] = [
+  {
+    targets: ['statements'],
+    title: 'Arranging Testimony',
+    text: 'Welcome to Witness Cross Examination, Cadet! Each witness statement is an index card — drag the cards anywhere on the board. Threads tie suspect testimony to the evidence.',
+  },
+  {
+    targets: ['evidence', 'statements'],
+    title: 'Finding Contradictions',
+    text: "Test every statement against the target criterion on the evidence card. Click a statement that fails the test, then press 'SCAN & QUARANTINE' to lock it away.",
+  },
+  {
+    targets: ['sidebar'],
+    title: 'Hints',
+    text: "Stuck? Hover over 'HINT' on the left and I'll cross-examine the witnesses with you.",
+  },
+  {
+    targets: ['submit'],
+    title: 'Submission & Tries',
+    text: 'You have 3 tries per case — a wrong scan or report costs one. Quarantine every flawed statement, then submit your report to close the case!',
+  },
+]
+
+// Three tries per case; misses 1-2 get encouragement only, the third reveals the flaws and moves on
+const MAX_ATTEMPTS = 3
+const REVEAL_MS = 4500
+const RETRY_REMARKS = [
+  'Close, Cadet. Re-examine the witness statement against the physical evidence and try again.',
+  'That testimony holds up. Which statement would fail the criterion on the evidence card?',
+  'Not that one. Look for claims with no source, stale dates or loaded language.',
+  'Steady, Cadet. Read each statement as if the witness were under oath.',
+]
+const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
+const HINT_FALLBACK = 'Re-read the micro-lesson and apply the criterion to each sentence.'
+const THINKING_TEXT = 'Inspector Crit is cross-examining the witnesses'
+const SOCRATIC_FALLBACK = 'Re-read the target criterion question and check if the claim has proper backing evidence.'
+
+// Cases failed after three tries survive a reload, so a resumed docket can't close with an unsolved case
+const SKIPPED_KEY = (startId: string) => `critica_skipped_fact_scanner_${startId}`
+function readSkipped(startId: string | null): number[] {
+  if (!startId) return []
+  try { return JSON.parse(localStorage.getItem(SKIPPED_KEY(startId)) || '[]') } catch { return [] }
+}
+function writeSkipped(startId: string | null, cases: number[]) {
+  if (!startId) return
+  try {
+    if (cases.length) localStorage.setItem(SKIPPED_KEY(startId), JSON.stringify(cases))
+    else localStorage.removeItem(SKIPPED_KEY(startId))
+  } catch { /* storage blocked */ }
 }
 
-// ── Tutorial Popup ───────────────────────────────────────────
-function TutorialPopup({ open, step, onBack, onNext, onClose, onStart }: {
-  open: boolean; step: number
-  onBack: () => void; onNext: () => void
-  onClose: () => void; onStart: () => void
-}) {
-  if (!open) return null
-  const current = TUTORIAL_STEPS[step]
-  const isFirst = step === 0
-  const isLast  = step === TUTORIAL_STEPS.length - 1
+// ── Evidence board geometry ──────────────────────
+// Room kept free beside the dossier: the retracted side tabs only show their icons
+const SIDE_GUTTER = 64
+const BOARD_W = 1100, BOARD_H = 460
+const EVIDENCE_CARD = '__evidence'
+const EVIDENCE_W = 268, EVIDENCE_H = 262
+const EVIDENCE_DEFAULT = { x: 814, y: 16 }
+const STATEMENT_W = 376
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, fontFamily: FONT }}>
-      <div className={styles.tutorialModal} style={{ width: '100%', maxWidth: 700, background: C.canvas, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, boxShadow: '0 18px 44px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
-        {/* header */}
-        <div style={{ background: C.pageBg, padding: '12px 24px', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.2em', color: C.canvas }}>CRITICA — FIELD BRIEFING</span>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, letterSpacing: '0.15em', color: C.canvas }}>{current.code}</span>
-        </div>
+/** Statement cards default to two columns left of the evidence card; height shrinks to fit the rows. */
+function statementLayout(count: number) {
+  const rows = Math.max(1, Math.ceil(count / 2))
+  const h = Math.min(184, Math.floor((BOARD_H - 32 - (rows - 1) * 16) / rows))
+  return { h, pos: (i: number) => ({ x: 18 + (i % 2) * 394, y: 16 + Math.floor(i / 2) * (h + 16) }) }
+}
 
-        <div style={{ padding: '28px 28px 24px' }}>
-          {/* step nav */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
-            {TUTORIAL_STEPS.map((s, i) => (
-              <div key={s.label} className={styles.tutorialNavItem} style={{
-                flex: 1, padding: '8px 4px', textAlign: 'center',
-                background: i < step ? '#b9dfbf' : i === step ? C.cardPaper : C.board,
-                border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3,
-                fontFamily: FONT, fontSize: 11, fontWeight: 700,
-                color: i < step ? '#fff' : C.textDark,
-              }}>
-                {i < step ? '✓' : i + 1}. {s.label}
-              </div>
-            ))}
-          </div>
-
-          {/* speech bubble */}
-          <div style={{ display: 'flex', gap: 20, marginBottom: 20 }}>
-            <div style={{ flexShrink: 0, textAlign: 'center', width: 80 }}>
-              <div style={{ width: 48, height: 48, border: `2px solid ${C.btnGoldBdr}`, background: C.cardPaper, margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
-                <div style={{ width: 30, height: 30, background: C.btnDark, borderRadius: 3, position: 'relative' }}>
-                  <div style={{ position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, borderRadius: '50%', background: C.canvas }} />
-                  <div style={{ position: 'absolute', bottom: 5, left: 4, right: 4, height: 8, borderRadius: '8px 8px 3px 3px', background: C.canvas }} />
-                </div>
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: C.textDark }}>AGENT CRIT</div>
-            </div>
-            <div style={{ flex: 1, background: C.cardPaper, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 5, padding: '14px 18px', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: -9, top: 18, width: 16, height: 16, background: C.cardPaper, borderLeft: `1px solid ${C.btnGoldBdr}`, borderBottom: `1px solid ${C.btnGoldBdr}`, transform: 'rotate(45deg)' }} />
-              <p style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.65, color: C.textDark, margin: 0 }}>{current.text}</p>
-            </div>
-          </div>
-
-          {/* notes */}
-          <div style={{ background: C.board, border: `1px solid ${C.btnGoldBdr}`, borderRadius: 4, padding: '12px 16px', marginBottom: 22 }}>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: C.accentRed, marginBottom: 8, letterSpacing: '0.1em' }}>QUICK NOTES</div>
-            {current.notes.map((n, i) => (
-              <div key={i} style={{ fontFamily: FONT, fontSize: 12, color: C.textDark, lineHeight: 1.6 }}>• {n}</div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <button onClick={isFirst ? onClose : onBack} className={styles.tutorialSecondaryBtn} style={{ padding: '10px 24px', background: C.canvas, border: `1.5px solid ${C.btnGoldBdr}`, borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.textDark }}>
-              {isFirst ? 'EXIT TUTORIAL' : '← BACK'}
-            </button>
-            <button onClick={isLast ? onStart : onNext} className={styles.tutorialPrimaryBtn} style={{ padding: '10px 28px', background: C.btnDark, border: 'none', borderRadius: 3, fontFamily: FONT, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: C.btnGold }}>
-              {isLast ? 'START TRAINING →' : 'NEXT →'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+function bezierPath(x1: number, y1: number, x2: number, y2: number) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+  const dx = x2 - x1, dy = y2 - y1
+  const L  = Math.sqrt(dx * dx + dy * dy) || 1
+  return `M${x1},${y1} Q${mx + (-dy / L) * 40},${my + (dx / L) * 40} ${x2},${y2}`
 }
 
 function BriefingGenerationScreen({ title, onCancel }: { title?: string; onCancel?: () => void }) {
@@ -188,8 +180,8 @@ export default function FactScannerPage() {
   const [savedStreak,    setSavedStreak]    = useState<number | null>(null)
 
   // session accuracy evaluation state
-  const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
-  const sessionStartTimeRef = useRef<number>(Date.now())
+  const [sessionResults,   setSessionResults]   = useState<CaseResult[]>([])
+  const [sessionStartedAt, setSessionStartedAt] = useState(() => Date.now())
 
   const [selected,    setSelected]    = useState<string | null>(null)
   const [quarantined, setQuarantined] = useState<string[]>([])
@@ -201,24 +193,42 @@ export default function FactScannerPage() {
   const [masteryData, setMasteryData] = useState<Record<string, unknown> | null>(null)
   const [submitting,  setSubmitting]  = useState(false)
 
-  const [fbText,  setFbText]  = useState('')
-  const [drawer,  setDrawer]  = useState(false)
-
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [tutorialStep, setTutorialStep] = useState(0)
 
-  const [hintOverlay,     setHintOverlay]     = useState(false)
-  const [hintOverlayText, setHintOverlayText] = useState('')
-  const [hintOverlayTier, setHintOverlayTier] = useState(0)
-
-  const [socraticAdvice,  setSocraticAdvice]  = useState<string | null>(null)
+  // Hints and feedback are spoken by Inspector Crit's lower-left bubble
   const [socraticLoading, setSocraticLoading] = useState(false)
+  const [remark,          setRemark]          = useState<Remark | null>(null)
+  const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
+
+  // Attempts: a wrong scan / report stays "disputed" until the next pick; the third reveals the flaws
+  const [wrongs,    setWrongs]    = useState(0)
+  const [disputed,  setDisputed]  = useState(false)
+  const [revealing, setRevealing] = useState<string[] | null>(null)
+
+  // End-of-docket debrief and notes on cases failed along the way
+  const [debrief,     setDebrief]     = useState<DocketDebrief | null>(null)
+  const [missedCases, setMissedCases] = useState<MissedCase[]>([])
+
+  // Evidence board: dossier scaled to the viewport, draggable statement / evidence cards
+  const [fitScale,   setFitScale]   = useState(1)
+  const fitRef = useRef<HTMLDivElement>(null)
+  const [cardPos,    setCardPos]    = useState<Record<string, { x: number; y: number }>>({})
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const dragRef = useRef<{ id: string; startX: number; startY: number; originX: number; originY: number; w: number; h: number; moved: boolean } | null>(null)
+  const suppressClickRef = useRef(false)   // a drag ends with a click on the card; don't treat it as a pick
 
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactiveRef = useRef(0)
 
   const [sessionId,        setSessionId]        = useState<string | null>(null)
-  const [sessionExercises, setSessionExercises] = useState<any[]>([])
+  const [sessionExercises, setSessionExercises] = useState<FactExercise[]>([])
+
+  /** Clear everything that belongs to a single case. */
+  const resetCase = useCallback(() => {
+    setSelected(null); setQuarantined([]); setFlawReasons({})
+    setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
+    setWrongs(0); setDisputed(false); setRevealing(null); setCardPos({})
+  }, [])
 
   // ── Load question ──────────────────────────────────────────
   const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
@@ -229,12 +239,11 @@ export default function FactScannerPage() {
         setFactNode(prev => prev ? ({
           ...prev,
           title: ex.topic_title || prev.title,
+          craap_criterion: ex.craap_criterion || prev.craap_criterion,
           reading_passage: ex.reading_passage || prev.reading_passage,
           article_sentences: ex.article_sentences || prev.article_sentences,
-        }) : ex)
-        setSelected(null); setQuarantined([]); setFlawReasons({})
-        setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
-        setFbText(''); setDrawer(false); setHintOverlay(false); setSocraticAdvice(null)
+        }) : prev)
+        resetCase()
         setPhase('task')
         return
       }
@@ -242,15 +251,13 @@ export default function FactScannerPage() {
       const targetNodeId = queue[targetIndex] || nodeId
       const d = await apiFetch(`/nodes/fact-scanner/${targetNodeId}/`)
       setFactNode(d)
-      setSelected(null); setQuarantined([]); setFlawReasons({})
-      setEvaluating(false); setAttempts(0); setFlawsFound(0); setHintsUsed(0)
-      setFbText(''); setDrawer(false); setHintOverlay(false); setSocraticAdvice(null)
+      resetCase()
       setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.')
       setPhase('error')
     }
-  }, [sessionExercises, nodeId])
+  }, [sessionExercises, nodeId, resetCase])
 
   // ── startSession ───────────────────────────────────────────
   const startSession = useCallback(async (forceFresh = false) => {
@@ -263,7 +270,8 @@ export default function FactScannerPage() {
       setSessionId(sessionData.session_id)
       setSessionExercises(sessionData.exercises || [])
 
-      const resumeIdx = Math.min(
+      // A fresh start (Retry / Fresh Case) always opens a new full docket at case 1
+      const resumeIdx = forceFresh ? 0 : Math.min(
         sessionData.current_index ?? 0,
         Math.max(0, (sessionData.exercises?.length ?? 1) - 1)
       )
@@ -284,20 +292,12 @@ export default function FactScannerPage() {
       const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
       setSessionQueue(queue)
       setQuestionIndex(resumeIdx)
-      setSelected(null)
-      setQuarantined([])
-      setFlawReasons({})
-      setEvaluating(false)
-      setAttempts(0)
-      setFlawsFound(0)
-      setHintsUsed(0)
-      setFbText('')
-      setDrawer(false)
-      setHintOverlay(false)
-      setSocraticAdvice(null)
+      resetCase()
       if (forceFresh || resumeIdx === 0) {
         setSessionResults([])
-        sessionStartTimeRef.current = Date.now()
+        setMissedCases([])
+        writeSkipped(start, [])
+        setSessionStartedAt(Date.now())
       }
 
       saveSession('fact_scanner', start, {
@@ -308,7 +308,8 @@ export default function FactScannerPage() {
       setPhase((resumeIdx > 0 || forceFresh) ? 'task' : 'micro_lesson')
     } catch {
       // Fallback to legacy static node queue
-      const saved = loadSession('fact_scanner', start)
+      if (forceFresh) clearSession('fact_scanner', start)
+      const saved = forceFresh ? null : loadSession('fact_scanner', start)
       if (saved && saved.sessionQueue.length === 5) {
         setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
         if (saved.next_node) setSavedNextNode(saved.next_node)
@@ -324,7 +325,7 @@ export default function FactScannerPage() {
       } else {
         apiFetch(`/nodes/fact-scanner/${start}/`)
           .then((d: FactNodeData) => {
-            setFactNode(d); setPhase('micro_lesson')
+            setFactNode(d); setPhase(forceFresh ? 'task' : 'micro_lesson')
             apiFetch('/progression/dashboard/')
               .then((prog: any) => {
                 const unlocked: string[] = prog.unlocked_nodes ?? []
@@ -341,7 +342,7 @@ export default function FactScannerPage() {
           })
       }
     }
-  }, [nodeId, router])
+  }, [nodeId, router, resetCase])
 
   useEffect(() => {
     startSession(false)
@@ -349,65 +350,59 @@ export default function FactScannerPage() {
 
   useEffect(() => {
     if (phase !== 'task') return
-    const seen = localStorage.getItem(FACT_SCANNER_TUTORIAL_KEY)
-    if (seen) return
-    localStorage.setItem(FACT_SCANNER_TUTORIAL_KEY, '1')
-    setTutorialStep(0); setTutorialOpen(true)
+    // First visit: Inspector Crit walks the cadet through the board
+    if (hasSeenTutorial(CROSS_EXAM_TUTORIAL_KEY)) return
+    setTutorialOpen(true)
   }, [phase])
 
-  // ── Hint ─────────────────────────────────────────────────
-  const fetchHint = useCallback(async (isInactivity = false) => {
-    if (sessionId && sessionExercises.length > questionIndex) {
-      try {
-        const res = await apiFetch(
-          `/ai/session/${sessionId}/feedback/${questionIndex}/`,
-          { method: 'POST', body: JSON.stringify({ tier: 2 }) },
-        )
-        setHintOverlayText(res.hint || res.explanation || 'Re-read the micro-lesson carefully.')
-        setHintOverlayTier(res.hint_tier ?? 2)
-        setHintOverlay(true); setHintsUsed(h => h + 1)
-        return
-      } catch {
-        setHintOverlayText('Re-read the micro-lesson and apply the criterion to each sentence.')
-        setHintOverlay(true)
-        return
-      }
-    }
+  const aiCase = !!sessionId && sessionExercises.length > questionIndex
 
-    const activeNodeId = factNode?.node_id ?? nodeId
+  /** Explanation for a sound statement that was scanned (used in the third-strike reveal). */
+  const callFeedback = useCallback(async (sentence_id: string): Promise<string> => {
+    const fallback = 'That sentence does not violate the CRAAP criterion.'
     try {
-      const res = await apiFetch(
-        `/nodes/fact-scanner/${activeNodeId}/feedback/`,
-        { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: isInactivity ? 61 : inactiveRef.current }) },
-      )
-      setHintOverlayText(res.hint || res.explanation || 'Re-read the micro-lesson carefully.')
-      setHintOverlayTier(res.hint_tier ?? 0)
-      setHintOverlay(true); setHintsUsed(h => h + 1)
+      const fb = aiCase
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`,
+            { method: 'POST', body: JSON.stringify({ sentence_id, tier: 1 }) })
+        : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
+            { method: 'POST', body: JSON.stringify({ sentence_id, inactivity_seconds: inactiveRef.current }) })
+      return fb.explanation || fallback
     } catch {
-      setHintOverlayText('Re-read the micro-lesson and apply the criterion to each sentence.')
-      setHintOverlay(true)
+      return fallback
     }
-  }, [nodeId, factNode, sessionId, sessionExercises, questionIndex])
+  }, [aiCase, sessionId, questionIndex, factNode, nodeId])
 
-  // ── Ask Socratic Guidance ──────────────────────────────────
+  // ── Hint: Crit thinks, then speaks the scaffold hint ───────
+  const fetchHint = useCallback(async (isInactivity = false) => {
+    say(THINKING_TEXT, 'thinking')
+    let text = HINT_FALLBACK
+    try {
+      const res = aiCase
+        ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`,
+            { method: 'POST', body: JSON.stringify({ tier: 2 }) })
+        : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
+            { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: isInactivity ? 61 : inactiveRef.current }) })
+      text = res.hint || res.explanation || HINT_FALLBACK
+      setHintsUsed(h => h + 1)
+    } catch { /* keep the fallback hint */ }
+    say(text, 'hint')
+  }, [aiCase, nodeId, factNode, sessionId, questionIndex, say])
+
+  // ── Dig deeper: a live Socratic clue from the AI ───────────
   const handleAskSocraticAdvice = async () => {
     if (!sessionId) return
     setSocraticLoading(true)
+    say(THINKING_TEXT, 'thinking')
     try {
       const res = await fetchLiveSocraticHint(
         sessionId,
         questionIndex,
-        {
-          quarantined_ids: quarantined,
-          selected_id: selected,
-          attempts,
-          flaws_found: flawsFound,
-        },
-        attempts + 1,
+        { quarantined_ids: quarantined, selected_id: selected, attempts, flaws_found: flawsFound },
+        wrongs + 1,
       )
-      setSocraticAdvice(res.socratic_hint || 'Consider applying the CRAAP criterion strictly to each claim.')
+      say(res.socratic_hint || 'Consider applying the CRAAP criterion strictly to each claim.', 'hint')
     } catch {
-      setSocraticAdvice('Re-read the target criterion question and check if the claim has proper backing evidence.')
+      say(SOCRATIC_FALLBACK, 'hint')
     } finally {
       setSocraticLoading(false)
     }
@@ -428,39 +423,175 @@ export default function FactScannerPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [phase, resetTimer])
 
+  // ── Case outcome helpers ───────────────────────────────────
+  const totalCases = sessionExercises.length || sessionQueue.length || 1
+
+  /** Cases left unsolved this docket (this run's misses plus misses saved before a reload). */
+  const unsolvedCases = (updated: CaseResult[]) =>
+    new Set([...updated.filter(r => !r.correct).map(r => r.caseNumber), ...readSkipped(sessionStartId)]).size
+
+  /** Answer key for this case (AI exercises only; the legacy endpoint keeps it server-side). */
+  const caseKey = (): ExerciseSentence[] => (aiCase ? sessionExercises[questionIndex].article_sentences : null) ?? []
+
+  /** Close the docket: mastery only when every case was solved, then the debrief. */
+  const finishDocket = async (updated: CaseResult[], finishedAt: number, missed: MissedCase[]) => {
+    const unsolved = unsolvedCases(updated)   // read before the saved misses are cleared
+    const cleared = unsolved === 0
+    let finalRes: MasteryResponse = {}
+    if (cleared) {
+      playVictorySound()
+      try {
+        if (aiCase) finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+        else if (sessionStartId) finalRes = await apiFetch(`/nodes/fact-scanner/${sessionStartId}/mastery/`,
+          { method: 'POST', body: JSON.stringify({ commit_only: true }) })
+      } catch { /* the debrief still opens; the report shows no next node */ }
+    }
+    if (sessionStartId) clearSession('fact_scanner', sessionStartId)
+    writeSkipped(sessionStartId, [])
+
+    const nextNode = cleared ? (savedNextNode || finalRes.next_node || null) : null
+    setMasteryData({
+      next_node: nextNode,
+      streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? 1),
+      accuracy: Math.round((updated.filter(r => r.firstTry).length / Math.max(1, totalCases)) * 100),
+      totalCases,
+      correctCases: updated.filter(r => r.correct).length,
+      hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
+      timeTakenSeconds: Math.max(1, Math.round((finishedAt - sessionStartedAt) / 1000)),
+      caseResults: updated,
+    })
+    if (cleared) {
+      notifyProgressionUpdated({
+        action: 'node_mastered',
+        streak: finalRes.streak,
+        streak_new_day: finalRes.streak_new_day,
+        xp_awarded: finalRes.xp_awarded,
+        total_xp: finalRes.total_xp,
+        level: finalRes.level,
+        level_title: finalRes.level_title,
+        level_up: finalRes.level_up,
+        progress_pct: finalRes.progress_pct,
+      })
+    }
+    setDebrief({
+      verdict: cleared ? 'perfect' : 'partial',
+      solved: Math.max(0, totalCases - unsolved),
+      total: totalCases,
+      xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
+      nextNode,
+      missed,
+    })
+  }
+
+  /** Save progress and open the next case, or close the docket after the last one. */
+  const advanceCase = async (updated: CaseResult[], finishedAt: number, missed: MissedCase[]) => {
+    const nextIdx = questionIndex + 1
+    if (nextIdx < totalCases) {
+      if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+      if (sessionStartId) {
+        saveSession('fact_scanner', sessionStartId, {
+          sessionQueue, questionIndex: nextIdx,
+          next_node: savedNextNode || undefined,
+          streak: savedStreak !== null ? savedStreak : undefined,
+        })
+      }
+      setQuestionIndex(nextIdx)
+      await loadQuestion(nextIdx, sessionQueue)
+      return false
+    }
+    await finishDocket(updated, finishedAt, missed)
+    return true
+  }
+
+  /** Third miss: file the case as unsolved and move on (or close the docket without mastery). */
+  const failCase = async (explanation: string, notes: MissedCase, decidedAt: number) => {
+    const caseNumber = questionIndex + 1
+    const res: CaseResult = { caseNumber, correct: false, firstTry: false, hintsUsed, attempts: MAX_ATTEMPTS }
+    const updated = [...sessionResults.filter(r => r.caseNumber !== caseNumber), res]
+    setSessionResults(updated)
+    writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
+    const missed = [...missedCases.filter(m => m.caseNumber !== caseNumber), notes].sort((a, b) => a.caseNumber - b.caseNumber)
+    const closed = await advanceCase(updated, decidedAt, missed)
+    if (!closed) say(explanation, 'explain')   // keep Crit's explanation up on the next case
+  }
+
+  /** Wrong scan or report: misses 1-2 get encouragement only; the third reveals the flaws, explains, and advances. */
+  const handleWrongAttempt = async (sentenceId: string | null) => {
+    playWrongSound()
+    setDisputed(true)
+    const nextWrongs = wrongs + 1
+    setWrongs(nextWrongs)
+
+    if (nextWrongs < MAX_ATTEMPTS) {
+      if (sessionId) {
+        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+          method: 'POST',
+          body: JSON.stringify({ is_correct: false, word_id: sentenceId ?? 'report', clue_word: '' }),
+        }).catch(() => {})
+      }
+      say(pick(RETRY_REMARKS))
+      return
+    }
+
+    // Third strike: mark the flawed testimony, explain, then move on
+    const sentences = factNode?.article_sentences ?? []
+    const flawed = caseKey().filter(s => s.is_flawed)
+    setRevealing(flawed.map(s => s.sentence_id))
+    const why = sentenceId
+      ? await callFeedback(sentenceId)
+      : 'Your report missed flawed testimony or quarantined a sound statement.'
+    const lines = flawed.map(s => {
+      const n = sentences.findIndex(x => x.sentence_id === s.sentence_id) + 1
+      return `Statement ${n || '?'}: ${s.flaw_reason || 'it fails the target criterion.'}`
+    })
+    const flawLine = lines.length ? `The disputed testimony —\n${lines.join('\n')}` : 'The flawed testimony stays sealed in this file.'
+    const explanation = `Three strikes, Cadet — this case is filed as unverified.\n${flawLine}\n\n${why}`
+    const caseNumber = questionIndex + 1
+    const notes: MissedCase = {
+      caseNumber, title: factNode?.title ?? `Case ${caseNumber}`,
+      notes: [...(lines.length ? lines : [flawLine]), why], correctSlots: null, total: Math.max(1, flawed.length),
+    }
+    setMissedCases(prev => [...prev.filter(m => m.caseNumber !== caseNumber), notes])
+    say(explanation, 'explain')
+    const decidedAt = Date.now()
+    setTimeout(() => { failCase(explanation, notes, decidedAt) }, REVEAL_MS)
+  }
+
   // ── Select sentence ───────────────────────────────────────
   const handleSelectSentence = (sentence_id: string) => {
-    if (!factNode || evaluating || quarantined.includes(sentence_id) || drawer) return
+    if (!factNode || evaluating || revealing || quarantined.includes(sentence_id)) return
+    setDisputed(false)
     resetTimer()
     setSelected(prev => prev === sentence_id ? null : sentence_id)
   }
 
+  /** Correct scan: lock the statement away and pin the violation to it. */
+  const quarantine = (sentenceId: string, reason: string) => {
+    playRightAnswerSound()
+    setQuarantined(prev => [...prev, sentenceId])
+    setFlawReasons(prev => ({ ...prev, [sentenceId]: reason }))
+    setFlawsFound(f => f + 1); setSelected(null)
+    say(`Good catch, Cadet — that testimony doesn't hold. ${reason}`)
+  }
+
   // ── Scan and quarantine ───────────────────────────────────
   const handleScanAndQuarantine = async () => {
-    if (!factNode || !selected || evaluating) return
+    if (!factNode || !selected || evaluating || revealing) return
+    const pickedId = selected
     resetTimer(); setEvaluating(true); setAttempts(a => a + 1)
 
     // AI Dynamic Exercise Evaluation
-    if (sessionId && sessionExercises.length > questionIndex) {
-      const currentEx = sessionExercises[questionIndex]
-      const sentence = currentEx.article_sentences?.find((s: any) => s.sentence_id === selected)
-      const isCorrect = sentence?.is_flawed ?? false
-
-      if (isCorrect) {
-        playRightAnswerSound()
-        setQuarantined(prev => [...prev, selected])
-        setFlawReasons(prev => ({ ...prev, [selected]: sentence?.flaw_reason || 'Violates the CRAAP criterion.' }))
-        setFlawsFound(f => f + 1); setSelected(null)
+    if (aiCase) {
+      const sentence = caseKey().find(s => s.sentence_id === pickedId)
+      if (sentence?.is_flawed) {
+        quarantine(pickedId, sentence.flaw_reason || 'Violates the CRAAP criterion.')
+        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+          method: 'POST',
+          body: JSON.stringify({ is_correct: true, word_id: pickedId, clue_word: '' }),
+        }).catch(() => {})
       } else {
-        playWrongSound()
-        try {
-          const fb = await apiFetch(
-            `/ai/session/${sessionId}/feedback/${questionIndex}/`,
-            { method: 'POST', body: JSON.stringify({ sentence_id: selected, tier: 1 }) },
-          )
-          setFbText(fb.explanation ?? 'That sentence does not violate the criterion.')
-        } catch { setFbText('That sentence does not violate the CRAAP criterion.') }
-        setDrawer(true); setSelected(null)
+        setSelected(null)
+        await handleWrongAttempt(pickedId)
       }
       setEvaluating(false)
       return
@@ -470,23 +601,13 @@ export default function FactScannerPage() {
     try {
       const res = await apiFetch(
         `/nodes/fact-scanner/${factNode.node_id}/evaluate-sentence/`,
-        { method: 'POST', body: JSON.stringify({ sentence_id: selected }) },
+        { method: 'POST', body: JSON.stringify({ sentence_id: pickedId }) },
       )
       if (res.result === 'correct') {
-        playRightAnswerSound()
-        setQuarantined(prev => [...prev, selected])
-        setFlawReasons(prev => ({ ...prev, [selected]: res.flaw_reason }))
-        setFlawsFound(f => f + 1); setSelected(null)
+        quarantine(pickedId, res.flaw_reason)
       } else {
-        playWrongSound()
-        try {
-          const fb = await apiFetch(
-            `/nodes/fact-scanner/${factNode.node_id}/feedback/`,
-            { method: 'POST', body: JSON.stringify({ sentence_id: selected, inactivity_seconds: inactiveRef.current }) },
-          )
-          setFbText(fb.explanation ?? 'That sentence does not violate the criterion.')
-        } catch { setFbText('That sentence does not violate the CRAAP criterion.') }
-        setDrawer(true); setSelected(null)
+        setSelected(null)
+        await handleWrongAttempt(pickedId)
       }
     } catch {
       playWrongSound()
@@ -495,88 +616,37 @@ export default function FactScannerPage() {
     finally { setEvaluating(false) }
   }
 
-  // ── Submit mastery ────────────────────────────────────────
+  /** The case is closed correctly: record it and move on. */
+  const solveCase = async () => {
+    const caseNumber = questionIndex + 1
+    const res: CaseResult = { caseNumber, correct: true, firstTry: wrongs === 0, hintsUsed, attempts: wrongs + 1 }
+    const updated = [...sessionResults.filter(r => r.caseNumber !== caseNumber), res]
+    setSessionResults(updated)
+    if (questionIndex + 1 < totalCases) playRightAnswerSound()
+    const finishedAt = Date.now()
+    await advanceCase(updated, finishedAt, missedCases)
+  }
+
+  // ── Submit report ─────────────────────────────────────────
   const handleSubmitMastery = async () => {
-    if (!factNode || submitting) return
+    if (!factNode || submitting || revealing) return
     setSubmitting(true)
 
     // 1. AI Dynamic Session Submission
-    if (sessionId && sessionExercises.length > questionIndex) {
-      const currentEx = sessionExercises[questionIndex]
-      const flawedIds = (currentEx.article_sentences || [])
-        .filter((s: any) => s.is_flawed)
-        .map((s: any) => s.sentence_id)
-      const isMastered = flawedIds.every((id: string) => quarantined.includes(id)) && quarantined.length === flawedIds.length
+    if (aiCase) {
+      const flawedIds = caseKey().filter(s => s.is_flawed).map(s => s.sentence_id)
+      const isMastered = flawedIds.every(id => quarantined.includes(id)) && quarantined.length === flawedIds.length
 
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
         body: JSON.stringify({ quarantined_ids: quarantined, node_id: nodeId, module: 'fact_scanner' }),
       }).catch(() => {})
 
-      if (isMastered) {
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: attempts === 0,
-          hintsUsed: hintsUsed + (hintOverlay ? 1 : 0),
-          attempts: attempts + 1,
-        }
-        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
-        setSessionResults(updatedCases)
-
-        const nextIdx = questionIndex + 1
-        if (sessionId) {
-          updateSessionProgress(sessionId, nextIdx).catch(() => {})
-        }
-        if (sessionStartId) {
-          saveSession('fact_scanner', sessionStartId, {
-            sessionQueue,
-            questionIndex: nextIdx,
-            next_node: savedNextNode || undefined,
-            streak: savedStreak !== null ? savedStreak : undefined,
-          })
-        }
-        if (nextIdx < sessionExercises.length) {
-          playRightAnswerSound()
-          setQuestionIndex(nextIdx)
-          loadQuestion(nextIdx, sessionQueue)
-          setSubmitting(false)
-        } else {
-          try {
-            playVictorySound()
-            const finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
-            if (sessionStartId) clearSession('fact_scanner', sessionStartId)
-            const totalCases = sessionExercises.length || sessionQueue.length || 5
-            const correctCases = updatedCases.filter(r => r.correct).length
-            const firstTryCases = updatedCases.filter(r => r.firstTry).length
-            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-            const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-            const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
-
-            setMasteryData({
-              next_node: finalRes.next_node,
-              streak: finalRes.streak ?? 1,
-              accuracy,
-              totalCases,
-              correctCases,
-              hintsUsed: totalHints,
-              timeTakenSeconds,
-              caseResults: updatedCases,
-            })
-            setPhase('mastery')
-          } catch {
-            setSubmitting(false)
-          }
-        }
-        return
-      } else {
-        playWrongSound()
-        setAttempts(prev => prev + 1)
-        setFbText('Some flawed sentences were missed or extra sentences quarantined. Review carefully.')
-        setDrawer(true)
-        setSubmitting(false)
-        return
-      }
+      try {
+        if (isMastered) await solveCase()
+        else await handleWrongAttempt(null)
+      } finally { setSubmitting(false) }
+      return
     }
 
     // 2. Legacy Submission
@@ -585,71 +655,91 @@ export default function FactScannerPage() {
         `/nodes/fact-scanner/${factNode.node_id}/mastery/`,
         { method: 'POST', body: JSON.stringify({ quarantined_ids: quarantined, save_progression: false }) },
       )
-      if (res.status === 'mastered') {
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: attempts === 0,
-          hintsUsed: hintsUsed + (hintOverlay ? 1 : 0),
-          attempts: attempts + 1,
-        }
-        const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
-        setSessionResults(updatedCases)
-
-        const nextIdx = questionIndex + 1
-        if (nextIdx < sessionQueue.length) {
-          playRightAnswerSound()
-          if (sessionStartId) saveSession('fact_scanner', sessionStartId, {
-            sessionQueue, questionIndex: nextIdx,
-            next_node: savedNextNode || undefined,
-            streak: savedStreak !== null ? savedStreak : undefined,
-          })
-          setQuestionIndex(nextIdx); loadQuestion(nextIdx, sessionQueue)
-        } else {
-          playVictorySound()
-          let finalRes = res
-          if (sessionStartId) {
-            finalRes = await apiFetch(
-              `/nodes/fact-scanner/${sessionStartId}/mastery/`,
-              { method: 'POST', body: JSON.stringify({ commit_only: true }) },
-            )
-          }
-          if (sessionStartId) clearSession('fact_scanner', sessionStartId)
-          const totalCases = sessionQueue.length || 5
-          const correctCases = updatedCases.filter(r => r.correct).length
-          const firstTryCases = updatedCases.filter(r => r.firstTry).length
-          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-          const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
-          const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
-
-          setMasteryData({
-            next_node: savedNextNode || finalRes.next_node,
-            streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
-            accuracy,
-            totalCases,
-            correctCases,
-            hintsUsed: totalHints,
-            timeTakenSeconds,
-            caseResults: updatedCases,
-          })
-          setPhase('mastery')
-        }
-      }
+      if (res.status === 'mastered') await solveCase()
+      else await handleWrongAttempt(null)
     } catch (e) {
-      playWrongSound()
-      setAttempts(prev => prev + 1)
-      setFbText((e as any)?.status === 'incomplete'
-        ? 'Some flawed sentences were missed. Keep scanning.'
-        : 'Submission failed. Please try again.')
-      setDrawer(true)
+      if ((e as any)?.status === 'incomplete') await handleWrongAttempt(null)
+      else { playWrongSound(); say('Submission failed. Please try again.', 'feedback') }
     } finally { setSubmitting(false) }
   }
+
+  // ── Card dragging (pointer events: mouse, pen and touch) ──
+  const handleCardPointerDown = (e: React.PointerEvent<HTMLDivElement>, id: string, pos: { x: number; y: number }, w: number, h: number) => {
+    suppressClickRef.current = false
+    if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return   // buttons keep their clicks
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { id, startX: e.clientX, startY: e.clientY, originX: pos.x, originY: pos.y, w, h, moved: false }
+  }
+
+  const handleCardPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    // Pointer deltas are screen pixels; the dossier is scaled to fit, so convert to board pixels
+    const dx = (e.clientX - drag.startX) / fitScale
+    const dy = (e.clientY - drag.startY) / fitScale
+    if (!drag.moved) {
+      if (Math.hypot(dx, dy) < 5) return
+      drag.moved = true
+      setDraggingId(drag.id)
+    }
+    // Keep the whole card inside the evidence board (inside its 1px border)
+    const x = Math.min(Math.max(0, drag.originX + dx), BOARD_W - 2 - drag.w)
+    const y = Math.min(Math.max(0, drag.originY + dy), BOARD_H - 2 - drag.h)
+    setCardPos(prev => ({ ...prev, [drag.id]: { x, y } }))
+  }
+
+  const handleCardPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    suppressClickRef.current = drag.moved
+    dragRef.current = null
+    setDraggingId(null)
+  }
+
+  const handleStatementClick = (sentenceId: string) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return }
+    handleSelectSentence(sentenceId)
+  }
+
+  // ── Fit the dossier inside the 100vh viewport ──
+  useEffect(() => {
+    if (phase !== 'task') return
+    const el = fitRef.current
+    if (!el) return
+    const fit = () => {
+      const maxW = Math.min(window.innerWidth * 0.92, window.innerWidth - 2 * SIDE_GUTTER)
+      const s = Math.min(1, maxW / el.offsetWidth, (window.innerHeight - 28) / el.offsetHeight)
+      setFitScale(s > 0 ? s : 1)
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    window.addEventListener('resize', fit)
+    return () => { ro.disconnect(); window.removeEventListener('resize', fit) }
+  }, [phase])
+
+  // ── Debrief actions ────────────────────────────
+  /** RETRY CASE / Fresh Case: wipe the docket and load a brand-new 5-case set. */
+  const handleRetryDocket = () => {
+    setDebrief(null); setMissedCases([]); setRemark(null)
+    startSession(true)
+  }
+
+  /** NEXT DOCKET: on to the unlocked node, or the case report when nothing was unlocked. */
+  const handleNextDocket = () => {
+    const next = debrief?.nextNode
+    setDebrief(null)
+    if (next) router.push(`/nodes/fact-scanner/${next}`)
+    else setPhase('mastery')
+  }
+
+  const handleViewReport = () => { setDebrief(null); setPhase('mastery') }
 
   // ── Loading ───────────────────────────────────────────────
   if (phase === 'loading') return <BriefingGenerationScreen title={factNode?.title} onCancel={() => router.push('/dashboard')} />
 
   if (phase === 'error') return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, gap: 16 }}>
       <p style={{ color: '#ff8888', fontSize: 14 }}>{errorMsg}</p>
       <button style={btnSm} onClick={() => router.push('/dashboard')}>← DASHBOARD</button>
     </div>
@@ -693,10 +783,10 @@ export default function FactScannerPage() {
 
   // ── Mastery ───────────────────────────────────────────────
   if (phase === 'mastery') return (
-    <div style={{ minHeight: '100vh', background: C.pageBg, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+    <div className={desk.desk} style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
       <NodeEvaluationReport
         moduleKey="fact_scanner"
-        title={factNode?.title || 'FACT SCANNER'}
+        title={factNode?.title || MODULE_TITLES.fact_scanner}
         accuracy={(masteryData as any)?.accuracy ?? 100}
         totalCases={(masteryData as any)?.totalCases ?? 5}
         correctCases={(masteryData as any)?.correctCases ?? 5}
@@ -712,522 +802,286 @@ export default function FactScannerPage() {
     </div>
   )
 
-  // ── Task phase ────────────────────────────────────────────
-  const canSubmit = quarantined.length > 0
+  // ── TASK PHASE ────────────────────────────────────────────
+  const sentences     = factNode!.article_sentences
+  const criterion     = factNode!.craap_criterion
+  const level         = factNode!.difficulty ?? nodeDifficulty(nodeId)
+  const attemptsLeft  = Math.max(0, MAX_ATTEMPTS - wrongs)   // wrongs resets to 0 on every new case
+  const flawTotal     = aiCase ? caseKey().filter(s => s.is_flawed).length : null
+  const canSubmit     = quarantined.length > 0
+  const layout        = statementLayout(sentences.length)
+  const evidencePos   = cardPos[EVIDENCE_CARD] ?? EVIDENCE_DEFAULT
+  const statementCards = sentences.map((s, i) => ({ s, i, pos: cardPos[s.sentence_id] ?? layout.pos(i) }))
+
+  // Threads: quarantined, revealed and selected statements → the evidence card (nearest side)
+  const threads = statementCards.flatMap(({ s, pos }) => {
+    const isQ = quarantined.includes(s.sentence_id)
+    const isR = !isQ && !!revealing?.includes(s.sentence_id)
+    const isS = selected === s.sentence_id
+    if (!isQ && !isR && !isS) return []
+    const leftOfEvidence = pos.x + STATEMENT_W / 2 < evidencePos.x + EVIDENCE_W / 2
+    const x1 = leftOfEvidence ? pos.x + STATEMENT_W - 6 : pos.x + 6
+    const x2 = leftOfEvidence ? evidencePos.x + 6 : evidencePos.x + EVIDENCE_W - 6
+    return [{
+      key: s.sentence_id,
+      d: bezierPath(x1, pos.y + layout.h / 2, x2, evidencePos.y + EVIDENCE_H / 2),
+      color: isQ ? '#a83232' : isR ? '#2f6418' : '#4e3629',
+      dashed: !isQ,
+    }]
+  })
+
+  const endSession = () => {
+    if (sessionId) {
+      updateSessionProgress(sessionId, questionIndex).catch(() => {})
+    }
+    if (sessionStartId && sessionQueue.length > 0) {
+      saveSession('fact_scanner', sessionStartId, {
+        sessionQueue, questionIndex,
+        next_node: savedNextNode || undefined,
+        streak: savedStreak !== null ? savedStreak : undefined,
+      })
+    }
+    router.push('/dashboard')
+  }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: C.pageBg,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, padding: '20px 12px',
-    }}>
+    <div className={`${desk.desk} ${styles.screen}`}>
+      <div className={desk.vignette} aria-hidden />
+      <div className={desk.lamp} aria-hidden />
 
-      {/* ── Fixed folder tabs ── */}
-      <div style={{
-        position: 'fixed', left: 0, top: '20%',
-        transform: 'translateY(-20%)',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'flex-start', gap: 6, zIndex: 100,
-      }}>
-        <button
-          onClick={() => fetchHint()}
-          className={styles.folderTab}
-          style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: FONT, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-        >
-          Hint
+      {/* ── Slide-out action tabs (icons peek from the left edge) ── */}
+      <div className={styles.sideTabs}>
+        <button type="button" onClick={() => fetchHint()} className={styles.sideTab} title="Hint" data-tutorial="sidebar">
+          <span className={styles.sideTabLabel}>Hint</span>
+          <span className={styles.sideTabIcon}><Lightbulb size={18} aria-hidden /></span>
         </button>
-        <button
-          onClick={() => startSession(true)}
-          className={styles.folderTab}
-          style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: FONT, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-        >
-          Fresh Case ↻
+        <button type="button" onClick={handleRetryDocket} className={styles.sideTab} title="Fresh Case" data-tutorial="sidebar">
+          <span className={styles.sideTabLabel}>Fresh Case</span>
+          <span className={styles.sideTabIcon}><RotateCcw size={18} aria-hidden /></span>
         </button>
-        <button
-          onClick={() => {
-            if (sessionId) {
-              updateSessionProgress(sessionId, questionIndex).catch(() => {})
-            }
-            if (sessionStartId && sessionQueue.length > 0) {
-              saveSession('fact_scanner', sessionStartId, {
-                sessionQueue, questionIndex,
-                next_node: savedNextNode || undefined,
-                streak: savedStreak !== null ? savedStreak : undefined,
-              })
-            }
-            router.push('/dashboard')
-          }}
-          className={styles.folderTab}
-          style={{
-            writingMode: 'vertical-lr',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.13em',
-            color: C.textDark, background: C.btnGold,
-            border: `1px solid ${C.btnGoldBdr}`, borderLeft: 'none',
-            borderRadius: '0 6px 6px 0',
-            cursor: 'pointer', padding: '14px 8px',
-            fontFamily: FONT, whiteSpace: 'nowrap',
-            boxShadow: '3px 2px 8px rgba(0,0,0,0.35)',
-          }}
-        >
-          End Session
+        <button type="button" onClick={endSession} className={styles.sideTab} title="End Session" data-tutorial="sidebar">
+          <span className={styles.sideTabLabel}>End Session</span>
+          <span className={styles.sideTabIcon}><LogOut size={18} aria-hidden /></span>
         </button>
       </div>
 
-      {/* ── Main shell ── */}
-      <div className={styles.boardEnter} style={{
-        display: 'flex', alignItems: 'stretch',
-        boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
-        borderRadius: 6, overflow: 'hidden',
-        width: '100%', maxWidth: 980, minHeight: 600,
-      }}>
+      {/* ── Dossier (scaled to fit the viewport) ── */}
+      <div ref={fitRef} className={`${styles.boardEnter} ${styles.dossier}`} style={{ transform: `scale(${fitScale})` }}>
 
-        {/* ── Left column: sentence cards ── */}
-        <div style={{
-          flex: 1, background: C.canvas,
-          display: 'flex', flexDirection: 'column',
-          borderRight: `2px solid ${C.cardBdrIdle}`,
-          position: 'relative',
-        }}>
-          {/* top strip header */}
-          <div style={{
-            background: C.board,
-            borderBottom: `2px solid ${C.btnGoldBdr}`,
-            padding: '0',
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            {/* row 1: objective full width */}
-            <div style={{
-              padding: '12px 20px 10px',
-              borderBottom: `1px solid rgba(0,0,0,0.12)`,
-              textAlign: 'center',
-            }}>
-              <div style={{
-                display: 'inline-block',
-                border: `1.5px solid ${C.accentRed}`,
-                padding: '7px 24px',
-                fontSize: 13, fontWeight: 700,
-                letterSpacing: '0.12em',
-                background: 'rgba(255,255,255,0.35)',
-                fontFamily: FONT,
-              }}>
-                <span style={{ color: C.textMid }}>OBJECTIVE: </span>
-                <span style={{ color: C.accentRed }}>
-                  IDENTIFY AND QUARANTINE THE FLAWED SENTENCE
-                </span>
-              </div>
-            </div>
-
-            {/* row 2: meta controls */}
-            <div style={{
-              padding: '8px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              {/* difficulty pill */}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                background: 'rgba(0,0,0,0.12)',
-                borderRadius: 20, padding: '5px 14px',
-              }}>
-                <div style={{
-                  width: 9, height: 9, borderRadius: '50%',
-                  background: DIFFICULTY_COLORS[factNode!.difficulty ?? nodeDifficulty(nodeId)],
-                  flexShrink: 0,
-                }} />
-                <span style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
-                  color: C.btnDark, fontFamily: FONT,
-                }}>
-                  LVL {factNode!.difficulty ?? nodeDifficulty(nodeId)} —{' '}
-                  {DIFFICULTY_LABELS[factNode!.difficulty ?? nodeDifficulty(nodeId)]}
-                </span>
-              </div>
-
-              {/* right side: Q counter + tutorial */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                {sessionQueue.length > 0 && (
-                  <span style={{
-                    fontFamily: FONT, fontSize: 12, fontWeight: 700,
-                    letterSpacing: '0.1em', color: C.btnDark,
-                    background: 'rgba(0,0,0,0.1)',
-                    borderRadius: 20, padding: '5px 14px',
-                  }}>
-                    CASE {questionIndex + 1} / {sessionQueue.length}
-                  </span>
-                )}
-                <button
-                  onClick={() => { setTutorialStep(0); setTutorialOpen(true) }}
-                  style={{
-                    padding: '7px 18px',
-                    background: C.btnGold,
-                    border: `1.5px solid ${C.btnGoldBdr}`,
-                    borderRadius: 8,
-                    color: C.textDark, fontFamily: FONT,
-                    fontSize: 11, fontWeight: 700,
-                    letterSpacing: '0.08em', cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  TUTORIAL
-                </button>
-              </div>
-            </div>
-
-            {/* progress bar */}
-            {sessionQueue.length > 0 && (
-              <div style={{ padding: '0 20px 10px' }}>
-                <div style={{ height: 5, background: 'rgba(0,0,0,0.15)', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%',
-                    width: `${(questionIndex / sessionQueue.length) * 100}%`,
-                    background: 'rgba(0,0,0,0.35)',
-                    borderRadius: 4, transition: 'width 0.3s',
-                  }} />
-                </div>
-              </div>
-            )}
+        {/* Folder tabs */}
+        <div className={styles.dossierTabs}>
+          <div className={`${styles.dossierTab} ${styles.dossierTabActive}`}>
+            <Paperclip size={22} strokeWidth={1.75} className={styles.tabClip} aria-hidden />
+            <span className={styles.tabIndex}>[4] CASE 04:</span>
+            <span className={styles.tabLabel}><Scale size={13} aria-hidden /> {MODULE_TITLES.fact_scanner}</span>
           </div>
+          {sessionQueue.length > 0 && (
+            <div className={styles.dossierTab}>
+              <span className={styles.tabIndex}>DOCKET</span>
+              <span className={styles.tabLabel}>CASE {questionIndex + 1} / {totalCases}</span>
+            </div>
+          )}
+          <div className={styles.dossierTab}>
+            <span className={styles.tabIndex}>CLEARANCE</span>
+            <span className={styles.tabLabel}>
+              <span className={styles.levelDot} style={{ background: DIFFICULTY_COLORS[level] }} />
+              LVL {level} — {DIFFICULTY_LABELS[level]}
+            </span>
+          </div>
+        </div>
 
-          {/* ── Scaffold Hint Overlay Card inside Canvas ── */}
-          {hintOverlay && (
-            <div className={styles.hintOverlay} style={{
-              position: 'absolute', top: 70, left: 16, right: 16, zIndex: 30,
-              background: C.cardPaper, border: `2px solid ${C.accentRed}`,
-              borderRadius: 8, padding: '18px 20px',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.45)', fontFamily: FONT,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed }}>
-                  AGENT CRIT — SCAFFOLD HINT{hintOverlayTier > 0 ? ` (TIER ${hintOverlayTier})` : ''}
-                </div>
-                <button onClick={() => { setHintOverlay(false); setSocraticAdvice(null) }} style={{ background: 'none', border: 'none', color: C.textMid, fontSize: 16, cursor: 'pointer', fontFamily: FONT }}>✕</button>
-              </div>
-              <p style={{ fontSize: 13, color: C.textDark, lineHeight: 1.65, margin: '0 0 14px' }}>{hintOverlayText}</p>
-              
-              {socraticAdvice && (
-                <div style={{ background: '#FFF0E8', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 6, padding: '10px 14px', marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnDark, marginBottom: 4 }}>SOCRATIC GUIDANCE</div>
-                  <p style={{ fontSize: 12, color: C.textDark, lineHeight: 1.6, margin: 0 }}>{socraticAdvice}</p>
-                </div>
-              )}
+        <div className={`${desk.folder} ${styles.folder}`}>
+          <Paperclip size={34} strokeWidth={1.6} className={styles.folderClip} aria-hidden />
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={handleAskSocraticAdvice}
-                  disabled={socraticLoading}
-                  style={{ ...btnPrimary, fontSize: 11, padding: '6px 14px', background: C.btnDark, color: C.btnGold, borderColor: C.btnGoldBdr }}
-                >
-                  {socraticLoading ? 'Consulting Agent Crit...' : 'Ask Agent Crit 🔍'}
-                </button>
-                <button
-                  onClick={() => { setHintOverlay(false); setSocraticAdvice(null) }}
-                  style={{ ...btnSm, fontSize: 11, padding: '6px 14px', color: C.textDark, borderColor: C.btnGoldBdr }}
-                >
-                  Dismiss
-                </button>
-              </div>
+          {/* Header bar */}
+          <header className={styles.header}>
+            <div className={styles.headerLeft}>
+              <span className={styles.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} {factNode!.title}
+              </span>
+              <h1 className={styles.title}>{MODULE_TITLES.fact_scanner}</h1>
+            </div>
+            <div className={styles.headerRight}>
+              <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`} onClick={() => setTutorialOpen(true)}>
+                <HelpCircle size={14} aria-hidden /> Tutorial
+              </button>
+            </div>
+          </header>
+
+          {/* Objective stamp + progress */}
+          <div className={styles.objectiveRow}>
+            <span className={styles.objective}>
+              OBJECTIVE: QUARANTINE THE TESTIMONY THAT FAILS THE {criterion} TEST
+            </span>
+            <span className={`${desk.handwritten} ${styles.objectiveNote}`}>
+              which witness can&apos;t be trusted? →
+            </span>
+          </div>
+          {sessionQueue.length > 0 && (
+            <div className={styles.progress} aria-hidden>
+              <div className={styles.progressFill} style={{ width: `${((questionIndex + 1) / totalCases) * 100}%` }} />
             </div>
           )}
 
-          {/* sentence cards */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {factNode!.article_sentences.map((sentence, idx) => {
-              const isQuarantined = quarantined.includes(sentence.sentence_id)
-              const isSelected    = selected === sentence.sentence_id
+          {/* ── Evidence board ── */}
+          <div className={styles.board} style={{ width: BOARD_W, height: BOARD_H }}>
+            {/* Threads sit under the cards */}
+            <svg className={styles.threads} width={BOARD_W} height={BOARD_H} aria-hidden>
+              {threads.map(t => (
+                <path
+                  key={t.key}
+                  className={styles.threadPath}
+                  d={t.d}
+                  stroke={t.color}
+                  strokeWidth={2.4}
+                  strokeDasharray={t.dashed ? '7 6' : undefined}
+                  fill="none"
+                  strokeLinecap="round"
+                />
+              ))}
+            </svg>
 
+            {/* Witness statements (draggable; click to pick) */}
+            {statementCards.map(({ s, i, pos }) => {
+              const isQ = quarantined.includes(s.sentence_id)
+              const isR = !isQ && !!revealing?.includes(s.sentence_id)
+              const isS = selected === s.sentence_id
+              const state = isQ ? styles.statementQuarantined : isR ? styles.statementRevealed : isS ? styles.statementSelected : ''
               return (
                 <div
-                  key={sentence.sentence_id}
-                  onClick={() => handleSelectSentence(sentence.sentence_id)}
-                  style={{
-                    position: 'relative',
-                    background: isQuarantined ? '#FFF0E8' : C.cardPaper,
-                    border: isQuarantined
-                      ? `2.5px solid ${C.accentRed}`
-                      : isSelected
-                      ? `2.5px solid ${C.btnGold}`
-                      : `1.5px solid ${C.cardBdrIdle}`,
-                    borderRadius: 10,
-                    padding: '16px 20px',
-                    cursor: isQuarantined ? 'default' : evaluating ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.18s',
-                    opacity: evaluating && !isQuarantined ? 0.7 : 1,
-                    boxShadow: isSelected
-                      ? `0 0 0 3px rgba(255,223,167,0.45)`
-                      : isQuarantined
-                      ? `0 2px 8px rgba(128,0,32,0.18)`
-                      : '0 3px 10px rgba(0,0,0,0.12)',
-                  }}
+                  key={s.sentence_id}
+                  role="button"
+                  tabIndex={isQ || revealing ? -1 : 0}
+                  aria-pressed={isS}
+                  className={`${desk.indexCard} ${styles.statementCard} ${state} ${draggingId === s.sentence_id ? styles.dragging : ''}`}
+                  style={{ left: pos.x, top: pos.y, width: STATEMENT_W, height: layout.h }}
+                  onPointerDown={e => handleCardPointerDown(e, s.sentence_id, pos, STATEMENT_W, layout.h)}
+                  onPointerMove={handleCardPointerMove}
+                  onPointerUp={handleCardPointerUp}
+                  onPointerCancel={handleCardPointerUp}
+                  onClick={() => handleStatementClick(s.sentence_id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectSentence(s.sentence_id) } }}
+                  data-tutorial="statements"
                 >
-                  {/* header */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
-                      background: isQuarantined ? C.accentRed : isSelected ? C.btnGoldBdr : C.cardBdrIdle,
-                      color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 700, fontFamily: FONT, flexShrink: 0,
-                    }}>
-                      {idx + 1}
-                    </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: isQuarantined ? C.accentRed : isSelected ? C.btnGoldBdr : C.textMuted, fontFamily: FONT }}>
-                      SENTENCE {idx + 1}
-                      {isSelected && !isQuarantined && <span style={{ marginLeft: 10, color: C.btnGoldBdr }}>● SELECTED</span>}
-                    </span>
+                  <span className={styles.pushPin} aria-hidden />
+                  <div className={styles.statementHead}>
+                    <span className={styles.statementNo}>WITNESS STATEMENT {String(i + 1).padStart(2, '0')}</span>
+                    {isS && <span className={styles.statementTag}>● SELECTED</span>}
                   </div>
-
-                  {/* text */}
-                  <p style={{ fontSize: 15, lineHeight: 1.85, margin: 0, color: isQuarantined ? '#5a1010' : C.textDark, fontFamily: FONT, fontWeight: isSelected ? 700 : 400 }}>
-                    {sentence.text}
-                  </p>
-
-                  {/* flaw reason */}
-                  {isQuarantined && flawReasons[sentence.sentence_id] && (
-                    <div style={{ marginTop: 12, padding: '10px 14px', background: '#FFF4EE', border: `1px solid ${C.cardBdrIdle}`, borderRadius: 4, fontFamily: FONT }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', color: C.accentRed, display: 'block', marginBottom: 6 }}>
-                        VIOLATION IDENTIFIED
-                      </span>
-                      <span style={{ fontSize: 13, color: C.btnDark, lineHeight: 1.6 }}>
-                        {flawReasons[sentence.sentence_id]}
-                      </span>
-                    </div>
+                  <p className={`${bodyFont.className} ${styles.statementText}`}>{s.text}</p>
+                  {isQ && flawReasons[s.sentence_id] && (
+                    <p className={`${bodyFont.className} ${styles.statementReason}`} title={flawReasons[s.sentence_id]}>
+                      Violation: {flawReasons[s.sentence_id]}
+                    </p>
                   )}
-
-                  {/* quarantine stamp */}
-                  {isQuarantined && (
-                    <div style={{
-                      position: 'absolute', top: '50%', right: 18,
-                      transform: 'translateY(-50%) rotate(-8deg)',
-                      fontFamily: FONT, fontSize: 18, fontWeight: 700,
-                      color: C.accentRed, border: `3px solid ${C.accentRed}`,
-                      padding: '2px 12px', opacity: 0.65,
-                      letterSpacing: '0.1em', pointerEvents: 'none', whiteSpace: 'nowrap',
-                    }}>
-                      QUARANTINED
-                    </div>
-                  )}
+                  {isQ && <span className={styles.statementStamp}>QUARANTINED</span>}
+                  {isR && <span className={`${styles.statementStamp} ${styles.statementStampFlaw}`}>FLAWED</span>}
                 </div>
               )
             })}
-          </div>
-        </div>
 
-        {/* ── Right panel: criterion + controls ── */}
-        <div style={{
-          width: 280,
-          background: C.panel,
-          display: 'flex', flexDirection: 'column',
-          borderRight: `2px solid ${C.cardBdrIdle}`,
-        }}>
-
-          {/* TASK banner */}
-          <div style={{
-            margin: '16px 16px 0',
-            border: `2px solid ${C.accentRed}`,
-            borderRadius: 4, padding: '10px 14px',
-            background: 'rgba(255,255,255,0.35)',
-          }}>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.textDark, marginBottom: 4 }}>
-              TASK:
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.55, color: C.accentRed, fontWeight: 700 }}>
-              Identify and quarantine sentences that violate the CRAAP framework criteria
-            </div>
-          </div>
-
-          {/* criterion box */}
-          <div style={{
-            margin: '14px 16px 0',
-            background: C.cardPaper,
-            border: `1px solid ${C.cardBdrIdle}`,
-            borderRadius: 6, padding: '18px 16px',
-          }}>
-            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: C.textDark, marginBottom: 12, letterSpacing: '0.06em' }}>
-              TARGET CRITERION: {factNode!.craap_criterion}
-            </div>
-            <div style={{ fontFamily: FONT, fontSize: 13, lineHeight: 1.65, color: C.btnDark }}>
-              {CRITERION_QUESTIONS[factNode!.craap_criterion] ?? 'Does this sentence pass the CRAAP test?'}
-            </div>
-          </div>
-
-          {/* selected preview */}
-          <div style={{ margin: '12px 16px 0', flex: 1 }}>
-            {selected ? (
-              <div style={{
-                background: 'rgba(255,255,255,0.5)',
-                border: `1.5px solid ${C.btnGold}`,
-                borderRadius: 5, padding: '12px 14px',
-              }}>
-                <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', color: C.btnGoldBdr, marginBottom: 8 }}>
-                  SELECTED FOR EVALUATION
-                </div>
-                <p style={{ fontFamily: FONT, fontSize: 12, lineHeight: 1.65, color: C.textDark, margin: 0 }}>
-                  {factNode!.article_sentences.find(s => s.sentence_id === selected)?.text}
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                background: 'rgba(255,255,255,0.3)',
-                border: `1.5px dashed ${C.cardBdrIdle}`,
-                borderRadius: 5, padding: '16px 14px', textAlign: 'center',
-              }}>
-                <p style={{ fontFamily: FONT, fontSize: 12, color: C.textMid, margin: 0, lineHeight: 1.6 }}>
-                  {quarantined.length > 0
-                    ? `${quarantined.length} sentence${quarantined.length > 1 ? 's' : ''} quarantined`
-                    : 'Click a sentence on the left to select it'}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* scan button */}
-          <div style={{ margin: '14px 16px' }}>
-            <button
-              disabled={!selected || evaluating}
-              onClick={handleScanAndQuarantine}
-              style={{
-                width: '100%', padding: '14px 0',
-                background: selected && !evaluating ? C.btnGold : C.cardBdrIdle,
-                border: `2px solid ${selected && !evaluating ? C.btnGoldBdr : C.cardBdrIdle}`,
-                borderRadius: 8, fontFamily: FONT, fontSize: 14, fontWeight: 700,
-                letterSpacing: '0.12em', color: C.textDark,
-                cursor: selected && !evaluating ? 'pointer' : 'not-allowed',
-                transition: 'all 0.18s',
-                boxShadow: selected && !evaluating ? '0 3px 8px rgba(0,0,0,0.2)' : 'none',
-              }}
+            {/* Physical evidence: the target criterion (draggable) */}
+            <div
+              className={`${desk.indexCard} ${styles.evidenceCard} ${draggingId === EVIDENCE_CARD ? styles.dragging : ''}`}
+              style={{ left: evidencePos.x, top: evidencePos.y, width: EVIDENCE_W, height: EVIDENCE_H }}
+              onPointerDown={e => handleCardPointerDown(e, EVIDENCE_CARD, evidencePos, EVIDENCE_W, EVIDENCE_H)}
+              onPointerMove={handleCardPointerMove}
+              onPointerUp={handleCardPointerUp}
+              onPointerCancel={handleCardPointerUp}
+              data-tutorial="evidence"
             >
-              {evaluating ? 'EVALUATING...' : 'SCAN AND QUARANTINE'}
-            </button>
-          </div>
-
-          {/* stats */}
-          <div style={{
-            margin: '0 16px 16px',
-            background: 'rgba(255,255,255,0.4)',
-            border: `1px solid ${C.cardBdrIdle}`,
-            borderRadius: 5, padding: '10px 0', display: 'flex',
-          }}>
-            {[
-              { label: 'ATTEMPTS',    value: attempts   },
-              { label: 'FLAWS FOUND', value: flawsFound },
-              { label: 'HINTS USED',  value: hintsUsed  },
-            ].map((stat, i) => (
-              <div key={stat.label} style={{
-                flex: 1, textAlign: 'center',
-                borderRight: i < 2 ? `1px solid ${C.cardBdrIdle}` : 'none',
-                padding: '4px 0',
-              }}>
-                <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: C.textMid, marginBottom: 4 }}>
-                  {stat.label}
-                </div>
-                <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 700, color: C.textDark }}>
-                  {stat.value}
-                </div>
+              <span className={styles.pushPin} aria-hidden />
+              <span className={styles.exhibitNo}>EXHIBIT A {'//'} PHYSICAL EVIDENCE</span>
+              <span className={styles.evidenceLabel}>TARGET CRITERION</span>
+              <div className={`${bodyFont.className} ${styles.evidenceWord}`}>{criterion}</div>
+              <p className={`${bodyFont.className} ${styles.evidenceQuestion}`}>
+                {CRITERION_QUESTIONS[criterion] ?? 'Does this sentence pass the CRAAP test?'}
+              </p>
+              <div className={styles.craapStrip} aria-label="CRAAP criteria">
+                {CRAAP_TABS.map(tab => (
+                  <span key={tab} className={`${styles.craapChip} ${tab === criterion ? styles.craapChipActive : ''}`} title={tab}>
+                    {tab[0]}
+                  </span>
+                ))}
               </div>
-            ))}
+              <div className={styles.evidenceMeta}>
+                FLAWS QUARANTINED {flawTotal !== null ? `${Math.min(quarantined.length, flawTotal)}/${flawTotal}` : quarantined.length}
+              </div>
+            </div>
           </div>
 
-          {/* submit report */}
-          <div style={{ margin: '0 16px 16px' }}>
-            <button
-              disabled={!canSubmit || submitting}
-              onClick={handleSubmitMastery}
-              className={`${styles.submitBtn} ${canSubmit ? styles.submitBtnReady : ''}`}
-              style={{
-                width: '100%', padding: '13px 0',
-                background: canSubmit && !submitting ? C.btnDark : C.textMuted,
-                border: 'none', borderRadius: 8, fontFamily: FONT, fontSize: 13,
-                fontWeight: 700, letterSpacing: '0.1em', color: C.btnGold,
-                cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed',
-                transition: 'background 0.18s',
-              }}
-            >
-              {submitting ? 'FILING...' : 'SUBMIT REPORT →'}
-            </button>
-          </div>
-        </div>
-
-        {/* ── CRAAP tabs ── */}
-        <div style={{
-          width: 32, background: C.btnGoldBdr,
-          display: 'flex', flexDirection: 'column',
-          borderRadius: '0 6px 6px 0',
-        }}>
-          {CRAAP_TABS.map((tab, i) => {
-            const isActive = factNode!.craap_criterion === tab
-            return (
-              <div key={tab} style={{
-                flex: 1,
-                background: isActive ? C.btnGold : C.cardBdrIdle,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                borderBottom: i < CRAAP_TABS.length - 1 ? `1px solid ${C.btnGoldBdr}` : 'none',
-                borderRadius: i === CRAAP_TABS.length - 1 ? '0 0 5px 0' : i === 0 ? '0 6px 0 0' : 0,
-                position: 'relative',
-              }}>
-                <span style={{
-                  writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-                  fontFamily: FONT, fontSize: 11, fontWeight: 700,
-                  letterSpacing: '0.14em',
-                  color: isActive ? C.textDark : C.textMuted,
-                }}>
-                  {tab}
+          {/* ── Footer bar ── */}
+          <div className={styles.submitBar}>
+            <span className={styles.counter}>
+              {quarantined.length} {flawTotal !== null ? `/ ${flawTotal} ` : ''}STATEMENT{quarantined.length === 1 && flawTotal === null ? '' : 'S'} QUARANTINED
+              {flawTotal !== null && quarantined.length >= flawTotal && !revealing && (
+                <span className={styles.allDone}>ALL FLAWS QUARANTINED — FILE YOUR REPORT</span>
+              )}
+              {!revealing && wrongs > 0 && attemptsLeft > 0 && (
+                <span className={`${bodyFont.className} ${styles.attemptMsg}`} role="status">
+                  Testimony disputed. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
                 </span>
-                {isActive && (
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.accentRed }} />
-                )}
-              </div>
-            )
-          })}
+              )}
+            </span>
+            <div className={styles.submitGroup} data-tutorial="submit">
+              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
+                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
+                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
+                <span className={styles.attemptPips} aria-hidden>
+                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />)}
+                </span>
+              </span>
+              {disputed || revealing ? (
+                // Wrong scan / report: a crimson alert stands in for the actions until the next pick
+                <span className={styles.disputedBadge} role="status">✕ TESTIMONY DISPUTED</span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled={!selected || evaluating}
+                    onClick={handleScanAndQuarantine}
+                    className={`${styles.caseBtn} ${styles.scanBtn}`}
+                  >
+                    <ShieldAlert size={15} aria-hidden /> {evaluating ? 'SCANNING…' : 'SCAN & QUARANTINE'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canSubmit || submitting}
+                    onClick={handleSubmitMastery}
+                    className={`${styles.submitBtn} ${styles.submit} ${canSubmit && !submitting ? styles.submitBtnReady : ''}`}
+                  >
+                    {submitting ? 'FILING…' : <><FileText size={16} aria-hidden /> SUBMIT REPORT <ArrowRight size={18} aria-hidden /></>}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Feedback drawer ── */}
-      {drawer && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#2A1200', border: `2px solid ${C.btnGoldBdr}`, borderBottom: 'none', padding: '22px 36px 30px', zIndex: 200, maxHeight: 280, overflowY: 'auto', fontFamily: FONT }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '0.15em', color: C.btnGold, border: `1.5px solid ${C.btnGold}`, padding: '4px 16px', borderRadius: 2 }}>
-              FEEDBACK
-            </div>
-            <button onClick={() => { setDrawer(false); resetTimer() }} style={{ background: 'none', border: 'none', color: C.btnGold, fontSize: 20, cursor: 'pointer', fontFamily: FONT }}>✕</button>
-          </div>
-          <p style={{ fontSize: 15, color: C.canvas, lineHeight: 1.75, marginBottom: 18, fontFamily: FONT }}>{fbText}</p>
-          <button
-            style={{ padding: '10px 22px', background: 'transparent', border: `1px solid ${C.btnGoldBdr}`, borderRadius: 3, color: C.textLight, fontFamily: FONT, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.06em' }}
-            onClick={() => { setDrawer(false); resetTimer() }}
-          >
-            Close and reattempt
-          </button>
-        </div>
-      )}
-
-      <TutorialPopup
-        open={tutorialOpen} step={tutorialStep}
+      <SpotlightTutorial
+        open={tutorialOpen}
         onClose={() => setTutorialOpen(false)}
-        onBack={() => setTutorialStep(p => Math.max(p - 1, 0))}
-        onNext={() => setTutorialStep(p => Math.min(p + 1, TUTORIAL_STEPS.length - 1))}
-        onStart={() => setTutorialOpen(false)}
+        steps={CROSS_EXAM_TUTORIAL}
+        storageKey={CROSS_EXAM_TUTORIAL_KEY}
+        heading="CROSS EXAMINATION BRIEFING"
       />
+
+      <CaseDebriefModal
+        debrief={debrief}
+        onRetry={handleRetryDocket}
+        onNext={handleNextDocket}
+        onReport={handleViewReport}
+      />
+
+      {!debrief && (
+        <CritRemark
+          remark={remark}
+          onDismiss={() => setRemark(null)}
+          onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
+          asking={socraticLoading}
+        />
+      )}
     </div>
   )
 }
