@@ -63,7 +63,12 @@ def wipe_data_preserve_accounts():
 
     # 5. Reset Student Profiles to Default Starter State
     prof_count = StudentProfileDocument.objects.count()
-    DEFAULT_UNLOCKED = ['log_node_01', 'snp_node_01', 'tap_node_01', 'fac_node_01']
+    DEFAULT_UNLOCKED = [
+        'log_node_01', 'log_node_04', 'log_node_07', 'log_node_10',
+        'snp_node_01', 'snp_node_04', 'snp_node_07', 'snp_node_10',
+        'tap_node_01', 'tap_node_04', 'tap_node_07', 'tap_node_10',
+        'fac_node_01', 'fac_node_04', 'fac_node_07', 'fac_node_10', 'fac_node_13'
+    ]
     for p in StudentProfileDocument.objects.all():
         p.unlocked_nodes = list(DEFAULT_UNLOCKED)
         p.completed_nodes = []

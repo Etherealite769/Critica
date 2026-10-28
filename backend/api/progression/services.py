@@ -102,10 +102,30 @@ MODULE_ENTRY_NODES = {
 }
 
 ALWAYS_UNLOCKED = [
-    'log_node_01',
-    'snp_node_01',
-    'tap_node_01',
-    'fac_node_01',
+    # ── Logic Thread ──────────────────────────
+    'log_node_01',  # Narration — Basics
+    'log_node_04',  # Definition — Basics
+    'log_node_07',  # Comparison & Contrast — Basics
+    'log_node_10',  # Cause & Effect — Basics
+
+    # ── Snap-in Gap ───────────────────────────
+    'snp_node_01',  # Addition & Sequence — Basics
+    'snp_node_04',  # Contrast & Opposition — Basics
+    'snp_node_07',  # Cause & Effect — Basics
+    'snp_node_10',  # Conclusion Signals — Basics
+
+    # ── Tap the Clues ─────────────────────────
+    'tap_node_01',  # Synonym Clues — Basics
+    'tap_node_04',  # Definition Clues — Basics
+    'tap_node_07',  # Antonym & Contrast Clues — Basics
+    'tap_node_10',  # Example & Inference Clues — Basics
+
+    # ── Fact Scanner ──────────────────────────
+    'fac_node_01',  # Currency — Basics
+    'fac_node_04',  # Relevance — Basics
+    'fac_node_07',  # Authority — Basics
+    'fac_node_10',  # Accuracy — Basics
+    'fac_node_13',  # Purpose — Basics
 ]
 
 

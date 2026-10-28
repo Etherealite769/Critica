@@ -6,6 +6,7 @@ from .services import (
     ProgressionManagementService,
     MODULE_NODES,
     MODULE_ENTRY_NODES,
+    ALWAYS_UNLOCKED,
 )
 
 
@@ -31,7 +32,7 @@ class DashboardView(APIView):
             for nid in node_ids:
                 if nid in profile.completed_nodes:
                     st = 'completed'
-                elif nid in profile.unlocked_nodes:
+                elif nid in profile.unlocked_nodes or nid in ALWAYS_UNLOCKED:
                     st = 'unlocked'
                 else:
                     st = 'locked'
@@ -58,7 +59,7 @@ class DashboardView(APIView):
             'level_progress_pct': rank_info['level_progress_pct'],
             'completed_count': len(
                 profile.completed_nodes),
-            'unlocked_nodes':  profile.unlocked_nodes,
+            'unlocked_nodes':  list(set(profile.unlocked_nodes + ALWAYS_UNLOCKED)),
             'completed_nodes': profile.completed_nodes,
             'onboarding_completed': getattr(profile, 'onboarding_completed', False),
             'profile_picture': getattr(request.user, 'profile_picture', '') or getattr(profile, 'profile_picture', '') or '',
@@ -84,7 +85,7 @@ class ModuleNodesView(APIView):
         for nid in node_ids:
             if nid in profile.completed_nodes:
                 st = 'completed'
-            elif nid in profile.unlocked_nodes:
+            elif nid in profile.unlocked_nodes or nid in ALWAYS_UNLOCKED:
                 st = 'unlocked'
             else:
                 st = 'locked'

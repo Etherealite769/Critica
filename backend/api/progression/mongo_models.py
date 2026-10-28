@@ -7,14 +7,14 @@ class StudentProfileDocument(me.Document):
                           required=True, unique=True)
     username        = me.StringField(required=True)
 
-    # All four first nodes are unlocked by default
+    # All basics nodes across topics are unlocked by default
     unlocked_nodes  = me.ListField(
                           me.StringField(),
                           default=[
-                              'log_node_01',
-                              'snp_node_01',
-                              'tap_node_01',
-                              'fac_node_01',
+                              'log_node_01', 'log_node_04', 'log_node_07', 'log_node_10',
+                              'snp_node_01', 'snp_node_04', 'snp_node_07', 'snp_node_10',
+                              'tap_node_01', 'tap_node_04', 'tap_node_07', 'tap_node_10',
+                              'fac_node_01', 'fac_node_04', 'fac_node_07', 'fac_node_10', 'fac_node_13',
                           ])
     completed_nodes = me.ListField(
                           me.StringField(),

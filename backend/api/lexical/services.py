@@ -104,6 +104,37 @@ class SpacedRepetitionService:
         if not doc:
             return None
 
+        profile = ProgressionManagementService.get_or_create_profile(student_id)
+
+        # Check if already reviewed today
+        is_reviewed_today = False
+        if doc.last_reviewed:
+            lr = doc.last_reviewed
+            if lr.tzinfo is None:
+                lr = lr.replace(tzinfo=timezone.utc)
+            if lr >= today_start:
+                is_reviewed_today = True
+
+        if is_reviewed_today:
+            # Word was already reviewed today: maintain interval and do not grant duplicate XP
+            rank_info = ProgressionManagementService.calculate_rank_and_level(profile.total_xp)
+            return {
+                'word': doc.word,
+                'interval_days': doc.interval_days,
+                'next_review_date': str(doc.next_review_date),
+                'access_count': doc.access_count,
+                'xp_awarded': 0,
+                'bonus_awarded': 0,
+                'total_xp': profile.total_xp,
+                'level': profile.current_level,
+                'level_title': rank_info['rank_title'],
+                'level_up': False,
+                'streak': profile.streak_count,
+                'streak_new_day': False,
+                'deck_status': SpacedRepetitionService.get_deck_status(student_id),
+                'already_reviewed': True,
+            }
+
         new_interval = max(1, int((doc.interval_days or 1) * SpacedRepetitionService.EASE))
         doc.interval_days = new_interval
         doc.access_count = (doc.access_count or 1) + 1
@@ -112,7 +143,6 @@ class SpacedRepetitionService:
         doc.save()
 
         # Award +10 XP per flashcard reviewed
-        profile = ProgressionManagementService.get_or_create_profile(student_id)
         card_xp = 10
         xp_res = profile.add_xp(card_xp)
 
@@ -141,4 +171,4 @@ class SpacedRepetitionService:
             'streak': profile.streak_count,
             'streak_new_day': streak_res.get('new_day', False),
             'deck_status': deck_status,
-        }
+        }
