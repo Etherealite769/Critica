@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter }           from 'next/navigation'
 import { apiFetch }            from '@/lib/api'
 import { isInductionPending, markInductionComplete, shouldAutoOpenInduction } from '@/lib/induction'
@@ -23,7 +23,7 @@ import InspectorCrit          from '@/components/brand/InspectorCrit'
 import {
   Activity, CircleCheck, Clipboard, Crosshair, DoorOpen, FileText, Flame,
   FolderOpen, Lock, Network, Paperclip, Pin, Puzzle, RotateCcw,
-  ScanSearch, Search, Settings, ShieldAlert, UserRound, Zap, type LucideIcon,
+  ScanSearch, Search, Settings, ShieldAlert, Sparkles, UserRound, Zap, type LucideIcon,
 } from 'lucide-react'
 
 interface NodeStatus {
@@ -473,6 +473,13 @@ export default function StudentDashboard() {
   const [streakPulse, setStreakPulse] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'BASICS' | 'INTERMEDIATE' | 'ADVANCED'>('ALL')
+  const [topicFilter, setTopicFilter] = useState<string>('ALL')
+
+  // Reset topic filter whenever switching discipline tabs
+  useEffect(() => {
+    setTopicFilter('ALL')
+  }, [activeTab])
 
   // ── Fetch dashboard ───────────────────────
   const fetchDashboard = useCallback(async () => {
@@ -658,8 +665,34 @@ export default function StudentDashboard() {
     return mod?.nodes ?? []
   }
 
+  const activeNodes = getActiveNodes()
+  const ActiveModuleIcon = MODULE_ICONS[activeTab] ?? Network
   const activeTabCfg =
     TABS.find(t => t.id === activeTab) ?? TABS[0]
+
+  // Extract distinct topics available in the current active discipline (Hook called unconditionally)
+  const availableTopics = useMemo(() => {
+    const topics = new Set<string>()
+    for (const node of activeNodes) {
+      const meta = NODE_META[node.node_id]
+      if (meta?.type) topics.add(meta.type)
+    }
+    return Array.from(topics)
+  }, [activeNodes])
+
+  // Filter exhibits based on selected topic and difficulty (Hook called unconditionally)
+  const displayedNodes = useMemo(() => {
+    return activeNodes.filter(node => {
+      const meta = NODE_META[node.node_id]
+      if (!meta) return false
+      if (difficultyFilter !== 'ALL' && meta.level !== difficultyFilter) return false
+      if (topicFilter !== 'ALL' && meta.type !== topicFilter) return false
+      return true
+    })
+  }, [activeNodes, difficultyFilter, topicFilter])
+
+  // Index of the first open (unlocked, not completed) exhibit among displayed nodes
+  const firstOpenIdx = displayedNodes.findIndex(n => n.status === 'unlocked')
 
   // ── Loading state ─────────────────────────
   if (loading) return (
@@ -690,12 +723,6 @@ export default function StudentDashboard() {
       </button>
     </div>
   )
-
-  const activeNodes = getActiveNodes()
-  const ActiveModuleIcon = MODULE_ICONS[activeTab] ?? Network
-
-  // Index of the first open (unlocked, not completed) exhibit — gets a "start here" note
-  const firstOpenIdx = activeNodes.findIndex(n => n.status === 'unlocked')
 
   return (
     <div
@@ -952,21 +979,81 @@ export default function StudentDashboard() {
                   <span className="block text-right">— Inspector Crit</span>
                 </p>
               </div>
+
+              {/* ── TOPIC & DIFFICULTY EXPLORATION CONTROLS ── */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 pb-0.5 border-t border-[rgba(139,115,85,0.25)] text-xs">
+                {/* Topic selector */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`${TYPE} text-[10px] uppercase tracking-wider text-[#6b6255] font-bold mr-0.5`}>
+                    Topic:
+                  </span>
+                  <button
+                    onClick={() => { playClickSound(); setTopicFilter('ALL') }}
+                    className={`${TYPE} px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                      topicFilter === 'ALL'
+                        ? 'bg-[var(--hat)] text-[var(--parchment)] border-[var(--hat)] shadow-sm'
+                        : 'bg-black/5 hover:bg-black/10 text-[#4a4339] border-black/15'
+                    }`}>
+                    All Topics
+                  </button>
+                  {availableTopics.map(topic => (
+                    <button
+                      key={topic}
+                      onClick={() => { playClickSound(); setTopicFilter(topic) }}
+                      className={`${TYPE} px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                        topicFilter === topic
+                          ? 'bg-[var(--hat)] text-[var(--parchment)] border-[var(--hat)] shadow-sm'
+                          : 'bg-black/5 hover:bg-black/10 text-[#4a4339] border-black/15'
+                      }`}>
+                      {topic.replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Difficulty selector */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className={`${TYPE} text-[10px] uppercase tracking-wider text-[#6b6255] font-bold mr-0.5`}>
+                    Difficulty:
+                  </span>
+                  {(['ALL', 'BASICS', 'INTERMEDIATE', 'ADVANCED'] as const).map(diff => (
+                    <button
+                      key={diff}
+                      onClick={() => { playClickSound(); setDifficultyFilter(diff) }}
+                      className={`${TYPE} px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border flex items-center gap-1 ${
+                        difficultyFilter === diff
+                          ? 'bg-[var(--ink)] text-[var(--parchment)] border-[var(--ink)] shadow-sm'
+                          : 'bg-black/5 hover:bg-black/10 text-[#4a4339] border-black/15'
+                      }`}>
+                      {diff === 'BASICS' && <span className="w-1.5 h-1.5 rounded-full bg-[#4ddd94]" />}
+                      {diff === 'INTERMEDIATE' && <span className="w-1.5 h-1.5 rounded-full bg-[#5bc0f8]" />}
+                      {diff === 'ADVANCED' && <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623]" />}
+                      {diff === 'ALL' ? 'All Tiers' : diff}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* ── SCROLLING EXHIBITS ── */}
             <div data-tour="case-exhibits" className={`${desk.noScrollbar} flex-1 min-h-0 overflow-y-auto px-8 pt-5 pb-8 text-[var(--ink)]`}>
 
               {/* Empty state */}
-              {activeNodes.length === 0 && (
-                <div className="font-mono text-xs text-[var(--hat)] text-center py-10">
-                  No evidence filed for this case yet.
+              {displayedNodes.length === 0 && (
+                <div className="font-mono text-xs text-[var(--hat)] text-center py-10 flex flex-col items-center gap-2">
+                  <span>No evidence files match the selected topic or difficulty filters.</span>
+                  {(topicFilter !== 'ALL' || difficultyFilter !== 'ALL') && (
+                    <button
+                      onClick={() => { setTopicFilter('ALL'); setDifficultyFilter('ALL') }}
+                      className={`${TYPE} text-[11px] underline text-[var(--crimson)] hover:text-[var(--ink)] cursor-pointer`}>
+                      Reset filters to show all exhibits
+                    </button>
+                  )}
                 </div>
               )}
 
               {/* ── EXHIBIT CARDS ── */}
               <div className="grid grid-cols-1 min-[1700px]:grid-cols-2 gap-4">
-              {activeNodes.map((node, idx) => {
+              {displayedNodes.map((node, idx) => {
                 const meta = NODE_META[node.node_id]
                 if (!meta) return null
 
@@ -974,6 +1061,7 @@ export default function StudentDashboard() {
                 const isReady  = node.status === 'unlocked'
                 const isLocked = node.status === 'locked'
                 const progress = getNodeProgress(node.node_id)
+                const canonicalIdx = activeNodes.findIndex(n => n.node_id === node.node_id)
 
                 return (
                   <div
@@ -1005,7 +1093,7 @@ export default function StudentDashboard() {
                         </div>
                         <div className={`${TYPE} min-w-0 leading-tight ${isLocked ? 'text-[#4a4339]' : 'text-[var(--ink)]'}`}>
                           <div className="text-[10px] tracking-[0.15em]">
-                            EXHIBIT {String(idx + 1).padStart(2, '0')}{meta.level && <> · {meta.level}</>}
+                            EXHIBIT {String((canonicalIdx >= 0 ? canonicalIdx : idx) + 1).padStart(2, '0')}{meta.level && <> · {meta.level}</>}
                           </div>
                           <div className="text-xs font-bold uppercase tracking-wider truncate">
                             {meta.title}

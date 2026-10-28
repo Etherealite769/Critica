@@ -11,7 +11,7 @@ import {
 } from '@/lib/realtime-sync'
 import {
   BookOpen, CalendarClock, Check, ChevronLeft, ChevronRight, ChevronUp,
-  ClipboardList, FolderOpen, Layers, PartyPopper, Plus, Timer, X, Zap,
+  ClipboardList, FolderOpen, Layers, PartyPopper, Plus, RotateCcw, Timer, X, Zap,
 } from 'lucide-react'
 
 export interface LexicalWord {
@@ -680,7 +680,13 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                 </div>
 
                 <div style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.72rem', color: '#6A381F' }}>
-                  Daily Refresh: <strong>{formatCountdown(remainingSeconds)}</strong>
+                  {drillMode === 'daily' ? (
+                    <>Daily Refresh: <strong>{formatCountdown(remainingSeconds)}</strong></>
+                  ) : (
+                    <span style={{ color: '#8C5A3C', fontWeight: 'bold' }}>
+                      Free Practice (Study Only · No XP)
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -748,7 +754,9 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       CASE DOSSIER #{currentCardIndex + 1} OF {activeDeck.length}
                     </span>
                     <span className={styles.stampBox} style={{ fontSize: '0.65rem' }}>
-                      {isFlipped ? 'REVEALED' : 'TAP TO DECRYPT'}
+                      {drillMode === 'all'
+                        ? (isFlipped ? 'FREE PRACTICE · REVEALED' : 'FREE PRACTICE · TAP TO DECRYPT')
+                        : (isFlipped ? 'REVEALED' : 'TAP TO DECRYPT')}
                     </span>
                   </div>
 
@@ -839,7 +847,20 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                             color: '#8C5A3C',
                           }}>
                           <span>Reviewed: {currentWord.access_count || 1} times</span>
-                          <span>Next Interval: +{Math.max(1, Math.round((currentWord.access_count || 1) * 2.5))} Days</span>
+                          {drillMode === 'daily' ? (
+                            <span>Next Interval: +{Math.max(1, Math.round((currentWord.access_count || 1) * 2.5))} Days</span>
+                          ) : (
+                            <span>
+                              Retention:{' '}
+                              {currentWord.is_reviewed_today ? (
+                                <strong style={{ color: '#2E6B3A' }}>Reviewed Today</strong>
+                              ) : currentWord.is_due_today !== false ? (
+                                <strong style={{ color: '#8C5A3C' }}>Due in Daily Drill</strong>
+                              ) : (
+                                <span>Retained in Memory</span>
+                              )}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -853,13 +874,22 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       style={{ flex: '1' }}>
                       <ChevronLeft size={14} aria-hidden /> Previous
                     </button>
-                    <button
-                      className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
-                      onClick={() => handleRecordReview(currentWord.word)}
-                      disabled={reviewing}
-                      style={{ flex: '2' }}>
-                      <Check size={14} aria-hidden /> {reviewing ? 'Recording...' : 'Retained / Mastered (+10 XP)'}
-                    </button>
+                    {drillMode === 'daily' ? (
+                      <button
+                        className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
+                        onClick={() => handleRecordReview(currentWord.word)}
+                        disabled={reviewing}
+                        style={{ flex: '2' }}>
+                        <Check size={14} aria-hidden /> {reviewing ? 'Recording...' : 'Retained / Mastered (+10 XP)'}
+                      </button>
+                    ) : (
+                      <button
+                        className={styles.tacticalBtn}
+                        onClick={() => setIsFlipped(!isFlipped)}
+                        style={{ flex: '2', background: 'rgba(140, 90, 60, 0.15)', color: '#2D0909' }}>
+                        <RotateCcw size={14} aria-hidden /> {isFlipped ? 'Flip to Evidence Term' : 'Flip to Definition'}
+                      </button>
+                    )}
                     <button
                       className={styles.tacticalBtn}
                       onClick={handleNextCard}
