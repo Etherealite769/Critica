@@ -4,8 +4,16 @@ import { Search, X } from 'lucide-react'
 import InspectorCrit from '@/components/brand/InspectorCrit'
 import styles from './overlays.module.css'
 
-/** remark: fades on its own · thinking: waiting on a hint · hint / explain: stay until dismissed */
-export type RemarkKind = 'remark' | 'thinking' | 'hint' | 'explain'
+/** remark: fades on its own · thinking: waiting on a hint · hint / explain / feedback: stay until dismissed */
+export type RemarkKind = 'remark' | 'thinking' | 'hint' | 'explain' | 'feedback'
+
+// Header tag on Crit's guidance card, per kind
+const BADGES: Partial<Record<RemarkKind, string>> = {
+  thinking: "CRIT'S SOCRATIC GUIDANCE",
+  hint:     "CRIT'S SOCRATIC GUIDANCE",
+  explain:  "CRIT'S CASE EXPLANATION",
+  feedback: 'INSPECTOR CRIT // FEEDBACK',
+}
 
 export interface Remark {
   /** A new id replays the bubble. */
@@ -25,8 +33,8 @@ interface CritRemarkProps {
 /** Inspector Crit in the lower-left corner, speaking side remarks and Socratic guidance in a bubble. */
 export default function CritRemark({ remark, onDismiss, onAskMore, asking }: CritRemarkProps) {
   const thinking = remark?.kind === 'thinking'
-  const explain = remark?.kind === 'explain'
-  const guidance = remark?.kind === 'hint' || thinking || explain
+  const badge = remark ? BADGES[remark.kind] : undefined
+  const guidance = badge !== undefined
 
   return (
     <div className={`${styles.root} ${styles.remark}`} aria-live="polite">
@@ -42,7 +50,7 @@ export default function CritRemark({ remark, onDismiss, onAskMore, asking }: Cri
           {guidance && (
             <div className={styles.hintHead}>
               <span className={styles.guidanceBadge}>
-                <Search size={11} aria-hidden /> {explain ? "CRIT'S CASE EXPLANATION" : "CRIT'S SOCRATIC GUIDANCE"}
+                <Search size={11} aria-hidden /> {badge}
               </span>
               <button type="button" className={styles.hintClose} onClick={onDismiss} aria-label="Dismiss hint">
                 <X size={12} aria-hidden />
@@ -57,7 +65,7 @@ export default function CritRemark({ remark, onDismiss, onAskMore, asking }: Cri
           ) : (
             <p className={styles.remarkText}>{remark.text}</p>
           )}
-          {remark.kind === 'hint' && onAskMore && (
+          {(remark.kind === 'hint' || remark.kind === 'feedback') && onAskMore && (
             <button type="button" className={styles.hintMore} onClick={onAskMore} disabled={asking}>
               <Search size={12} aria-hidden /> {asking ? 'Thinking…' : 'Dig deeper'}
             </button>

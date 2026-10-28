@@ -483,7 +483,7 @@
 }
 
 .counter { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.1em; }
-.attemptMsg { font-size: 12px; letter-spacing: 0.04em; color: var(--stamp); }
+.attemptMsg { font-size: 12.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--stamp); }
 
 .submitGroup { display: flex; align-items: center; gap: 14px; }
 
@@ -527,3 +527,24 @@
 .submitCorrect:disabled { color: #fff; background: var(--ok-ink); }
 .submitIncorrect:disabled { color: #fff; background: var(--stamp); }
 .submit:focus-visible { outline: 2px solid #76b852; outline-offset: 2px; }
+
+/* Crimson alert that replaces SUBMIT after a wrong attempt */
+.disputedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 24px;
+  font-family: var(--type);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--stamp);
+  border: 1px solid #7a1f1f;
+  border-radius: 2px;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  animation: disputedIn 0.25s ease;
+}
+
+@keyframes disputedIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
