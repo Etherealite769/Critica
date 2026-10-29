@@ -682,7 +682,11 @@ export default function SnapInGapPage() {
         body: JSON.stringify({ is_correct: false }),
       }).catch(() => {})
     }
-    say(pick(RETRY_REMARKS))
+    if (nextWrongs >= 3) {
+      fetchHint(Math.min(nextWrongs, 3))
+    } else {
+      say(pick(RETRY_REMARKS))
+    }
   }
 
   // ── tile click ────────────────────────────────────

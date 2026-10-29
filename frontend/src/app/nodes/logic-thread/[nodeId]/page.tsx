@@ -664,7 +664,11 @@ export default function LogicThreadPage() {
       setAttemptsMap({ ...attemptsMapRef.current })
       setDisputed(true)
       setSubmitState('incorrect')
-      say(pick(RETRY_REMARKS))
+      if (newWrongs >= 3) {
+        fetchHint(Math.min(newWrongs, 3))
+      } else {
+        say(pick(RETRY_REMARKS))
+      }
       setTimeout(() => setSubmitState('idle'), 1400)
       return
     }

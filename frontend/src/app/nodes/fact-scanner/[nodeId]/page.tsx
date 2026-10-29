@@ -521,7 +521,11 @@ export default function FactScannerPage() {
         body: JSON.stringify({ is_correct: false, word_id: sentenceId ?? 'report', clue_word: '' }),
       }).catch(() => {})
     }
-    say(pick(RETRY_REMARKS))
+    if (nextWrongs >= 3) {
+      fetchHint()
+    } else {
+      say(pick(RETRY_REMARKS))
+    }
   }
 
   // ── Select sentence ───────────────────────────────────────

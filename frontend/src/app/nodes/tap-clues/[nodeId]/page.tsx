@@ -944,7 +944,11 @@ export default function TapCluesPage() {
         body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue }),
       }).catch(() => {})
     }
-    say(pick(RETRY_REMARKS))
+    if (nextWrongs >= 3) {
+      fetchHint(Math.min(nextWrongs, 3))
+    } else {
+      say(pick(RETRY_REMARKS))
+    }
   }
 
   // ── Card dragging (pointer events: mouse, pen and touch) ──
