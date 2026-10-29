@@ -720,7 +720,8 @@ export default function TapCluesPage() {
             const correctCases = updatedCases.filter(r => r.correct).length
             const firstTryCases = updatedCases.filter(r => r.firstTry).length
             const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-            const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+            const totalTries = updatedCases.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
+            const accuracy = totalTries > 0 ? Math.round((correctCases / totalTries) * 100) : 100
             const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
 
             setMasteryData({
@@ -815,7 +816,8 @@ export default function TapCluesPage() {
           const correctCases = updatedCases.filter(r => r.correct).length
           const firstTryCases = updatedCases.filter(r => r.firstTry).length
           const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
-          const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
+          const totalTries = updatedCases.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
+            const accuracy = totalTries > 0 ? Math.round((correctCases / totalTries) * 100) : 100
           const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
 
           setMasteryData({
@@ -913,7 +915,11 @@ export default function TapCluesPage() {
     setMasteryData({
       next_node: null,
       streak: savedStreak,
-      accuracy: Math.round((updated.filter(r => r.firstTry).length / Math.max(1, totalCases)) * 100),
+      accuracy: (() => {
+      const correctCount = updated.filter(r => r.correct).length
+      const totalTries = updated.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
+      return totalTries > 0 ? Math.round((correctCount / totalTries) * 100) : 100
+    })(),
       totalCases,
       correctCases: updated.filter(r => r.correct).length,
       hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
