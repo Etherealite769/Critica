@@ -604,7 +604,10 @@ export default function LogicThreadPage() {
     setMasteryData({
       next_node: cleared ? (savedNextNode || finalRes.next_node) : null,
       streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? null),
-      accuracy: Math.round((solved / Math.max(1, totalCases)) * 100),
+      accuracy: (() => {
+        const totalTries = updated.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
+        return totalTries > 0 ? Math.round((solved / totalTries) * 100) : 100
+      })(),
       totalCases,
       correctCases: solved,
       hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),

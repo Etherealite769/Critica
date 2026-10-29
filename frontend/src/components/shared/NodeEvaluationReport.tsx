@@ -58,45 +58,6 @@ export default function NodeEvaluationReport({
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }, [timeTakenSeconds])
 
-  // Determine performance tier & badge
-  const tier = useMemo(() => {
-    if (accuracy >= 95) {
-      return {
-        grade: 'S',
-        label: 'EXEMPLARY CLEARANCE',
-        color: '#FFD700',
-        stampClass: styles.stampS,
-      }
-    }
-    if (accuracy >= 80) {
-      return {
-        grade: 'A',
-        label: 'CASE RESOLVED',
-        color: '#4DDD94',
-        stampClass: styles.stampA,
-      }
-    }
-    if (accuracy >= 60) {
-      return {
-        grade: 'B',
-        label: 'PARTIAL INTEL',
-        color: '#F3A712',
-        stampClass: styles.stampB,
-      }
-    }
-    return {
-      grade: 'C',
-      label: 'NEEDS REVIEW',
-      color: '#EF4444',
-      stampClass: styles.stampC,
-    }
-  }, [accuracy])
-
-  // Circular gauge values (radius = 50, circumference = 2 * PI * 50 = 314.16)
-  const radius = 50
-  const circumference = 2 * Math.PI * radius
-  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, accuracy)) / 100) * circumference
-
   // Fallback case items if none provided
   const displayCases = useMemo(() => {
     if (caseResults && caseResults.length > 0) return caseResults
@@ -112,6 +73,59 @@ export default function NodeEvaluationReport({
     }
     return generated
   }, [caseResults, totalCases, correctCases])
+
+  // Total attempts taken across all cases
+  const totalAttemptsTaken = useMemo(() => {
+    return displayCases.reduce((sum, c) => sum + (c.attempts || (c.correct ? 1 : 0)), 0)
+  }, [displayCases])
+
+  // Overall accuracy based on attempts: sum(correct) / sum(attempts) (e.g. 5 correct over 14 attempts = 36%)
+  const effectiveAccuracy = useMemo(() => {
+    if (displayCases.length > 0 && totalAttemptsTaken > 0) {
+      const totalCorrect = displayCases.filter(c => c.correct).length
+      return Math.min(100, Math.max(0, Math.round((totalCorrect / totalAttemptsTaken) * 100)))
+    }
+    return accuracy
+  }, [displayCases, totalAttemptsTaken, accuracy])
+
+  // Determine performance tier & badge based on overall attempts accuracy
+  const tier = useMemo(() => {
+    if (effectiveAccuracy >= 95) {
+      return {
+        grade: 'S',
+        label: 'EXEMPLARY CLEARANCE',
+        color: '#FFD700',
+        stampClass: styles.stampS,
+      }
+    }
+    if (effectiveAccuracy >= 80) {
+      return {
+        grade: 'A',
+        label: 'CASE RESOLVED',
+        color: '#4DDD94',
+        stampClass: styles.stampA,
+      }
+    }
+    if (effectiveAccuracy >= 60) {
+      return {
+        grade: 'B',
+        label: 'PARTIAL INTEL',
+        color: '#F3A712',
+        stampClass: styles.stampB,
+      }
+    }
+    return {
+      grade: 'C',
+      label: 'NEEDS REVIEW',
+      color: '#EF4444',
+      stampClass: styles.stampC,
+    }
+  }, [effectiveAccuracy])
+
+  // Circular gauge values (radius = 50, circumference = 2 * PI * 50 = 314.16)
+  const radius = 50
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, effectiveAccuracy)) / 100) * circumference
 
   const moduleLabel = moduleKey ? MODULE_TITLES[moduleKey] : 'FORENSIC INVESTIGATION'
 
@@ -158,7 +172,7 @@ export default function NodeEvaluationReport({
             </svg>
             <div className={styles.gaugeCenterContent}>
               <span className={styles.gaugePercent} style={{ color: tier.color }}>
-                {accuracy}%
+                {effectiveAccuracy}%
               </span>
               <span className={styles.gaugeLabel}>ACCURACY</span>
             </div>
@@ -207,7 +221,7 @@ export default function NodeEvaluationReport({
         <div className={styles.casesSection}>
           <div className={styles.casesSectionHeader}>
             <span>5-CASE SESSION VERIFICATION LOG</span>
-            <span>{Math.round((correctCases / (totalCases || 1)) * 100)}% SUCCESS RATE</span>
+            <span>{effectiveAccuracy}% OVERALL ACCURACY ({correctCases}/{totalAttemptsTaken} TRIES)</span>
           </div>
           <div className={styles.casePillsGrid}>
             {displayCases.slice(0, 5).map((c) => {

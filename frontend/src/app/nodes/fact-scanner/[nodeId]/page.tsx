@@ -440,7 +440,11 @@ export default function FactScannerPage() {
     setMasteryData({
       next_node: nextNode,
       streak: savedStreak !== null ? savedStreak : (finalRes.streak ?? 1),
-      accuracy: Math.round((updated.filter(r => r.firstTry).length / Math.max(1, totalCases)) * 100),
+      accuracy: (() => {
+        const correctCount = updated.filter(r => r.correct).length
+        const totalTries = updated.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
+        return totalTries > 0 ? Math.round((correctCount / totalTries) * 100) : 100
+      })(),
       totalCases,
       correctCases: updated.filter(r => r.correct).length,
       hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
