@@ -172,6 +172,12 @@ class SessionService:
                 is_completed=False,
             ).order_by('-created_at').first()
 
+            client_check = GeminiClient()
+            if existing and getattr(existing, 'is_fallback', False) and client_check.is_available():
+                existing.is_completed = True
+                existing.save()
+                existing = None
+
             if existing and not existing.is_expired() and len(existing.exercises) >= EXERCISES_PER_SESSION:
                 node_meta = cls.load_node_metadata(module, node_id)
                 return cls._serialize_session_response(existing, node_meta)

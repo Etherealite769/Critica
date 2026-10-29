@@ -290,6 +290,11 @@
   background: rgba(243, 167, 18, 0.06);
 }
 
+.casePillDanger {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.06);
+}
+
 .casePillTitle {
   font-size: 9px;
   letter-spacing: 0.12em;

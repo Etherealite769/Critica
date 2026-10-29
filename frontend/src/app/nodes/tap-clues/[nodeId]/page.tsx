@@ -295,6 +295,10 @@ export default function TapCluesPage() {
 
   // session accuracy evaluation state
   const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
+  const attemptsMapRef = useRef<Record<number, number>>({})
+  const pendingQueueRef = useRef<number[]>([])
+  const [attemptsMap,  setAttemptsMap]  = useState<Record<number, number>>({})
+  const [pendingQueue, setPendingQueue] = useState<number[]>([])
   const [sessionStartedAt, setSessionStartedAt] = useState(() => Date.now())
 
   const [tutorialOpen, setTutorialOpen] = useState(false)
@@ -339,7 +343,8 @@ export default function TapCluesPage() {
         setUnlockedWords([])
         setFoundClues({})
         setDefPanel(null)
-        setWrongs(0)
+        const prevAttempts = attemptsMapRef.current[targetIndex] || 0
+        setWrongs(prevAttempts)
         setDisputed(false); setRevealing(null); setCardPos({})
         setHintOverlay(false)
         setPhase('task')
@@ -924,37 +929,16 @@ export default function TapCluesPage() {
     setDisputed(true)
     const nextWrongs = wrongs + 1
     setWrongs(nextWrongs)
+    attemptsMapRef.current[questionIndex] = nextWrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
 
-    if (nextWrongs < MAX_ATTEMPTS) {
-      if (sessionId) {
-        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
-          method: 'POST',
-          body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue }),
-        }).catch(() => {})
-      }
-      say(pick(RETRY_REMARKS))
-      return
+    if (sessionId) {
+      apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+        method: 'POST',
+        body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue }),
+      }).catch(() => {})
     }
-
-    // Third strike: highlight the correct clues, explain, then move on
-    const reveal = cluesToReveal()
-    setRevealing(reveal)
-    const why = await callFeedback(wordId, clue, false)
-    const wordOf = (id: string) => tapNode?.locked_words.find(lw => lw.word_id === id)?.word ?? 'the locked word'
-    const lines = Object.entries(reveal).filter(([, c]) => c.length > 0)
-      .map(([id, c]) => `for “${wordOf(id)}”: ${c.map(x => `“${x}”`).join(', ')}`)
-    const cluesLine = lines.length ? `The context clues were ${lines.join('; ')}.` : 'The context clues stay sealed in this file.'
-    const explanation = `Three strikes, Cadet — this case is filed as unverified. ${cluesLine}\n\n${why}`
-    const caseNumber = questionIndex + 1
-    const notes: MissedCase = {
-      caseNumber, title: tapNode?.title ?? `Case ${caseNumber}`,
-      notes: [cluesLine, why], correctSlots: null, total: tapNode?.locked_words.length ?? 1,
-    }
-    setMissedCases(prev => [...prev.filter(m => m.caseNumber !== caseNumber), notes])
-    say(explanation, 'explain')
-    // eslint-disable-next-line react-hooks/purity -- runs from a word tap handler, never during render
-    const decidedAt = Date.now()
-    setTimeout(() => failCase(explanation, notes, decidedAt), REVEAL_MS)
+    say(pick(RETRY_REMARKS))
   }
 
   // ── Card dragging (pointer events: mouse, pen and touch) ──
@@ -986,6 +970,81 @@ export default function TapCluesPage() {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
     dragRef.current = null
     setDraggingId(null)
+  }
+
+  const handleSkipAndReturn = () => {
+    attemptsMapRef.current[questionIndex] = wrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
+    if (!pendingQueueRef.current.includes(questionIndex)) {
+      pendingQueueRef.current.push(questionIndex)
+      setPendingQueue([...pendingQueueRef.current])
+    }
+
+    const totalCasesCount = sessionId && sessionExercises.length > 0 ? sessionExercises.length : totalCases
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let nextIdx = -1
+    for (let i = questionIndex + 1; i < totalCasesCount; i++) {
+      if (!completedIndices.has(i) && i !== questionIndex) {
+        nextIdx = i
+        break
+      }
+    }
+    if (nextIdx === -1) {
+      for (let i = 0; i < totalCasesCount; i++) {
+        if (!completedIndices.has(i) && i !== questionIndex) {
+          nextIdx = i
+          break
+        }
+      }
+    }
+
+    if (nextIdx !== -1) {
+      if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+      setQuestionIndex(nextIdx)
+      loadQuestion(nextIdx, sessionQueue)
+      say(`Case postponed. Loading Case ${nextIdx + 1} — you can return to pending cases later.`)
+    }
+  }
+
+  const handleSubmitUnresolved = async () => {
+    attemptsMapRef.current[questionIndex] = wrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
+    const totalCasesCount = sessionId && sessionExercises.length > 0 ? sessionExercises.length : totalCases
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let updated = [...sessionResults]
+    for (let i = 0; i < totalCasesCount; i++) {
+      if (!completedIndices.has(i)) {
+        const tries = attemptsMapRef.current[i] || (i === questionIndex ? wrongs : 0)
+        const res: CaseResult = {
+          caseNumber: i + 1,
+          correct: false,
+          firstTry: false,
+          hintsUsed: hintOverlay ? 1 : 0,
+          attempts: tries,
+        }
+        updated = [...updated.filter(r => r.caseNumber !== i + 1), res]
+      }
+    }
+    setSessionResults(updated)
+    const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
+    setMasteryData({
+      next_node: null,
+      streak: savedStreak,
+      accuracy: Math.round((updated.filter(r => r.correct).length / Math.max(1, totalCasesCount)) * 100),
+      totalCases: totalCasesCount,
+      correctCases: updated.filter(r => r.correct).length,
+      hintsUsed: updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0),
+      timeTakenSeconds,
+      caseResults: updated,
+    })
+    setDebrief({
+      verdict: 'partial',
+      solved: updated.filter(r => r.correct).length,
+      total: totalCasesCount,
+      xpAwarded: null,
+      nextNode: null,
+      missed: missedCases,
+    })
   }
 
   // ── Fit the dossier inside the 100vh viewport ──
@@ -1294,13 +1353,51 @@ export default function TapCluesPage() {
               )}
             </span>
             <div className={styles.submitGroup} data-tutorial="submit">
-              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
-                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
-                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
-                <span className={styles.attemptPips} aria-hidden>
-                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />)}
-                </span>
+              <span className={styles.attemptBadge} aria-label={`Current attempt: ${wrongs + 1}`}>
+                ATTEMPT #{wrongs + 1}
               </span>
+              {wrongs >= 3 && !submitting && !revealing && (
+                <button
+                  type="button"
+                  onClick={handleSkipAndReturn}
+                  style={{
+                    border: '1px solid rgba(243, 167, 18, 0.6)',
+                    background: 'rgba(243, 167, 18, 0.15)',
+                    color: '#F3A712',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title="Move to next question and return to this one later"
+                >
+                  SKIP &amp; RETURN LATER →
+                </button>
+              )}
+              {wrongs >= 3 && !submitting && !revealing && (
+                <button
+                  type="button"
+                  onClick={handleSubmitUnresolved}
+                  style={{
+                    border: '1px solid rgba(239, 68, 68, 0.6)',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title={`Submit session and skip this question (0/${wrongs} tries)`}
+                >
+                  SUBMIT (0/{wrongs} TRIES)
+                </button>
+              )}
               {(disputed || revealing) && !allUnlocked ? (
                 // Wrong clue: a crimson alert stands in for SUBMIT until the next tap
                 <span className={styles.disputedBadge} role="status">✕ CLUES DISPUTED</span>

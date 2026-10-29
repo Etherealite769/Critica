@@ -362,6 +362,10 @@ export default function SnapInGapPage() {
 
   // session accuracy evaluation state
   const [sessionResults, setSessionResults] = useState<CaseResult[]>([])
+  const attemptsMapRef = useRef<Record<number, number>>({})
+  const pendingQueueRef = useRef<number[]>([])
+  const [attemptsMap,  setAttemptsMap]  = useState<Record<number, number>>({})
+  const [pendingQueue, setPendingQueue] = useState<number[]>([])
   const sessionStartTimeRef = useRef<number>(Date.now())
 
   // ── Load a question inline ──────────────────
@@ -381,7 +385,8 @@ export default function SnapInGapPage() {
         setBoard({})
         setLocked([])
         setTileState('idle')
-        setWrongs(0)
+        const prevAttempts = attemptsMapRef.current[targetIndex] || 0
+        setWrongs(prevAttempts)
         setRevealing(null)
         setDisputed(false)
         setHintTier(0)
@@ -663,36 +668,17 @@ export default function SnapInGapPage() {
     setDisputed(true)
     const nextWrongs = wrongs + 1
     setWrongs(nextWrongs)
+    attemptsMapRef.current[questionIndex] = nextWrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
 
-    if (nextWrongs < MAX_ATTEMPTS) {
-      setTimeout(() => setTileState('idle'), 600)
-      // Telemetry for the miss (the explanation isn't fetched until the last try)
-      if (sessionId) {
-        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
-          method: 'POST',
-          body: JSON.stringify({ is_correct: false }),
-        }).catch(() => {})
-      }
-      // A plain handwritten nudge; the attempts left are shown in the footer
-      say(pick(RETRY_REMARKS))
-      return
+    setTimeout(() => setTileState('idle'), 600)
+    if (sessionId) {
+      apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+        method: 'POST',
+        body: JSON.stringify({ is_correct: false }),
+      }).catch(() => {})
     }
-
-    // Third strike: the dock stays locked (tileState stays 'incorrect') while Crit explains
-    setRevealing({ tile: correctTile })
-    const why = await callFeedback(pairId, tile, false, false)
-    const reveal = correctTile
-      ? `Three strikes, Cadet — this case is filed as unverified. The correct tile was “${correctTile}”.`
-      : 'Three strikes, Cadet — this case is filed as unverified.'
-    const explanation = `${reveal}\n\n${why}`
-    const caseNumber = questionIndex + 1
-    const notes = [correctTile ? `The correct tile was “${correctTile}”.` : 'The correct tile stays sealed in this file.', why]
-    setMissedCases(prev => [...prev.filter(m => m.caseNumber !== caseNumber),
-      { caseNumber, title: snapNode?.title ?? `Case ${caseNumber}`, notes, correctSlots: null, total: snapNode?.sentence_pairs.length ?? 1 }])
-    say(explanation, 'explain')
-    // eslint-disable-next-line react-hooks/purity -- runs from a tile click handler, never during render
-    const decidedAt = Date.now()
-    setTimeout(() => failCase(explanation, decidedAt), REVEAL_MS)
+    say(pick(RETRY_REMARKS))
   }
 
   // ── tile click ────────────────────────────────────
@@ -756,6 +742,72 @@ export default function SnapInGapPage() {
       setSocraticLoading(false)
     }
   }, [sessionId, questionIndex, board, snapNode, pairIdx, wrongs, say])
+
+  const handleSkipAndReturn = () => {
+    attemptsMapRef.current[questionIndex] = wrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
+    if (!pendingQueueRef.current.includes(questionIndex)) {
+      pendingQueueRef.current.push(questionIndex)
+      setPendingQueue([...pendingQueueRef.current])
+    }
+
+    const totalCasesCount = sessionId && sessionExercises.length > 0 ? sessionExercises.length : totalCases
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let nextIdx = -1
+    for (let i = questionIndex + 1; i < totalCasesCount; i++) {
+      if (!completedIndices.has(i) && i !== questionIndex) {
+        nextIdx = i
+        break
+      }
+    }
+    if (nextIdx === -1) {
+      for (let i = 0; i < totalCasesCount; i++) {
+        if (!completedIndices.has(i) && i !== questionIndex) {
+          nextIdx = i
+          break
+        }
+      }
+    }
+
+    if (nextIdx !== -1) {
+      if (sessionId) updateSessionProgress(sessionId, nextIdx).catch(() => {})
+      setQuestionIndex(nextIdx)
+      loadQuestion(nextIdx, sessionQueue)
+      say(`Case postponed. Loading Case ${nextIdx + 1} — you can return to pending cases later.`)
+    }
+  }
+
+  const handleSubmitUnresolved = async () => {
+    attemptsMapRef.current[questionIndex] = wrongs
+    setAttemptsMap({ ...attemptsMapRef.current })
+    const totalCasesCount = sessionId && sessionExercises.length > 0 ? sessionExercises.length : totalCases
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let updated = [...sessionResults]
+    for (let i = 0; i < totalCasesCount; i++) {
+      if (!completedIndices.has(i)) {
+        const tries = attemptsMapRef.current[i] || (i === questionIndex ? wrongs : 0)
+        const res: CaseResult = {
+          caseNumber: i + 1,
+          correct: false,
+          firstTry: false,
+          hintsUsed: (hintTier || 0) + (hintOverlay ? 1 : 0),
+          attempts: tries,
+        }
+        updated = [...updated.filter(r => r.caseNumber !== i + 1), res]
+      }
+    }
+    setSessionResults(updated)
+    const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
+    setMasteryData(buildReport(updated, null, savedStreak, timeTakenSeconds))
+    setDebrief({
+      verdict: 'partial',
+      solved: updated.filter(r => r.correct).length,
+      total: totalCasesCount,
+      xpAwarded: null,
+      nextNode: null,
+      missed: missedCases,
+    })
+  }
 
   // ── fit the dossier inside the 100vh viewport ──────
   useEffect(() => {
@@ -1174,13 +1226,51 @@ export default function SnapInGapPage() {
               )}
             </span>
             <div className={styles.submitGroup} data-tutorial="submit">
-              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
-                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
-                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
-                <span className={styles.attemptPips} aria-hidden>
-                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />)}
-                </span>
+              <span className={styles.attemptBadge} aria-label={`Current attempt: ${wrongs + 1}`}>
+                ATTEMPT #{wrongs + 1}
               </span>
+              {wrongs >= 3 && tileState === 'idle' && !revealing && (
+                <button
+                  type="button"
+                  onClick={handleSkipAndReturn}
+                  style={{
+                    border: '1px solid rgba(243, 167, 18, 0.6)',
+                    background: 'rgba(243, 167, 18, 0.15)',
+                    color: '#F3A712',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title="Move to next question and return to this one later"
+                >
+                  SKIP &amp; RETURN LATER →
+                </button>
+              )}
+              {wrongs >= 3 && tileState === 'idle' && !revealing && (
+                <button
+                  type="button"
+                  onClick={handleSubmitUnresolved}
+                  style={{
+                    border: '1px solid rgba(239, 68, 68, 0.6)',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title={`Submit session and skip this question (0/${wrongs} tries)`}
+                >
+                  SUBMIT (0/{wrongs} TRIES)
+                </button>
+              )}
               {disputed && !allDone ? (
                 // Wrong tile: a crimson alert stands in for SUBMIT until the next tile is tried
                 <span className={styles.disputedBadge} role="status">✕ BRIDGE DISPUTED</span>
