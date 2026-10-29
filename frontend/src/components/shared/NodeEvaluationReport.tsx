@@ -211,23 +211,30 @@ export default function NodeEvaluationReport({
           </div>
           <div className={styles.casePillsGrid}>
             {displayCases.slice(0, 5).map((c) => {
-              const isPerfect = c.correct && (c.firstTry ?? true)
+              const triesTaken = c.attempts ?? (c.correct ? 1 : 0)
+              const isPerfect = c.correct && (c.firstTry ?? (triesTaken === 1))
+              const pillClass = c.correct
+                ? (isPerfect ? styles.casePillSuccess : styles.casePillWarning)
+                : styles.casePillDanger
+              const iconColor = isPerfect ? '#4DDD94' : c.correct ? '#F3A712' : '#EF4444'
+              const detailText = c.correct
+                ? `1/${triesTaken} ${triesTaken === 1 ? 'try' : 'tries'}`
+                : `0/${triesTaken} ${triesTaken === 1 ? 'try' : 'tries'}`
+
               return (
                 <div
                   key={c.caseNumber}
-                  className={`${styles.casePill} ${
-                    isPerfect ? styles.casePillSuccess : styles.casePillWarning
-                  }`}
+                  className={`${styles.casePill} ${pillClass}`}
                 >
                   <span className={styles.casePillTitle}>CASE #{c.caseNumber}</span>
                   <span
                     className={styles.casePillIcon}
-                    style={{ color: isPerfect ? '#4DDD94' : '#F3A712' }}
+                    style={{ color: iconColor }}
                   >
-                    {isPerfect ? '✓' : c.correct ? '▲' : '✗'}
+                    {c.correct ? (isPerfect ? '✓' : '▲') : '✗'}
                   </span>
-                  <span className={styles.casePillDetail}>
-                    {isPerfect ? '1st Try' : c.hintsUsed ? `${c.hintsUsed} Hint` : 'Retry'}
+                  <span className={styles.casePillDetail} style={{ fontWeight: 600 }}>
+                    {detailText}
                   </span>
                 </div>
               )

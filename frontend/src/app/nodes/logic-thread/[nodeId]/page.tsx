@@ -303,6 +303,10 @@ export default function LogicThreadPage() {
 
   // session accuracy evaluation state
   const [sessionResults,   setSessionResults]   = useState<CaseResult[]>([])
+  const attemptsMapRef = useRef<Record<number, number>>({})
+  const pendingQueueRef = useRef<number[]>([])
+  const [attemptsMap,  setAttemptsMap]  = useState<Record<number, number>>({})
+  const [pendingQueue, setPendingQueue] = useState<number[]>([])
   const sessionStartTimeRef = useRef<number>(Date.now())
 
   // Inspector Crit's post-case debrief, the lesson manual and viewport fitting
@@ -334,7 +338,7 @@ export default function LogicThreadPage() {
           paragraph_blocks: ex.paragraph_blocks || prev.paragraph_blocks,
         }) : ex)
         setBlocks(shuffleBlocks(ex.paragraph_blocks))
-        setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
+        setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(attemptsMapRef.current[targetIndex] || 0); setDisputed(false)
         setShowHint(false); setPhase('task')
         return
       }
@@ -343,7 +347,7 @@ export default function LogicThreadPage() {
       setNode(d)
       setLesson({ nodeId: d.node_id, title: d.title, focus: d.focus, text: d.micro_lesson_text })
       setBlocks(shuffleBlocks(d.paragraph_blocks))
-      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(attemptsMapRef.current[targetIndex] || 0); setDisputed(false)
       setShowHint(false); setPhase('task')
     } catch (e: any) {
       setErrorMsg(e?.error ?? 'Failed to load next question.'); setPhase('error')
@@ -394,7 +398,7 @@ export default function LogicThreadPage() {
       const queue = Array.from({ length: totalQ }, (_, i) => `q${i + 1}`)
       setSessionQueue(queue)
       setQuestionIndex(resumeIdx)
-      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(0); setDisputed(false)
+      setChain([]); setCardPos({}); setSubmitState('idle'); setWrongCount(attemptsMapRef.current[resumeIdx] || 0); setDisputed(false)
       setShowHint(false)
       
       if (forceFresh || resumeIdx === 0) {
@@ -551,13 +555,14 @@ export default function LogicThreadPage() {
     : (sessionQueue.length || 1)
 
   /** Record how this case was decided and return the updated results list. */
-  const recordCase = (correct: boolean): CaseResult[] => {
+  const recordCase = (correct: boolean, customAttempts?: number): CaseResult[] => {
+    const attemptsTaken = customAttempts ?? (wrongCount + 1)
     const res: CaseResult = {
       caseNumber: questionIndex + 1,
       correct,
-      firstTry: correct && wrongCount === 0,
+      firstTry: correct && attemptsTaken === 1,
       hintsUsed: showHint ? 1 : 0,
-      attempts: correct ? wrongCount + 1 : MAX_ATTEMPTS,
+      attempts: attemptsTaken,
     }
     const updated = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), res]
     setSessionResults(updated)
@@ -647,10 +652,13 @@ export default function LogicThreadPage() {
     const isFinal = caseNumber >= totalCases
     const attemptsLeftAfter = isCorrect ? attemptsLeft : attemptsLeft - 1
 
-    // Wrong but attempts remain: keep the chain so the cadet can re-arrange it and try again
-    if (!isCorrect && attemptsLeftAfter > 0) {
+    // Unlimited attempts: wrong submissions increment attempt count and allow re-trying
+    if (!isCorrect) {
       playWrongSound()
-      setWrongCount(c => c + 1)
+      const newWrongs = wrongCount + 1
+      setWrongCount(newWrongs)
+      attemptsMapRef.current[questionIndex] = newWrongs
+      setAttemptsMap({ ...attemptsMapRef.current })
       setDisputed(true)
       setSubmitState('incorrect')
       say(pick(RETRY_REMARKS))
@@ -658,37 +666,46 @@ export default function LogicThreadPage() {
       return
     }
 
-    // The case is decided: solved, or out of attempts
-    const updated = recordCase(isCorrect)
-    let notes = missedCases
-    if (!isCorrect) {
-      // Third strike: the case is filed as unsolved and Crit walks through the correct thread
-      setWrongCount(c => c + 1)
-      setDisputed(true)
-      writeSkipped(sessionStartId, [...readSkipped(sessionStartId), caseNumber])
-      const v = analyzeSequence(chain, blocks, answerKey)
-      notes = [...missedCases.filter(m => m.caseNumber !== caseNumber),
-        { caseNumber, title: node.title, notes: v.notes, correctSlots: v.correctSlots, total: v.total }]
-      setMissedCases(notes)
-      say(explainCorrectThread(answerKey, blocks), 'explain')
-      playWrongSound()
-    } else {
-      playRightAnswerSound()
-      say(pick(CORRECT_REMARKS))
-    }
-    setSubmitState(isCorrect ? 'correct' : 'incorrect')
+    // Correct! Case is solved
+    const totalTries = wrongCount + 1
+    attemptsMapRef.current[questionIndex] = totalTries
+    setAttemptsMap({ ...attemptsMapRef.current })
+    pendingQueueRef.current = pendingQueueRef.current.filter(idx => idx !== questionIndex)
+    setPendingQueue([...pendingQueueRef.current])
+
+    playRightAnswerSound()
+    say(pick(CORRECT_REMARKS))
+    setSubmitState('correct')
+
+    const updated = recordCase(true, totalTries)
 
     setTimeout(async () => {
-      if (!isFinal) {
-        const nextIdx = questionIndex + 1
+      const completedIndices = new Set(updated.map(r => r.caseNumber - 1))
+      let nextIdx = -1
+      for (let i = questionIndex + 1; i < totalCases; i++) {
+        if (!completedIndices.has(i)) {
+          nextIdx = i
+          break
+        }
+      }
+      if (nextIdx === -1) {
+        for (let i = 0; i < totalCases; i++) {
+          if (!completedIndices.has(i)) {
+            nextIdx = i
+            break
+          }
+        }
+      }
+
+      if (nextIdx !== -1) {
         persistProgress(nextIdx)
         setQuestionIndex(nextIdx)
         loadQuestion(nextIdx, sessionQueue)
-        // Leave Crit's explanation of a failed case up while the next case loads
-        if (isCorrect) say(`Case ${nextIdx + 1} of ${totalCases} — fresh evidence on the board.`)
+        say(`Case ${nextIdx + 1} of ${totalCases} — fresh evidence on the board.`)
         return
       }
-      const unsolved = unsolvedCases(updated)   // read before closeDocket clears the saved misses
+
+      const unsolved = unsolvedCases(updated)
       const { xp, nextNode } = await closeDocket(updated, legacyRes)
       setDebrief({
         verdict: unsolved === 0 ? 'perfect' : 'partial',
@@ -696,9 +713,72 @@ export default function LogicThreadPage() {
         total: totalCases,
         xpAwarded: xp,
         nextNode,
-        missed: notes,
+        missed: missedCases,
       })
-    }, isCorrect ? 1400 : 2600)
+    }, 1200)
+  }
+
+  const handleSkipAndReturn = () => {
+    attemptsMapRef.current[questionIndex] = wrongCount
+    setAttemptsMap({ ...attemptsMapRef.current })
+    if (!pendingQueueRef.current.includes(questionIndex)) {
+      pendingQueueRef.current.push(questionIndex)
+      setPendingQueue([...pendingQueueRef.current])
+    }
+
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let nextIdx = -1
+    for (let i = questionIndex + 1; i < totalCases; i++) {
+      if (!completedIndices.has(i) && i !== questionIndex) {
+        nextIdx = i
+        break
+      }
+    }
+    if (nextIdx === -1) {
+      for (let i = 0; i < totalCases; i++) {
+        if (!completedIndices.has(i) && i !== questionIndex) {
+          nextIdx = i
+          break
+        }
+      }
+    }
+
+    if (nextIdx !== -1) {
+      persistProgress(nextIdx)
+      setQuestionIndex(nextIdx)
+      loadQuestion(nextIdx, sessionQueue)
+      say(`Case postponed. Loading Case ${nextIdx + 1} — you can return to pending cases later.`)
+    }
+  }
+
+  const handleSubmitUnresolved = async () => {
+    attemptsMapRef.current[questionIndex] = wrongCount
+    setAttemptsMap({ ...attemptsMapRef.current })
+    const completedIndices = new Set(sessionResults.map(r => r.caseNumber - 1))
+    let updated = [...sessionResults]
+    for (let i = 0; i < totalCases; i++) {
+      if (!completedIndices.has(i)) {
+        const tries = attemptsMapRef.current[i] || (i === questionIndex ? wrongCount : 0)
+        const res: CaseResult = {
+          caseNumber: i + 1,
+          correct: false,
+          firstTry: false,
+          hintsUsed: showHint ? 1 : 0,
+          attempts: tries,
+        }
+        updated = [...updated.filter(r => r.caseNumber !== i + 1), res]
+      }
+    }
+    setSessionResults(updated)
+    const { xp, nextNode } = await closeDocket(updated)
+    setDebrief({
+      verdict: 'partial',
+      solved: updated.filter(r => r.correct).length,
+      total: totalCases,
+      xpAwarded: xp,
+      nextNode,
+      missed: missedCases,
+    })
   }
 
   // ── Debrief actions ─────────────────────────────────────────
@@ -965,22 +1045,58 @@ export default function LogicThreadPage() {
           <div className={styles.submitBar}>
             <span className={styles.counter}>
               {chain.length} / {blocks.length} CONNECTED
-              {wrongCount > 0 && attemptsLeft > 0 && submitState !== 'correct' && (
+              {wrongCount > 0 && submitState !== 'correct' && (
                 <span className={`${cardFont.className} ${styles.attemptMsg}`} role="status">
-                  Incorrect sequence. Attempts remaining: {attemptsLeft}/{MAX_ATTEMPTS}
+                  Incorrect sequence. (Attempt #{wrongCount + 1})
                 </span>
               )}
             </span>
             <div className={styles.submitGroup} data-tutorial="submit">
-              <span className={`${styles.attemptBadge} ${attemptsLeft <= 1 ? styles.attemptBadgeLow : ''}`}
-                aria-label={`Attempts remaining: ${attemptsLeft} of ${MAX_ATTEMPTS}`}>
-                ATTEMPTS: {attemptsLeft}/{MAX_ATTEMPTS}
-                <span className={styles.attemptPips} aria-hidden>
-                  {Array.from({ length: MAX_ATTEMPTS }, (_, i) => (
-                    <i key={i} className={i < attemptsLeft ? styles.pipOn : ''} />
-                  ))}
-                </span>
+              <span className={styles.attemptBadge} aria-label={`Current attempt: ${wrongCount + 1}`}>
+                ATTEMPT #{wrongCount + 1}
               </span>
+              {wrongCount >= 3 && submitState === 'idle' && (
+                <button
+                  type="button"
+                  onClick={handleSkipAndReturn}
+                  style={{
+                    border: '1px solid rgba(243, 167, 18, 0.6)',
+                    background: 'rgba(243, 167, 18, 0.15)',
+                    color: '#F3A712',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title="Move to next question and return to this one later"
+                >
+                  SKIP &amp; RETURN LATER →
+                </button>
+              )}
+              {wrongCount >= 3 && submitState === 'idle' && (
+                <button
+                  type="button"
+                  onClick={handleSubmitUnresolved}
+                  style={{
+                    border: '1px solid rgba(239, 68, 68, 0.6)',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '6px 12px',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title={`Submit session and skip this question (0/${wrongCount} tries)`}
+                >
+                  SUBMIT (0/{wrongCount} TRIES)
+                </button>
+              )}
             {disputed && submitState !== 'correct' ? (
               // Wrong sequence: a crimson alert stands in for SUBMIT until the cadet re-threads
               <span className={styles.disputedBadge} role="status">✕ SEQUENCE DISPUTED</span>

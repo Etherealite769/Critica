@@ -35,7 +35,9 @@ export default function CompetencyRadar({
   size = 320,
 }: CompetencyRadarProps) {
   const center = size / 2
-  const maxRadius = size * 0.35 // Leave space for outer labels
+  const maxRadius = size * 0.28 // Proportion balanced for ample label margins
+  const padX = 85
+  const padY = 40
 
   // Coordinates helper
   const getPoint = (angleDeg: number, valPct: number) => {
@@ -86,13 +88,20 @@ export default function CompetencyRadar({
     <div
       style={{
         position: 'relative',
-        width: size,
+        width: '100%',
+        maxWidth: size + padX,
+        overflow: 'visible',
         height: size,
         margin: '0 auto',
         fontFamily: "'Courier New', Courier, monospace",
       }}
     >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg
+        width="100%"
+        height={size}
+        viewBox={`-${padX} -${padY} ${size + padX * 2} ${size + padY * 2}`}
+        style={{ overflow: 'visible', display: 'block' }}
+      >
         <defs>
           <radialGradient id="radar-glow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#4DDD94" stopOpacity="0.25" />
@@ -177,7 +186,7 @@ export default function CompetencyRadar({
         {/* Top: Logic Thread */}
         <text
           x={center}
-          y={center - maxRadius - 26}
+          y={center - maxRadius - 20}
           textAnchor="middle"
           fill="#FFF8ED"
           fontSize={10}
@@ -188,7 +197,7 @@ export default function CompetencyRadar({
         </text>
         <text
           x={center}
-          y={center - maxRadius - 12}
+          y={center - maxRadius - 8}
           textAnchor="middle"
           fill={vertexPoints[0].tier.color}
           fontSize={9}
