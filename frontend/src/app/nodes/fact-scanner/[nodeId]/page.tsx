@@ -19,6 +19,7 @@ import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/so
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
   ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Scale, ShieldAlert,
@@ -211,6 +212,8 @@ export default function FactScannerPage() {
 
   // End-of-docket debrief and notes on cases failed along the way
   const [debrief,     setDebrief]     = useState<DocketDebrief | null>(null)
+  // Fresh Case asks first: it wipes this docket\'s attempts and board state
+  const [confirmReset, setConfirmReset] = useState(false)
   const [missedCases, setMissedCases] = useState<MissedCase[]>([])
 
   // Evidence board: dossier scaled to the viewport, draggable statement / evidence cards
@@ -905,7 +908,7 @@ export default function FactScannerPage() {
           <span className={styles.sideTabLabel}>Hint</span>
           <span className={styles.sideTabIcon}><Lightbulb size={18} aria-hidden /></span>
         </button>
-        <button type="button" onClick={handleRetryDocket} className={styles.sideTab} title="Fresh Case" data-tutorial="sidebar">
+        <button type="button" onClick={() => setConfirmReset(true)} className={styles.sideTab} title="Fresh Case" data-tutorial="sidebar">
           <span className={styles.sideTabLabel}>Fresh Case</span>
           <span className={styles.sideTabIcon}><RotateCcw size={18} aria-hidden /></span>
         </button>
@@ -1153,6 +1156,12 @@ export default function FactScannerPage() {
         steps={CROSS_EXAM_TUTORIAL}
         storageKey={CROSS_EXAM_TUTORIAL_KEY}
         heading="CROSS EXAMINATION BRIEFING"
+      />
+
+      <ResetCaseDialog
+        open={confirmReset}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => { setConfirmReset(false); handleRetryDocket() }}
       />
 
       <CaseDebriefModal

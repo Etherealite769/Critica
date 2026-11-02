@@ -12,6 +12,7 @@ import MetricLogModal         from './MetricLogModal'
 import ProfileSettingsModal   from './ProfileSettingsModal'
 import ThemeMusicPlayer       from './ThemeMusicPlayer'
 import SettingsModal          from '@/components/SettingsModal'
+import ResetCaseDialog        from '@/components/shared/ResetCaseDialog'
 import { playClickSound }     from '@/lib/sound-effects'
 import desk                   from './desk.module.css'
 import CaseLoadingLobby       from '@/components/shared/CaseLoadingLobby'
@@ -473,6 +474,8 @@ export default function StudentDashboard() {
   const [streakPulse, setStreakPulse] = useState(false)
   const [showTour, setShowTour] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  // Reopen case wipes the node's progress, so it waits for confirmation
+  const [pendingReset, setPendingReset] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<'ALL' | 'BASICS' | 'INTERMEDIATE' | 'ADVANCED'>('ALL')
   const [topicFilter, setTopicFilter] = useState<string>('ALL')
 
@@ -1158,7 +1161,7 @@ export default function StudentDashboard() {
                           disabled={isLocked}
                           onClick={() => {
                             if (isDone) {
-                              handleResetNode(node.node_id)
+                              setPendingReset(node.node_id)
                             } else {
                               handleStartNode(
                                 activeTabCfg.route_base,
@@ -1311,6 +1314,15 @@ export default function StudentDashboard() {
       <MetricLogModal
         isOpen={showMetricLogModal}
         onClose={() => setShowMetricLogModal(false)}
+      />
+      <ResetCaseDialog
+        open={pendingReset !== null}
+        onCancel={() => setPendingReset(null)}
+        onConfirm={() => {
+          const nodeId = pendingReset
+          setPendingReset(null)
+          if (nodeId) handleResetNode(nodeId)
+        }}
       />
       <SettingsModal
         isOpen={showSettings}
