@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import styles from './sidebar-modals.module.css'
+import DossierFolder, { PIN, type DossierTab } from './DossierFolder'
 import { apiFetch } from '@/lib/api'
 import {
   notifyLexicalUpdated,
@@ -11,7 +12,7 @@ import {
 } from '@/lib/realtime-sync'
 import {
   BookOpen, CalendarClock, Check, ChevronLeft, ChevronRight, ChevronUp,
-  ClipboardList, FolderOpen, Layers, PartyPopper, Plus, RotateCcw, Timer, X, Zap,
+  ClipboardList, FolderOpen, Layers, PartyPopper, Plus, RotateCcw, Timer, Zap,
 } from 'lucide-react'
 
 export interface LexicalWord {
@@ -35,13 +36,27 @@ export interface DeckStatus {
   is_daily_complete: boolean
 }
 
+type ClipboardTab = 'index' | 'flashcards' | 'schedule'
+
+// ── Evidence-deck styling ──
+// Official record query box (search + the log-a-term form fields)
+const QUERY_BOX = 'w-full min-w-0 px-3 py-2 bg-[#FFFDF7] border border-[#D0C4A8] rounded-sm placeholder-[#9A8B73] font-mono text-[13px] text-[#2b2016] shadow-inner ' +
+  'focus:outline-none focus:border-amber-600/70 focus:ring-2 focus:ring-amber-600/20'
+const ACTION_BTN = 'inline-flex flex-shrink-0 items-center gap-1.5 px-3 py-2 font-mono text-[11.5px] font-bold tracking-[0.08em] uppercase whitespace-nowrap ' +
+  'rounded-sm shadow-[0_2px_0_rgba(0,0,0,0.3)] cursor-pointer transition-colors'
+const WORD_CARD = 'relative flex flex-col justify-between bg-[#FFFDF7] rounded border border-[#D0C4A8] p-4 shadow-sm ' +
+  'transition-[transform,box-shadow] hover:-translate-y-0.5 hover:shadow-md'
+const SENSE_TAG = 'flex-shrink-0 bg-[#E8DFC8] border border-[#C0B498] text-[#3D322A] text-xs font-mono uppercase px-2 py-0.5 rounded'
+const QUOTE = 'mb-3 bg-[#F7F4EB] italic border-l-2 border-amber-600/40 p-2 text-xs text-[#4A4237]'
+const CARD_META = 'flex items-center justify-between gap-2 pt-2 mt-2 border-t border-[#D0C4A8] font-mono text-[11px] text-[#7A6E5D] uppercase'
+
 interface LexicalClipboardModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
 export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipboardModalProps) {
-  const [activeTab, setActiveTab] = useState<'index' | 'flashcards' | 'schedule'>('index')
+  const [activeTab, setActiveTab] = useState<ClipboardTab>('index')
   const [words, setWords] = useState<LexicalWord[]>([])
   const [deckStatus, setDeckStatus] = useState<DeckStatus | null>(null)
   const [loading, setLoading] = useState(true)
@@ -360,61 +375,42 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
 
   const currentWord = activeDeck[currentCardIndex]
   const isDailyCompleted = drillMode === 'daily' && activeDeck.length === 0
+  const dueCount = deckStatus?.due_count ?? 0
+
+  const clipboardTabs: DossierTab<ClipboardTab>[] = [
+    { id: 'index',      label: `Word Index (${words.length})`, icon: FolderOpen },
+    { id: 'flashcards', label: dueCount > 0 ? `Flashcard Drill (${dueCount} Due)` : 'Flashcard Drill', icon: Layers },
+    { id: 'schedule',   label: 'Retention Schedule', icon: CalendarClock },
+  ]
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.dossierContainer} onClick={e => e.stopPropagation()}>
-        {/* ── XP Toast Notification ── */}
-        {xpToast && (
-          <div className={styles.xpToast}>
-            <Zap size={15} aria-hidden />
-            <span>{xpToast.message}</span>
-          </div>
-        )}
-
-        {/* ── Folder Header ── */}
-        <div className={styles.folderHeader}>
-          <div className={styles.headerLeft}>
-            <span className={styles.headerBadge}>DOSSIER // EVIDENCE DECK</span>
-            <h2 className={styles.headerTitle} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <ClipboardList size={18} aria-hidden /> Lexical Clipboard
-              <span className={styles.livePulseBadge} title="Realtime cross-tab evidence synchronization active">
-                <span className={styles.liveDot} /> LIVE SYNC ACTIVE
-              </span>
-            </h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className={styles.stampBox}>EVIDENCE VAULT</span>
-            <button className={styles.closeButton} onClick={onClose} title="Close Dossier (Esc)">
-              <X size={14} aria-hidden /> CLOSE
-            </button>
-          </div>
+    <DossierFolder
+      titleId="lexical-clipboard-title"
+      kicker="DOSSIER // EVIDENCE DECK"
+      title="Lexical Clipboard"
+      titleIcon={ClipboardList}
+      titleExtra={
+        <span className={styles.livePulseBadge} title="Realtime cross-tab evidence synchronization active">
+          <span className={styles.liveDot} /> LIVE SYNC
+        </span>
+      }
+      stamp="Evidence Vault"
+      stampRotate="rotate-[-1deg]"
+      closeTitle="Close Dossier (Esc)"
+      onClose={onClose}
+      tabs={clipboardTabs}
+      tabsLabel="Evidence deck sections"
+      activeTab={activeTab}
+      onSelectTab={id => {
+        setActiveTab(id)
+        if (id === 'flashcards') setIsFlipped(false)
+      }}
+      floating={xpToast && (
+        <div className={styles.xpToast}>
+          <Zap size={15} aria-hidden />
+          <span>{xpToast.message}</span>
         </div>
-
-        {/* ── Sub Navigation ── */}
-        <div className={styles.subNavBar}>
-          <button
-            className={`${styles.navTab} ${activeTab === 'index' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('index')}>
-            <FolderOpen size={14} aria-hidden /> Word Index ({words.length})
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'flashcards' ? styles.navTabActive : ''}`}
-            onClick={() => {
-              setActiveTab('flashcards')
-              setIsFlipped(false)
-            }}>
-            <Layers size={14} aria-hidden /> Flashcard Drill {deckStatus && deckStatus.due_count > 0 && `(${deckStatus.due_count} Due)`}
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'schedule' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('schedule')}>
-            <CalendarClock size={14} aria-hidden /> Retention Schedule
-          </button>
-        </div>
-
-        {/* ── Content Body ── */}
-        <div className={styles.contentBody}>
+      )}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem 0', fontFamily: 'var(--font-mono, monospace)' }}>
               <div style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Synchronizing Evidence Files...</div>
@@ -426,26 +422,29 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
               <div className={styles.searchBarRow}>
                 <input
                   type="text"
-                  placeholder="Search words, definitions, translations, or context..."
+                  placeholder="Query the evidence record: words, definitions, translations, context..."
+                  aria-label="Search the lexical clipboard"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className={styles.searchInput}
+                  className={`${QUERY_BOX} flex-1`}
                 />
                 <button
-                  className={`${styles.tacticalBtn} ${styles.tacticalBtnPrimary}`}
+                  type="button"
+                  className={`${ACTION_BTN} bg-emerald-800 text-amber-50 hover:bg-emerald-900 border border-emerald-950`}
                   onClick={() => setShowAddDrawer(!showAddDrawer)}>
                   {showAddDrawer
                     ? <><ChevronUp size={14} aria-hidden /> Close Form</>
                     : <><Plus size={14} aria-hidden /> Log Evidence Term</>}
                 </button>
                 <button
-                  className={`${styles.tacticalBtn} ${styles.tacticalBtnSuccess}`}
+                  type="button"
+                  className={`${ACTION_BTN} bg-[#2B231D] text-amber-100 hover:bg-[#3D322A] border border-black/40`}
                   onClick={() => {
                     setDrillMode('daily')
                     setActiveTab('flashcards')
                     setIsFlipped(false)
                   }}>
-                  <Zap size={14} aria-hidden /> Drill Today's Due ({deckStatus?.due_count ?? 0})
+                  <Zap size={14} aria-hidden /> Drill Today&apos;s Due ({dueCount})
                 </button>
               </div>
 
@@ -471,8 +470,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                         placeholder="e.g. Ubiquitous"
                         value={newWord}
                         onChange={e => setNewWord(e.target.value)}
-                        className={styles.searchInput}
-                        style={{ width: '100%' }}
+                        className={QUERY_BOX}
                       />
                     </div>
                     <div>
@@ -484,8 +482,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                         placeholder="e.g. Omnipresent / Everywhere"
                         value={newTranslation}
                         onChange={e => setNewTranslation(e.target.value)}
-                        className={styles.searchInput}
-                        style={{ width: '100%' }}
+                        className={QUERY_BOX}
                       />
                     </div>
                   </div>
@@ -499,8 +496,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       placeholder="e.g. Present, appearing, or found everywhere."
                       value={newDef}
                       onChange={e => setNewDef(e.target.value)}
-                      className={styles.searchInput}
-                      style={{ width: '100%' }}
+                      className={QUERY_BOX}
                     />
                   </div>
                   <div>
@@ -512,8 +508,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                       placeholder="e.g. Cellular telephones have become ubiquitous in daily life."
                       value={newUsage}
                       onChange={e => setNewUsage(e.target.value)}
-                      className={styles.searchInput}
-                      style={{ width: '100%' }}
+                      className={QUERY_BOX}
                     />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -542,14 +537,11 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                   </p>
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))',
-                    gap: '1rem',
-                  }}>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(270px,1fr))] gap-5 pt-1.5">
                   {filteredWords.map((item, idx) => (
-                    <div key={idx} className={styles.wordCard}>
+                    <div key={idx} className={WORD_CARD}>
+                      {/* Pushpin centred on the card's top edge */}
+                      <span className={`${PIN} left-1/2 -translate-x-1/2`} aria-hidden />
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                           <h3
@@ -562,20 +554,7 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                             }}>
                             {item.word}
                           </h3>
-                          {item.translation && (
-                            <span
-                              style={{
-                                fontFamily: 'var(--font-mono, monospace)',
-                                fontSize: '0.65rem',
-                                background: '#C49A5A',
-                                color: '#2D0909',
-                                padding: '0.15rem 0.4rem',
-                                borderRadius: '2px',
-                                fontWeight: 'bold',
-                              }}>
-                              {item.translation}
-                            </span>
-                          )}
+                          {item.translation && <span className={SENSE_TAG}>{item.translation}</span>}
                         </div>
 
                         <p style={{ fontSize: '0.82rem', lineHeight: '1.4', color: '#432818', marginBottom: '0.75rem' }}>
@@ -583,32 +562,11 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
                         </p>
 
                         {item.contextual_usage && (
-                          <div
-                            style={{
-                              fontStyle: 'italic',
-                              fontSize: '0.75rem',
-                              color: '#6A381F',
-                              borderLeft: '2px solid #C49A5A',
-                              paddingLeft: '0.5rem',
-                              marginBottom: '0.75rem',
-                            }}>
-                            "{item.contextual_usage}"
-                          </div>
+                          <div className={QUOTE}>&ldquo;{item.contextual_usage}&rdquo;</div>
                         )}
                       </div>
 
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          borderTop: '1px solid rgba(140, 90, 60, 0.25)',
-                          paddingTop: '0.5rem',
-                          marginTop: '0.5rem',
-                          fontFamily: 'var(--font-mono, monospace)',
-                          fontSize: '0.7rem',
-                          color: '#8C5A3C',
-                        }}>
+                      <div className={CARD_META}>
                         <span>
                           Status:{' '}
                           {item.is_reviewed_today ? (
@@ -1002,8 +960,6 @@ export default function LexicalClipboardModal({ isOpen, onClose }: LexicalClipbo
               </table>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </DossierFolder>
   )
 }
