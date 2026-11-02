@@ -14,6 +14,7 @@ import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import LessonManual, { type NodeLesson } from '@/components/logic-thread/LessonManual'
 import LogicThreadTutorial, { hasSeenLogicThreadTutorial } from '@/components/logic-thread/LogicThreadTutorial'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
@@ -311,6 +312,8 @@ export default function LogicThreadPage() {
 
   // Inspector Crit's post-case debrief, the lesson manual and viewport fitting
   const [debrief,    setDebrief]    = useState<DocketDebrief | null>(null)
+  // Fresh Case asks first: it wipes this docket\'s attempts and board state
+  const [confirmReset, setConfirmReset] = useState(false)
   const [missedCases, setMissedCases] = useState<MissedCase[]>([])
   const [remark,     setRemark]     = useState<Remark | null>(null)
   const [lesson,     setLesson]     = useState<NodeLesson | null>(null)
@@ -858,7 +861,7 @@ export default function LogicThreadPage() {
       <div className={styles.sideTabs}>
         {[
           { label: 'Hint', icon: Lightbulb, action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
-          { label: 'Fresh Case', icon: RotateCcw, action: handleRetryDocket },
+          { label: 'Fresh Case', icon: RotateCcw, action: () => setConfirmReset(true) },
           { label: 'End Session', icon: LogOut, action: () => {
             if (sessionId) {
               updateSessionProgress(sessionId, questionIndex).catch(() => {})
@@ -1129,6 +1132,12 @@ export default function LogicThreadPage() {
       <LogicThreadTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
 
       <LessonManual open={manualOpen} onClose={closeManual} lesson={lesson} />
+
+      <ResetCaseDialog
+        open={confirmReset}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => { setConfirmReset(false); handleRetryDocket() }}
+      />
 
       <CaseDebriefModal
         debrief={debrief}

@@ -18,6 +18,7 @@ import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/so
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
   ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, Puzzle, RotateCcw,
@@ -342,6 +343,8 @@ export default function SnapInGapPage() {
   const [disputed,        setDisputed]        = useState(false)
   // End-of-docket debrief ("Docket Under Review") and the notes on cases failed along the way
   const [debrief,         setDebrief]         = useState<DocketDebrief | null>(null)
+  // Fresh Case asks first: it wipes this docket\'s attempts and board state
+  const [confirmReset, setConfirmReset] = useState(false)
   const [missedCases,     setMissedCases]     = useState<MissedCase[]>([])
   // Inspector Crit speaks from the lower-left corner: remarks fade, hints / feedback stay until dismissed
   const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
@@ -1106,7 +1109,7 @@ export default function SnapInGapPage() {
       <div className={styles.sideTabs}>
         {[
           { label: 'Hint',        icon: Lightbulb, action: () => fetchHint(Math.min(wrongs + 1, 3)) },
-          { label: 'Fresh Case',  icon: RotateCcw, action: handleRetryDocket },
+          { label: 'Fresh Case',  icon: RotateCcw, action: () => setConfirmReset(true) },
           { label: 'End Session', icon: LogOut,    action: endSession },
         ].map(({ label, icon: Icon, action }) => (
           <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
@@ -1303,6 +1306,12 @@ export default function SnapInGapPage() {
         steps={SCENE_RECONSTRUCTION_TUTORIAL}
         storageKey={SCENE_RECONSTRUCTION_TUTORIAL_KEY}
         heading="SCENE RECONSTRUCTION BRIEFING"
+      />
+
+      <ResetCaseDialog
+        open={confirmReset}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={() => { setConfirmReset(false); handleRetryDocket() }}
       />
 
       <CaseDebriefModal
