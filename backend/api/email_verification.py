@@ -249,7 +249,7 @@ def send_verification_email(to: str, code: str, cadet_name: str, link_token: str
             f'[DEV EMAIL] Verification for {to}',
             f'  Clearance code : {code}',
             f'  One-click link : {url}',
-            '  (Set RESEND_API_KEY to send real email.)',
+            '  (Set BREVO_API_KEY to send real email.)',
             '=' * 64,
         ])
         logger.warning(banner)

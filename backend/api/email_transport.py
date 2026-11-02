@@ -2,16 +2,21 @@
 Email dispatch for the verification / password-reset emails.
 
 - send_email(): the single sender used by api/email_verification.py and api/password_reset.py.
-  With RESEND_API_KEY set it calls the Resend HTTPS API (port 443, so hosts that block
-  outbound SMTP still deliver); otherwise it falls back to Django's SMTP backend.
+  Providers, in order of preference (settings.EMAIL_PROVIDER):
+    brevo  - BREVO_API_KEY set: Brevo's HTTPS API (port 443, so hosts that block outbound SMTP,
+             like Render's free tier, still deliver). Sends from a verified Brevo sender address
+             such as a Gmail address; no own domain needed.
+    resend - RESEND_API_KEY set: the Resend HTTPS API (needs a verified domain).
+    smtp   - otherwise Django's SMTP backend (Gmail).
 - verify_email_transport(): the startup check (nodemailer's transporter.verify() equivalent).
-  Resend: validates the API key and that EMAIL_FROM's domain is verified. SMTP: connects,
-  upgrades with STARTTLS and logs in. Nothing is sent. Run in the background at boot
-  (see ApiConfig.ready).
+  Brevo: validates the key and that EMAIL_FROM is an active sender. Resend: validates the key
+  and that EMAIL_FROM's domain is verified. SMTP: connects, upgrades with STARTTLS and logs in.
+  Nothing is sent. Run in the background at boot (see ApiConfig.ready).
 - describe_email_error(): turns a send failure into a one-line summary with the HTTP / SMTP
-  status code, e.g. "Resend API 403 validation_error: The gmail.com domain is not verified".
+  status code, e.g. "Brevo API 401 unauthorized: Key not found (check BREVO_API_KEY)".
 """
 import logging
+import re
 import smtplib
 import socket
 import ssl
@@ -34,6 +39,18 @@ except ImportError:
 
 RESEND_TEST_DOMAIN = 'resend.dev'
 RESEND_MISSING = 'the resend package is not installed on this host (pip install -r requirements.txt)'
+BREVO_API_URL = 'https://api.brevo.com/v3'
+PROVIDER_NAMES = {'brevo': 'Brevo', 'resend': 'Resend', 'smtp': 'SMTP'}
+
+
+class BrevoError(Exception):
+    """A non-2xx answer from the Brevo API."""
+
+    def __init__(self, status, code, message):
+        super().__init__(f'{status} {code}: {message}')
+        self.status = status
+        self.code = code
+        self.message = message
 
 
 def _smtp_text(raw) -> str:
@@ -43,6 +60,26 @@ def _smtp_text(raw) -> str:
 
 def _from_domain() -> str:
     return parseaddr(settings.DEFAULT_FROM_EMAIL)[1].rpartition('@')[2].lower()
+
+
+def _brevo_request(method: str, path: str, payload=None) -> dict:
+    """Calls the Brevo REST API (https://api.brevo.com/v3); raises BrevoError on a non-2xx answer."""
+    response = requests.request(
+        method,
+        f'{BREVO_API_URL}{path}',
+        headers={'api-key': settings.BREVO_API_KEY, 'accept': 'application/json'},
+        json=payload,
+        timeout=settings.EMAIL_TIMEOUT,
+    )
+    try:
+        body = response.json() if response.content else {}
+    except ValueError:
+        body = {'message': response.text[:200]}
+    if not isinstance(body, dict):
+        body = {}
+    if not 200 <= response.status_code < 300:
+        raise BrevoError(response.status_code, body.get('code', ''), body.get('message') or response.reason or '')
+    return body
 
 
 def _configure_resend() -> None:
@@ -57,6 +94,16 @@ def send_email(subject: str, recipient: str, text: str, html: str) -> str:
     Sends one email through the configured provider. Returns the provider message id
     ('' for SMTP). Raises on failure; callers log describe_email_error(exc).
     """
+    if settings.EMAIL_PROVIDER == 'brevo':
+        name, address = parseaddr(settings.DEFAULT_FROM_EMAIL)
+        response = _brevo_request('POST', '/smtp/email', {
+            'sender': {'name': name or 'Critica', 'email': address},
+            'to': [{'email': recipient}],
+            'subject': subject,
+            'htmlContent': html,
+            'textContent': text,
+        })
+        return str(response.get('messageId', ''))
     if settings.EMAIL_PROVIDER == 'resend':
         _configure_resend()
         response = resend.Emails.send({
@@ -68,6 +115,21 @@ def send_email(subject: str, recipient: str, text: str, html: str) -> str:
         })
         return str((response or {}).get('id', ''))
     send_mail(subject, text, settings.DEFAULT_FROM_EMAIL, [recipient], html_message=html)
+    return ''
+
+
+def _brevo_hint(exc: BrevoError) -> str:
+    message = (exc.message or '').lower()
+    if exc.status == 401 and re.search(r'\bip\b', message):
+        return "turn off Security > Authorised IPs in Brevo (Render's outbound IPs change)"
+    if exc.status == 401:
+        return 'check BREVO_API_KEY'
+    if 'sender' in message:
+        return 'EMAIL_FROM must be a verified Brevo sender (Brevo > Senders, Domains & Dedicated IPs > Senders)'
+    if exc.status == 403:
+        return 'transactional email may need to be activated on the Brevo account'
+    if exc.status == 429:
+        return 'rate limit or daily quota reached (300 emails/day on the free plan)'
     return ''
 
 
@@ -87,11 +149,15 @@ def _resend_hint(exc) -> str:
 
 def describe_email_error(exc: Exception) -> str:
     """One-line description of a send failure, including the HTTP or SMTP status code when there is one."""
+    if isinstance(exc, BrevoError):
+        hint = _brevo_hint(exc)
+        return f'Brevo API {exc.status} {exc.code}: {exc.message}' + (f' ({hint})' if hint else '')
     if resend is not None and isinstance(exc, resend.exceptions.ResendError):
         hint = _resend_hint(exc)
         return f'Resend API {exc.code} {exc.error_type}: {exc.message}' + (f' ({hint})' if hint else '')
     if isinstance(exc, requests.RequestException):
-        return f'could not reach the Resend API: {type(exc).__name__}: {exc}'
+        provider = PROVIDER_NAMES.get(settings.EMAIL_PROVIDER, settings.EMAIL_PROVIDER)
+        return f'could not reach the {provider} API: {type(exc).__name__}: {exc}'
 
     host = f'{settings.EMAIL_HOST}:{settings.EMAIL_PORT}'
     if isinstance(exc, smtplib.SMTPRecipientsRefused):
@@ -107,12 +173,31 @@ def describe_email_error(exc: Exception) -> str:
         return f'{host} answered {exc.smtp_code} {_smtp_text(exc.smtp_error)}'
     if isinstance(exc, (socket.timeout, TimeoutError, ConnectionError, OSError)):
         return (f'could not reach {host}: {type(exc).__name__}: {exc} '
-                '(the host may block outbound SMTP ports 587/465; set RESEND_API_KEY to send over HTTPS)')
+                '(the host may block outbound SMTP ports 587/465; set BREVO_API_KEY to send over HTTPS)')
     return f'{type(exc).__name__}: {exc}'
 
 
 # Kept for callers written against the SMTP-only version
 describe_smtp_error = describe_email_error
+
+
+def verify_brevo() -> bool:
+    """Checks the API key and that EMAIL_FROM is an active Brevo sender, without sending anything."""
+    address = parseaddr(settings.DEFAULT_FROM_EMAIL)[1].lower()
+    try:
+        senders = _brevo_request('GET', '/senders').get('senders') or []
+    except (BrevoError, requests.RequestException) as exc:
+        logger.error('Email: Brevo check FAILED, %s', describe_email_error(exc))
+        return False
+
+    active = {str(s.get('email', '')).lower() for s in senders if s.get('active')}
+    if address not in active:
+        logger.error('Email: Brevo key OK, but EMAIL_FROM %s is not an active sender (active: %s). '
+                     'Verify it in Brevo > Senders, Domains & Dedicated IPs > Senders.',
+                     address, ', '.join(sorted(active)) or 'none')
+        return False
+    logger.info('Email: Brevo check OK, sending from %s over HTTPS.', settings.DEFAULT_FROM_EMAIL)
+    return True
 
 
 def verify_resend() -> bool:
@@ -173,9 +258,11 @@ def verify_smtp_connection() -> bool:
 def verify_email_transport() -> bool:
     """Startup check for whichever provider is configured."""
     if not getattr(settings, 'EMAIL_DELIVERY_CONFIGURED', False):
-        logger.warning('Email: neither RESEND_API_KEY nor EMAIL_SERVER_USER / EMAIL_SERVER_PASSWORD is set, so '
-                       'verification and reset emails are printed to this console instead of being sent.')
+        logger.warning('Email: none of BREVO_API_KEY, RESEND_API_KEY or EMAIL_SERVER_USER / EMAIL_SERVER_PASSWORD '
+                       'is set, so verification and reset emails are printed to this console instead of being sent.')
         return False
+    if settings.EMAIL_PROVIDER == 'brevo':
+        return verify_brevo()
     if settings.EMAIL_PROVIDER == 'resend':
         return verify_resend()
     return verify_smtp_connection()
