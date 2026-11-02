@@ -20,7 +20,7 @@ interface MetricLogModalProps {
 interface ModuleStat {
   attempts: number
   correct: number
-  accuracy: number
+  accuracy: number | null   // null: no scored cases yet
   completed_nodes: number
   total_nodes?: number
   competency_level?: string
@@ -29,6 +29,7 @@ interface ModuleStat {
 interface TelemetryEntry {
   node_id: string
   module: string
+  event_type?: string   // "case" | "step" | "hint", "" on legacy rows
   is_correct: boolean
   hint_used: boolean
   hint_tier: number | null
@@ -50,13 +51,16 @@ interface MetricsData {
   level_progress_pct?: number
   total_attempts: number
   correct_attempts: number
-  overall_accuracy: number
+  overall_accuracy: number | null   // null: no telemetry yet
   overall_grade?: {
     tier: string
     title: string
     color: string
   }
-  hint_independence: number
+  hint_independence: number | null
+  hints_used_count?: number
+  case_count?: number
+  metrics_source?: 'events' | 'legacy' | 'none'
   module_stats: Record<string, ModuleStat>
   recent_activity: TelemetryEntry[]
 }
@@ -118,9 +122,9 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
             const completedInMod =
               mStatus?.nodes?.filter((n: { status?: string }) => n.status === 'completed')?.length || 0
             const backendStat = dash.module_stats?.[m]
-            const attempts = backendStat?.attempts ?? completedInMod
-            const correct = backendStat?.correct ?? completedInMod
-            const accuracy = backendStat?.accuracy ?? (attempts > 0 ? Math.round((correct / attempts) * 100) : 0)
+            const attempts = backendStat?.attempts ?? 0
+            const correct = backendStat?.correct ?? 0
+            const accuracy = backendStat?.accuracy ?? (attempts > 0 ? Math.round((correct / attempts) * 100) : null)
 
             totAtt += attempts
             totCor += correct
@@ -151,7 +155,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
               timestamp: 'Verified Case Milestone',
             }))
 
-          const computedAccuracy = dash.overall_accuracy ?? (totAtt > 0 ? Math.round((totCor / totAtt) * 100) : (compCount > 0 ? 100 : 0))
+          const computedAccuracy = dash.overall_accuracy ?? (totAtt > 0 ? Math.round((totCor / totAtt) * 100) : null)
 
           setMetrics({
             student_id: dash.student_id ? String(dash.student_id) : 'Student',
@@ -160,10 +164,10 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
             completed_count: compCount,
             rank_title: rankTitle,
             rank_level: rankLevel,
-            total_attempts: totAtt || compCount,
-            correct_attempts: totCor || compCount,
+            total_attempts: totAtt,
+            correct_attempts: totCor,
             overall_accuracy: computedAccuracy,
-            hint_independence: 100,
+            hint_independence: dash.hint_independence ?? null,
             module_stats: modStats,
             recent_activity: recentLogs,
           })
@@ -220,8 +224,8 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
   // The weakest attempted discipline gets Inspector Crit's red-ink "focus here" note
   const weakest = metrics
     ? moduleOrder(metrics.module_stats)
-        .filter(k => metrics.module_stats[k].attempts > 0)
-        .sort((a, b) => metrics.module_stats[a].accuracy - metrics.module_stats[b].accuracy)[0]
+        .filter(k => metrics.module_stats[k].accuracy !== null)
+        .sort((a, b) => (metrics.module_stats[a].accuracy ?? 0) - (metrics.module_stats[b].accuracy ?? 0))[0]
     : undefined
 
   return (
@@ -302,14 +306,17 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                   <div className={`${styles.pane} ${styles.paneCompact}`}>
                     {/* Overall Grade Banner */}
                     {(() => {
+                      const acc = metrics.overall_accuracy
                       const grade = metrics.overall_grade || (
-                        metrics.overall_accuracy >= 95 && metrics.completed_count >= 10
+                        acc === null
+                          ? { tier: '-', title: 'NO DATA YET', color: '#BEA791' }
+                          : acc >= 95 && metrics.completed_count >= 10
                           ? { tier: 'S', title: 'CHIEF INSPECTOR CLEARANCE', color: '#FFD700' }
-                          : metrics.overall_accuracy >= 80
+                          : acc >= 80
                           ? { tier: 'A', title: 'SENIOR INVESTIGATOR', color: '#4DDD94' }
-                          : metrics.overall_accuracy >= 60
+                          : acc >= 60
                           ? { tier: 'B', title: 'FIELD DETECTIVE', color: '#BEA791' }
-                          : metrics.overall_accuracy >= 40
+                          : acc >= 40
                           ? { tier: 'C', title: 'JUNIOR OPERATIVE', color: '#F3A712' }
                           : { tier: 'D', title: 'PROBATIONARY CADET', color: '#EF4444' }
                       )
@@ -324,7 +331,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                                 TIER {grade.tier} // {grade.title}
                               </div>
                               <div className={styles.gradeSub}>
-                                Forensic Reading Clearance Evaluation • {metrics.overall_accuracy}% Cumulative Accuracy
+                                Forensic Reading Clearance Evaluation • {acc === null ? 'No data yet' : `${acc}% Cumulative Accuracy`}
                               </div>
                             </div>
                           </div>
@@ -362,12 +369,20 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                     <div className={styles.overviewVisualRow}>
                       <div className={`${styles.exhibit} ${styles.gaugeCard}`}>
                         <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
-                        <AccuracyGauge
-                          value={metrics.overall_accuracy}
-                          size={135}
-                          label="OVERALL ACCURACY"
-                          subtext={`${metrics.correct_attempts} / ${metrics.total_attempts} verified`}
-                        />
+                        {metrics.overall_accuracy === null ? (
+                          <div className={styles.state}>
+                            <span className={styles.labelStrong}>OVERALL ACCURACY</span>
+                            <div className={styles.kpiValue}>No data yet</div>
+                            <p className={styles.stateText}>Submit a case to start the record.</p>
+                          </div>
+                        ) : (
+                          <AccuracyGauge
+                            value={metrics.overall_accuracy}
+                            size={135}
+                            label="OVERALL ACCURACY"
+                            subtext={`${metrics.correct_attempts} / ${metrics.total_attempts} verified`}
+                          />
+                        )}
                       </div>
                       <div className={`${styles.exhibit} ${styles.exhibitGood}`} style={{ flex: 2, minWidth: 260 }}>
                         <Paperclip size={16} strokeWidth={1.6} className={styles.clip} aria-hidden />
@@ -394,7 +409,8 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                     {/* KPIs */}
                     <div className={styles.kpiGrid}>
                       {[
-                        { icon: Search,      label: 'Hint Independence', value: `${metrics.hint_independence}%`,
+                        { icon: Search,      label: 'Hint Independence',
+                          value: metrics.hint_independence === null ? 'No data yet' : `${metrics.hint_independence}%`,
                           sub: 'Solved without investigative lifeline' },
                         { icon: FolderCheck, label: 'Completed Nodes',   value: metrics.completed_count,
                           sub: 'Full case nodes locked down' },
@@ -442,7 +458,7 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                       <span className={styles.labelStrong}>Intelligence Officer Debrief</span>
                       <p className={`${styles.note} ${styles.debrief}`}>
                         {metrics.completed_count >= 6
-                          ? `Advanced proficiency across all four disciplines, with ${metrics.hint_independence}% hint independence. Cleared for intermediate and advanced operations.`
+                          ? `Advanced proficiency across all four disciplines${metrics.hint_independence === null ? '' : `, with ${metrics.hint_independence}% hint independence`}. Cleared for intermediate and advanced operations.`
                           : metrics.completed_count >= 2
                           ? `Steady progress, Cadet. Keep training on multi-part ${MODULE_TITLES.logic_thread} cases — follow the signal words, they always point to the culprit.`
                           : `Training phase active. Run the 60-second drills in Quick Review to master time markers and transition connectives.`}
@@ -467,8 +483,10 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                         const stat = metrics.module_stats[modKey]
                         const ModIcon = MODULE_ICONS[modKey] ?? FileText
                         const caseNo = (MODULE_KEYS as string[]).indexOf(modKey) + 1
-                        const strong = stat.accuracy >= 70
-                        const compTier = getCompetencyLevel(stat.accuracy)
+                        const noData = stat.accuracy === null
+                        const accuracy = stat.accuracy ?? 0
+                        const strong = accuracy >= 70
+                        const compTier = getCompetencyLevel(accuracy)
                         const totalNodes = stat.total_nodes || 12
 
                         return (
@@ -492,10 +510,16 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                                 <div className={styles.moduleStats}>
                                   Completed: <strong>{stat.completed_nodes}</strong> • Attempts: <strong>{stat.attempts}</strong>
                                 </div>
-                                <span className={`${styles.trendBadge} ${stat.accuracy >= 80 ? styles.trendGood : stat.accuracy >= 60 ? styles.trendNeutral : styles.trendAlert}`}>
-                                  {stat.accuracy >= 80 ? <TrendingUp size={12} /> : stat.accuracy >= 60 ? <Minus size={12} /> : <TrendingDown size={12} />}
-                                  {stat.accuracy >= 80 ? 'Trending Strong' : stat.accuracy >= 60 ? 'Stable Record' : 'Priority Focus'}
-                                </span>
+                                {noData ? (
+                                  <span className={`${styles.trendBadge} ${styles.trendNeutral}`}>
+                                    <Minus size={12} /> No data yet
+                                  </span>
+                                ) : (
+                                  <span className={`${styles.trendBadge} ${accuracy >= 80 ? styles.trendGood : accuracy >= 60 ? styles.trendNeutral : styles.trendAlert}`}>
+                                    {accuracy >= 80 ? <TrendingUp size={12} /> : accuracy >= 60 ? <Minus size={12} /> : <TrendingDown size={12} />}
+                                    {accuracy >= 80 ? 'Trending Strong' : accuracy >= 60 ? 'Stable Record' : 'Priority Focus'}
+                                  </span>
+                                )}
                               </div>
                             </div>
 
@@ -508,13 +532,15 @@ export default function MetricLogModal({ isOpen, onClose }: MetricLogModalProps)
                             <div className={styles.row}>
                               <span className={styles.figure}>Accuracy Rate</span>
                               <span className={`${styles.figure} ${strong ? styles.good : styles.poor}`}>
-                                <strong className={strong ? styles.good : styles.poor}>{stat.accuracy}%</strong> ({stat.correct}/{stat.attempts})
+                                {noData
+                                  ? <strong>No data yet</strong>
+                                  : <><strong className={strong ? styles.good : styles.poor}>{accuracy}%</strong> ({stat.correct}/{stat.attempts})</>}
                               </span>
                             </div>
                             <div className={styles.gauge}>
                               <div
                                 className={`${styles.gaugeFill} ${strong ? '' : styles.gaugeFillLow}`}
-                                style={{ width: `${Math.min(100, stat.accuracy)}%` }}
+                                style={{ width: `${Math.min(100, accuracy)}%` }}
                               />
                             </div>
 

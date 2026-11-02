@@ -1,4 +1,6 @@
 # backend/api/progression/views.py
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -8,6 +10,8 @@ from .services import (
     MODULE_ENTRY_NODES,
     ALWAYS_UNLOCKED,
 )
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -138,46 +142,50 @@ class StudentMetricsView(APIView):
         completed_count = len(profile.completed_nodes)
 
         # 1. Query telemetry logs: Primary from MongoDB Atlas, fallback to SQLite
-        has_telemetry = False
-        total_attempts = 0
-        correct_attempts = 0
-        hints_used_count = 0
         telemetry_records = []
-
         try:
             from api.scaffold.mongo_models import TelemetryLogDocument
-            mongo_logs = list(TelemetryLogDocument.objects(student_id=student_id).order_by('-timestamp'))
-            if mongo_logs:
-                total_attempts = len(mongo_logs)
-                correct_attempts = sum(1 for log in mongo_logs if log.is_correct)
-                hints_used_count = sum(1 for log in mongo_logs if log.hint_used)
-                telemetry_records = mongo_logs
-                has_telemetry = True
-        except Exception:
-            has_telemetry = False
+            telemetry_records = list(TelemetryLogDocument.objects(student_id=student_id).order_by('-timestamp'))
+        except Exception as e:
+            logger.warning("Metrics: MongoDB telemetry read failed for %s: %s", student_id, e)
 
-        if not has_telemetry:
+        if not telemetry_records:
             try:
                 from api.scaffold.models import TelemetryLog
-                qs = list(TelemetryLog.objects.filter(student_id=student_id).order_by('-timestamp'))
-                if qs:
-                    total_attempts = len(qs)
-                    correct_attempts = sum(1 for log in qs if log.is_correct)
-                    hints_used_count = sum(1 for log in qs if log.hint_used)
-                    telemetry_records = qs
-                    has_telemetry = True
-            except Exception:
-                pass
+                telemetry_records = list(TelemetryLog.objects.filter(student_id=student_id).order_by('-timestamp'))
+            except Exception as e:
+                logger.warning("Metrics: SQLite telemetry read failed for %s: %s", student_id, e)
 
-        # If telemetry table is empty or unpopulated, use profile node milestones
-        if total_attempts == 0 and completed_count > 0:
-            total_attempts = completed_count
-            correct_attempts = completed_count
-            overall_accuracy = 100
-            hint_independence = 100
+        # 2. Pick the scoring rule.
+        #    events: rows carry event_type; accuracy is scored on "case" rows only, hints are counted apart.
+        #    legacy: only pre-event-type rows exist; every row counts, as before.
+        #    none:   no telemetry at all; nothing is invented.
+        event_rows = [log for log in telemetry_records if getattr(log, 'event_type', '')]
+        if event_rows:
+            metrics_source = 'events'
+            scored_rows = [log for log in event_rows if log.event_type == 'case']
+            hints_used_count = sum(1 for log in event_rows if log.event_type == 'hint')
+        elif telemetry_records:
+            metrics_source = 'legacy'
+            scored_rows = telemetry_records
+            hints_used_count = sum(1 for log in telemetry_records if log.hint_used)
         else:
-            overall_accuracy = round((correct_attempts / total_attempts) * 100) if total_attempts > 0 else 0
-            hint_independence = round(((total_attempts - hints_used_count) / total_attempts) * 100) if total_attempts > 0 else 100
+            metrics_source = 'none'
+            scored_rows = []
+            hints_used_count = 0
+
+        case_count = len(scored_rows)
+        total_attempts = case_count
+        correct_attempts = sum(1 for log in scored_rows if log.is_correct)
+
+        def pct(part, whole):
+            return round((part / whole) * 100) if whole > 0 else None
+
+        overall_accuracy = pct(correct_attempts, total_attempts)
+        if case_count > 0:
+            hint_independence = max(0, min(100, round(100 * (1 - hints_used_count / case_count))))
+        else:
+            hint_independence = None
 
         # Module breakdown
         modules = ['logic_thread', 'snap_gap', 'tap_clues', 'fact_scanner']
@@ -187,18 +195,15 @@ class StudentMetricsView(APIView):
             completed_in_mod = [nid for nid in profile.completed_nodes if nid in valid_nodes]
             comp_len = len(completed_in_mod)
 
-            if has_telemetry and total_attempts > 0:
-                m_logs = [log for log in telemetry_records if log.module == m]
-                m_tot = len(m_logs)
-                m_cor = sum(1 for log in m_logs if log.is_correct)
-                m_acc = round((m_cor / m_tot) * 100) if m_tot > 0 else (100 if comp_len > 0 else 0)
-            else:
-                m_tot = comp_len
-                m_cor = comp_len
-                m_acc = 100 if comp_len > 0 else 0
+            m_logs = [log for log in scored_rows if log.module == m]
+            m_tot = len(m_logs)
+            m_cor = sum(1 for log in m_logs if log.is_correct)
+            m_acc = pct(m_cor, m_tot)
 
             # Forensic Competency Level
-            if m_acc >= 95:
+            if m_acc is None:
+                c_level = "Unassessed"
+            elif m_acc >= 95:
                 c_level = "Master"
             elif m_acc >= 80:
                 c_level = "Expert"
@@ -220,20 +225,17 @@ class StudentMetricsView(APIView):
 
         # Recent timeline
         recent_activity = []
-        if has_telemetry and telemetry_records:
-            try:
-                for log in telemetry_records[:10]:
-                    ts_str = log.timestamp.strftime('%b %d, %H:%M') if getattr(log, 'timestamp', None) else 'Recent'
-                    recent_activity.append({
-                        'node_id': log.node_id,
-                        'module': log.module,
-                        'is_correct': log.is_correct,
-                        'hint_used': log.hint_used,
-                        'hint_tier': getattr(log, 'hint_tier', 0),
-                        'timestamp': ts_str,
-                    })
-            except Exception:
-                pass
+        for log in telemetry_records[:10]:
+            ts = getattr(log, 'timestamp', None)
+            recent_activity.append({
+                'node_id': log.node_id,
+                'module': log.module,
+                'event_type': getattr(log, 'event_type', '') or '',
+                'is_correct': log.is_correct,
+                'hint_used': log.hint_used,
+                'hint_tier': getattr(log, 'hint_tier', 0),
+                'timestamp': ts.strftime('%b %d, %H:%M') if ts else 'Recent',
+            })
 
         if not recent_activity and completed_count > 0:
             for nid in reversed(profile.completed_nodes[-5:]):
@@ -241,6 +243,7 @@ class StudentMetricsView(APIView):
                 recent_activity.append({
                     'node_id': nid,
                     'module': mod_name,
+                    'event_type': '',
                     'is_correct': True,
                     'hint_used': False,
                     'hint_tier': None,
@@ -251,7 +254,9 @@ class StudentMetricsView(APIView):
         rank_info = ProgressionManagementService.calculate_rank_and_level(getattr(profile, 'total_xp', 0))
 
         # Overall forensic clearance grade
-        if overall_accuracy >= 95 and completed_count >= 10:
+        if overall_accuracy is None:
+            overall_grade = {'tier': '-', 'title': 'NO DATA YET', 'color': '#BEA791'}
+        elif overall_accuracy >= 95 and completed_count >= 10:
             overall_grade = {'tier': 'S', 'title': 'CHIEF INSPECTOR CLEARANCE', 'color': '#FFD700'}
         elif overall_accuracy >= 80:
             overall_grade = {'tier': 'A', 'title': 'SENIOR INVESTIGATOR', 'color': '#4DDD94'}
@@ -280,6 +285,9 @@ class StudentMetricsView(APIView):
             'overall_accuracy': overall_accuracy,
             'overall_grade': overall_grade,
             'hint_independence': hint_independence,
+            'hints_used_count': hints_used_count,
+            'case_count': case_count,
+            'metrics_source': metrics_source,
             'module_stats': module_stats,
             'recent_activity': recent_activity,
         })

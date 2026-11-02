@@ -13,7 +13,11 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from mongoengine import connect
 import os
+import sys
 from dotenv import load_dotenv
+
+# `manage.py test` runs fully offline: Mongo is mongomock and Gemini is disabled
+TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -171,7 +175,11 @@ DATABASES = {
 import certifi
 
 MONGO_URI = os.getenv('MONGO_URI')
-if MONGO_URI:
+if TESTING:
+    # Never touch Atlas or a local Mongo from the test runner
+    import mongomock
+    connect('CriticaTestDB', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient)
+elif MONGO_URI:
     connect(
         'CriticaDB',
         host=MONGO_URI,
@@ -310,4 +318,8 @@ SIMPLE_JWT = {
 
 # Google Gemini AI Configuration
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
+if TESTING:
+    # Tests use the offline fallback pool; GeminiClient also reads the env var
+    GEMINI_API_KEY = ''
+    os.environ['GEMINI_API_KEY'] = ''
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-flash-latest')

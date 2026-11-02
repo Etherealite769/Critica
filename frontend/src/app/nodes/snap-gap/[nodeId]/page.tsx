@@ -715,7 +715,13 @@ export default function SnapInGapPage() {
       const currentEx = sessionExercises[questionIndex]
       const correctTile: string | undefined = currentEx.correct_tile_map?.[pair.pair_id]
       const isCorrect = correctTile && (correctTile.trim().toLowerCase() === tile.trim().toLowerCase())
-      if (isCorrect) placeCorrectTile()
+      if (isCorrect) {
+        placeCorrectTile()
+        apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
+          method: 'POST',
+          body: JSON.stringify({ is_correct: true, word_id: pair.pair_id, clue_word: tile }),
+        }).catch(() => {})
+      }
       else await handleWrongTile(pair.pair_id, tile, correctTile ?? null)
       return
     }

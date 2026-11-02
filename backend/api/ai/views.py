@@ -1,13 +1,34 @@
 # backend/api/ai/views.py
+import logging
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
 from api.progression.services import ProgressionManagementService
-from api.scaffold.scaffold_service import ScaffoldEngineService
+from api.scaffold.scaffold_service import (
+    ScaffoldEngineService, EVENT_CASE, EVENT_STEP, EVENT_HINT)
 from .session_service import SessionService
 from .gemini_client import GeminiClient
+from .mongo_models import GeneratedSessionDocument
+
+logger = logging.getLogger(__name__)
+
+
+def _owned_session(request, session_id):
+    """
+    Returns (session_doc, None) when the session exists and belongs to request.user,
+    otherwise (None, error Response): 404 if it does not exist, 403 if it is someone else's.
+    """
+    session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
+    if not session_doc:
+        return None, Response({'error': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+    if session_doc.student_id != str(request.user.id):
+        logger.warning("Session %s requested by student %s, owned by %s",
+                       session_id, request.user.id, session_doc.student_id)
+        return None, Response({'error': 'This session belongs to another student.'}, status=status.HTTP_403_FORBIDDEN)
+    return session_doc, None
 
 
 class AIHealthCheckView(APIView):
@@ -87,25 +108,26 @@ class SessionEvaluateStepView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id, exercise_index):
-        student_id = str(request.user.id)
-        submission_payload = request.data
+        session_doc, denied = _owned_session(request, session_id)
+        if denied:
+            return denied
 
         result = SessionService.evaluate_exercise_submission(
             session_id=session_id,
             exercise_index=int(exercise_index),
-            submission_payload=submission_payload
+            submission_payload=request.data
         )
 
         if result.get('status') == 'error':
             return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
-        # Log attempt telemetry
-        is_correct = result.get('is_correct', False)
+        # One "case" event per exercise submit; node and module come from the session, not the client
         ScaffoldEngineService.log_attempt(
-            student_id=student_id,
-            node_id=submission_payload.get('node_id', ''),
-            module=submission_payload.get('module', ''),
-            is_correct=is_correct,
+            student_id=session_doc.student_id,
+            node_id=session_doc.node_id,
+            module=session_doc.module,
+            is_correct=result.get('is_correct', False),
+            event_type=EVENT_CASE,
         )
 
         return Response(result, status=status.HTTP_200_OK)
@@ -119,7 +141,10 @@ class SessionFeedbackView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id, exercise_index):
-        student_id = str(request.user.id)
+        session_doc, denied = _owned_session(request, session_id)
+        if denied:
+            return denied
+
         feedback_data = request.data
         res = SessionService.get_exercise_feedback(
             session_id=session_id,
@@ -128,22 +153,23 @@ class SessionFeedbackView(APIView):
         )
 
         try:
-            from .mongo_models import GeneratedSessionDocument
-            session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
-            if session_doc:
-                tier = feedback_data.get('tier', 1)
-                ScaffoldEngineService.log_attempt(
-                    student_id=student_id,
-                    node_id=session_doc.node_id,
-                    module=session_doc.module,
-                    is_correct=False,
-                    hint_used=(tier > 1),
-                    hint_tier=tier if tier > 1 else None,
-                    word_id=feedback_data.get('word_id', ''),
-                    clue_word_id=feedback_data.get('clue_word', ''),
-                )
-        except Exception as e:
-            print(f"[Warning] Failed to log feedback attempt telemetry: {e}")
+            tier = int(feedback_data.get('tier', 1))
+        except (TypeError, ValueError):
+            tier = 1
+
+        # Every tier is a hint request. It is stored as is_correct=False, but metrics only
+        # score "case" events, so hints never count as wrong answers.
+        ScaffoldEngineService.log_attempt(
+            student_id=session_doc.student_id,
+            node_id=session_doc.node_id,
+            module=session_doc.module,
+            is_correct=False,
+            event_type=EVENT_HINT,
+            hint_used=True,
+            hint_tier=tier,
+            word_id=feedback_data.get('word_id', ''),
+            clue_word_id=feedback_data.get('clue_word', ''),
+        )
 
         return Response(res, status=status.HTTP_200_OK)
 
@@ -157,27 +183,26 @@ class SessionLogAttemptView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id):
-        student_id = str(request.user.id)
-        is_correct = bool(request.data.get('is_correct', True))
-        word_id = request.data.get('word_id', '')
-        clue_word = request.data.get('clue_word', '')
+        # Unknown session: 404 and nothing is logged
+        session_doc, denied = _owned_session(request, session_id)
+        if denied:
+            return denied
 
-        try:
-            from .mongo_models import GeneratedSessionDocument
-            session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
-            node_id = session_doc.node_id if session_doc else 'tap_node_01'
-            module = session_doc.module if session_doc else 'tap_clues'
+        raw_correct = request.data.get('is_correct', False)
+        if isinstance(raw_correct, str):
+            is_correct = raw_correct.strip().lower() in ('true', '1')
+        else:
+            is_correct = bool(raw_correct)
 
-            ScaffoldEngineService.log_attempt(
-                student_id=student_id,
-                node_id=node_id,
-                module=module,
-                is_correct=is_correct,
-                word_id=word_id,
-                clue_word_id=clue_word,
-            )
-        except Exception as e:
-            print(f"[Warning] Failed to log attempt telemetry: {e}")
+        ScaffoldEngineService.log_attempt(
+            student_id=session_doc.student_id,
+            node_id=session_doc.node_id,
+            module=session_doc.module,
+            is_correct=is_correct,
+            event_type=EVENT_STEP,
+            word_id=request.data.get('word_id', ''),
+            clue_word_id=request.data.get('clue_word', ''),
+        )
 
         return Response({'status': 'logged'})
 

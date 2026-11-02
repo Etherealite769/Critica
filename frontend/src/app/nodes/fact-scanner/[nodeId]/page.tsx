@@ -518,10 +518,11 @@ export default function FactScannerPage() {
     attemptsMapRef.current[questionIndex] = nextWrongs
     setAttemptsMap({ ...attemptsMapRef.current })
 
-    if (sessionId) {
+    // Only wrong scans are steps; a failed report (sentenceId null) is logged as a case by /evaluate/
+    if (sessionId && sentenceId !== null) {
       apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
         method: 'POST',
-        body: JSON.stringify({ is_correct: false, word_id: sentenceId ?? 'report', clue_word: '' }),
+        body: JSON.stringify({ is_correct: false, word_id: sentenceId, clue_word: '' }),
       }).catch(() => {})
     }
     if (nextWrongs >= 3) {
