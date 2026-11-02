@@ -3,14 +3,58 @@
 import React, { useState, useEffect } from 'react'
 import { playClickSound, playVictorySound, playWrongSound } from '@/lib/sound-effects'
 import styles from './sidebar-modals.module.css'
+// Folder frame shared with the Metric Log (size-locked shell, header type, red stamp, paperclips)
+import ml from './metric-log.module.css'
 import {
-  Check, ChevronLeft, ChevronRight, FileText, RotateCcw, Timer,
-  TriangleAlert, X, Zap,
+  BookOpen, Check, ChevronLeft, ChevronRight, FolderOpen, Network, Paperclip, Puzzle,
+  RotateCcw, ScanSearch, Search, Timer, TriangleAlert, X, Zap, type LucideIcon,
 } from 'lucide-react'
 
 interface QuickReviewModalProps {
   isOpen: boolean
   onClose: () => void
+}
+
+type ManualTab = 'text_structure' | 'snap_gap' | 'tap_clues' | 'craap' | 'drill'
+
+// Manila file tabs above the folder, numbered like the Metric Log's sections
+const MANUAL_TABS: { id: ManualTab; label: string; icon: LucideIcon }[] = [
+  { id: 'text_structure', label: 'Forensic Textual Analysis', icon: Network },
+  { id: 'snap_gap',       label: 'Scene Reconstruction',      icon: Puzzle },
+  { id: 'tap_clues',      label: 'Clue Extraction',           icon: Search },
+  { id: 'craap',          label: 'Witness Cross Examination', icon: ScanSearch },
+  { id: 'drill',          label: '60s Field Drill',           icon: Timer },
+]
+
+// ── Pinned index-card styling ──
+const CARD = 'relative mb-5 bg-[#FFFDF7] rounded border border-[#D0C4A8] p-5 shadow-sm'
+const CARD_TITLE = 'flex items-center justify-between gap-3 mb-2 font-mono text-[0.95rem] font-extrabold tracking-[0.05em] text-[#2D0909]'
+const TAG = 'flex-shrink-0 whitespace-nowrap border border-emerald-700 text-emerald-800 bg-emerald-50/40 px-3 py-1 rounded text-xs font-mono font-bold tracking-[0.08em]'
+// Red pushpin head: glossy highlight top-left, shade bottom-right, cast shadow on the card
+const PIN = 'absolute -top-1.5 w-3 h-3 rounded-full bg-red-700 pointer-events-none ' +
+  'shadow-[inset_1px_1px_1px_rgba(255,255,255,0.5),inset_-1px_-1px_2px_rgba(0,0,0,0.45),1px_3px_3px_rgba(0,0,0,0.4),0_0_0_1px_rgba(0,0,0,0.3)]'
+
+// Manila paper: soft light across the sheet, aged corners and fibre speckle (as on the Metric Log folder)
+const FOLDER_TEXTURE: React.CSSProperties = {
+  backgroundImage: [
+    'linear-gradient(160deg, rgba(255,252,240,0.4) 0%, transparent 35%, transparent 70%, rgba(120,90,50,0.08) 100%)',
+    'radial-gradient(ellipse at 0 0, rgba(120,90,50,0.12), transparent 35%)',
+    'radial-gradient(ellipse at 100% 100%, rgba(120,90,50,0.18), transparent 40%)',
+    'radial-gradient(rgba(78,54,41,0.06) 1px, transparent 1.2px)',
+    'radial-gradient(rgba(78,54,41,0.04) 1px, transparent 1.2px)',
+  ].join(', '),
+  backgroundSize: '100% 100%, 100% 100%, 100% 100%, 7px 7px, 11px 11px',
+  backgroundPosition: '0 0, 0 0, 0 0, 0 0, 3px 5px',
+}
+
+/** Red pushpins on an index card's top corners. */
+function CardPins() {
+  return (
+    <>
+      <span className={`${PIN} left-3`} aria-hidden />
+      <span className={`${PIN} right-3`} aria-hidden />
+    </>
+  )
 }
 
 // ── DRILL QUESTIONS POOL ─────────────────────────────
@@ -165,60 +209,79 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
   if (!isOpen) return null
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.dossierContainer} onClick={e => e.stopPropagation()}>
-        {/* ── Folder Header ── */}
-        <div className={styles.folderHeader}>
-          <div className={styles.headerLeft}>
-            <span className={styles.headerBadge}>TACTICAL FIELD GUIDE</span>
-            <h2 className={styles.headerTitle}>
-              <FileText size={18} aria-hidden /> Quick Review & Field Manual
-            </h2>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span className={styles.stampBox}>AUTHORIZED REFERENCE</span>
-            <button className={styles.closeButton} onClick={onClose} title="Close Manual (Esc)">
-              <X size={14} aria-hidden /> CLOSE
-            </button>
-          </div>
+    <div className={ml.overlay} onClick={onClose}>
+      <div
+        className={ml.shell}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="field-manual-title"
+        onClick={e => e.stopPropagation()}>
+
+        {/* ── Manila file tabs ── */}
+        <div className="flex flex-shrink-0 items-end gap-1 pt-3.5 pl-2 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Manual sections">
+          {MANUAL_TABS.map((t, i) => {
+            const active = activeTab === t.id
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setActiveTab(t.id)
+                  if (t.id === 'drill' && !drillRunning && drillScore === null) startDrill()
+                }}
+                className={`relative flex flex-col items-start justify-center gap-0.5 px-2.5 py-1 font-mono text-left whitespace-nowrap
+                  rounded-t-lg border border-b-0 cursor-pointer transition-[filter,min-height]
+                  ${active
+                    ? 'z-[2] min-h-[46px] -mb-px bg-[#FFFDF7] border-t-2 border-amber-600/70 text-[#1A1A1A] shadow-[0_-4px_12px_rgba(0,0,0,0.3)]'
+                    : 'min-h-[40px] bg-[#2B231D] text-[#C2B59B] border-black/35 shadow-[inset_0_-8px_10px_-8px_rgba(0,0,0,0.55)] hover:bg-[#3D322A]'}`}>
+                {active && <Paperclip size={18} strokeWidth={1.75} className={ml.tabClip} aria-hidden />}
+                <span className={`text-[9px] font-bold tracking-[0.14em] ${active ? 'text-[#a83232]' : 'text-[#8f8170]'}`}>
+                  [{i + 1}] SECTION {String(i + 1).padStart(2, '0')}:
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.05em] uppercase">
+                  <t.icon size={13} aria-hidden /> {t.label}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
-        {/* ── Sub Navigation ── */}
-        <div className={styles.subNavBar}>
-          <button
-            className={`${styles.navTab} ${activeTab === 'text_structure' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('text_structure')}>
-            1. Forensic Textual Analysis
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'snap_gap' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('snap_gap')}>
-            2. Scene Reconstruction
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'tap_clues' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('tap_clues')}>
-            3. Clue Extraction
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'craap' ? styles.navTabActive : ''}`}
-            onClick={() => setActiveTab('craap')}>
-            4. Witness Cross Examination
-          </button>
-          <button
-            className={`${styles.navTab} ${activeTab === 'drill' ? styles.navTabActive : ''}`}
-            onClick={() => {
-              setActiveTab('drill')
-              if (!drillRunning && drillScore === null) {
-                startDrill()
-              }
-            }}>
-            <Timer size={14} aria-hidden /> 60s Field Drill
-          </button>
-        </div>
+        {/* ── Manila folder body ── */}
+        <div className="relative z-[1] flex flex-1 min-h-0 flex-col bg-[#F3E8CB] p-6 rounded-b-lg rounded-tr-lg border border-[#D0C4A8] shadow-2xl" style={FOLDER_TEXTURE}>
+          {/* Paperclips clamping the file: top-right corner (clear of the tab row) and right side */}
+          <Paperclip size={30} strokeWidth={1.6} className="absolute -top-3 right-1 rotate-[20deg] text-[#8d8a84] drop-shadow-[0_2px_1px_rgba(0,0,0,0.35)] pointer-events-none z-[3]" aria-hidden />
+          <Paperclip size={26} strokeWidth={1.6} className={ml.folderClip} aria-hidden />
 
-        {/* ── Content Body ── */}
-        <div className={styles.contentBody}>
+          {/* Dossier header */}
+          <header className="flex flex-shrink-0 items-center justify-between gap-4 pb-3 border-b border-[rgba(139,115,85,0.35)]">
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className={ml.kicker}>
+                <FolderOpen size={14} aria-hidden /> CASE FILE {'//'} TACTICAL FIELD MANUAL
+              </span>
+              <h2 id="field-manual-title" className={ml.title}>
+                <BookOpen size={15} className="inline -mt-0.5 mr-2" aria-hidden />Quick Review &amp; Field Manual
+              </h2>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-3 pr-8">
+              <span className="px-2 py-0.5 border-2 border-[#A83232] text-[#A83232] font-mono rotate-[-2deg] text-[11px] font-extrabold tracking-[0.14em] uppercase whitespace-nowrap rounded-sm mix-blend-multiply select-none">
+                [ Authorized Reference ]
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close Manual (Esc)"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10.5px] font-bold tracking-[0.08em] uppercase whitespace-nowrap
+                  text-[#4e3629] bg-[#FFFDF7] border border-[#D0C4A8] rounded-sm shadow-[0_2px_0_rgba(0,0,0,0.15)]
+                  hover:bg-[#4e3629] hover:text-[#f9f6ed] cursor-pointer transition-colors">
+                <X size={13} aria-hidden /> Close File
+              </button>
+            </div>
+          </header>
+
+          {/* ── Content Body (the only scroll area) ── */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pt-5 -mr-3 pr-3 [scrollbar-width:thin]" role="tabpanel">
           {activeTab === 'text_structure' && (
             <div>
               <div style={{ marginBottom: '1rem' }}>
@@ -230,10 +293,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                 </p>
               </div>
 
-              <div className={styles.cheatCard}>
-                <div className={styles.cheatCardTitle}>
+              <div className={CARD}>
+                <CardPins />
+                <div className={CARD_TITLE}>
                   <span>[01] NARRATION / CHRONOLOGY</span>
-                  <span className={styles.headerBadge}>ORDER OF EVENTS</span>
+                  <span className={TAG}>[ ORDER OF EVENTS ]</span>
                 </div>
                 <p style={{ fontSize: '0.82rem', lineHeight: '1.4', margin: '0.35rem 0 0.5rem 0' }}>
                   Organizes events in time order. Traces development, history, or forensic step-by-step procedures.
@@ -243,10 +307,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                 </div>
               </div>
 
-              <div className={styles.cheatCard}>
-                <div className={styles.cheatCardTitle}>
+              <div className={CARD}>
+                <CardPins />
+                <div className={CARD_TITLE}>
                   <span>[02] DEFINITION & CLASSIFICATION</span>
-                  <span className={styles.headerBadge}>CONCEPT BREAKDOWN</span>
+                  <span className={TAG}>[ CONCEPT BREAKDOWN ]</span>
                 </div>
                 <p style={{ fontSize: '0.82rem', lineHeight: '1.4', margin: '0.35rem 0 0.5rem 0' }}>
                   Explains what an entity or phenomenon is, its class of belonging, and distinctive features that separate it from others.
@@ -256,10 +321,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                 </div>
               </div>
 
-              <div className={styles.cheatCard}>
-                <div className={styles.cheatCardTitle}>
+              <div className={CARD}>
+                <CardPins />
+                <div className={CARD_TITLE}>
                   <span>[03] COMPARISON & CONTRAST</span>
-                  <span className={styles.headerBadge}>SIMILARITY VS DIVERGENCE</span>
+                  <span className={TAG}>[ SIMILARITY VS DIVERGENCE ]</span>
                 </div>
                 <p style={{ fontSize: '0.82rem', lineHeight: '1.4', margin: '0.35rem 0 0.5rem 0' }}>
                   Examines two or more subjects across specific criteria to illuminate common traits and critical divergences.
@@ -269,10 +335,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                 </div>
               </div>
 
-              <div className={styles.cheatCard}>
-                <div className={styles.cheatCardTitle}>
+              <div className={CARD}>
+                <CardPins />
+                <div className={CARD_TITLE}>
                   <span>[04] CAUSE & EFFECT</span>
-                  <span className={styles.headerBadge}>RATIONALE & REPERCUSSION</span>
+                  <span className={TAG}>[ RATIONALE & REPERCUSSION ]</span>
                 </div>
                 <p style={{ fontSize: '0.82rem', lineHeight: '1.4', margin: '0.35rem 0 0.5rem 0' }}>
                   Links antecedents (causes) with downstream consequences (effects). Can be linear, multi-causal, or feedback-driven.
@@ -355,10 +422,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                <div className={styles.cheatCard}>
-                  <div className={styles.cheatCardTitle}>
+                <div className={CARD}>
+                  <CardPins />
+                  <div className={CARD_TITLE}>
                     <span>1. SYNONYM CLUES</span>
-                    <span className={styles.headerBadge}>PARALLEL</span>
+                    <span className={TAG}>[ PARALLEL ]</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: '#432818', lineHeight: '1.4' }}>
                     Author pairs the target word with an equivalent term or phrase joined by "and", "or", or commas.
@@ -368,10 +436,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                   </div>
                 </div>
 
-                <div className={styles.cheatCard}>
-                  <div className={styles.cheatCardTitle}>
+                <div className={CARD}>
+                  <CardPins />
+                  <div className={CARD_TITLE}>
                     <span>2. ANTONYM CLUES</span>
-                    <span className={styles.headerBadge}>POLARITY</span>
+                    <span className={TAG}>[ POLARITY ]</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: '#432818', lineHeight: '1.4' }}>
                     Author provides the exact opposite meaning using words like "unlike", "instead of", "rather than".
@@ -381,10 +450,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                   </div>
                 </div>
 
-                <div className={styles.cheatCard}>
-                  <div className={styles.cheatCardTitle}>
+                <div className={CARD}>
+                  <CardPins />
+                  <div className={CARD_TITLE}>
                     <span>3. DEFINITION CLUES</span>
-                    <span className={styles.headerBadge}>EXPLICIT</span>
+                    <span className={TAG}>[ EXPLICIT ]</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: '#432818', lineHeight: '1.4' }}>
                     The target word is explicitly defined inside appositive phrases, em-dashes, or brackets.
@@ -394,10 +464,11 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                   </div>
                 </div>
 
-                <div className={styles.cheatCard}>
-                  <div className={styles.cheatCardTitle}>
+                <div className={CARD}>
+                  <CardPins />
+                  <div className={CARD_TITLE}>
                     <span>4. INFERENCE CLUES</span>
-                    <span className={styles.headerBadge}>DEDUCTION</span>
+                    <span className={TAG}>[ DEDUCTION ]</span>
                   </div>
                   <p style={{ fontSize: '0.8rem', color: '#432818', lineHeight: '1.4' }}>
                     Meaning must be deduced from situational details, reactions, or behavioral consequences.
@@ -454,7 +525,8 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                     redFlag: 'Sponsored content disguised as unbiased academic study.',
                   },
                 ].map((item, idx) => (
-                  <div key={idx} className={styles.cheatCard} style={{ margin: 0, padding: '0.85rem 1.25rem' }}>
+                  <div key={idx} className={CARD} style={{ margin: 0, padding: '0.85rem 1.25rem' }}>
+                    <CardPins />
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                         <span
@@ -605,9 +677,10 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
                     ))}
                   </div>
 
-                  <div className={styles.cheatCard} style={{ padding: '1.5rem' }}>
+                  <div className={CARD} style={{ padding: '1.5rem' }}>
+                    <CardPins />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                      <span className={styles.headerBadge}>{drillQuestions[currentQIndex].category}</span>
+                      <span className={TAG}>[ {drillQuestions[currentQIndex].category} ]</span>
                       <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '0.75rem', color: '#8C5A3C' }}>
                         QUESTION {currentQIndex + 1} OF {drillQuestions.length}
                       </span>
@@ -688,6 +761,7 @@ export default function QuickReviewModal({ isOpen, onClose }: QuickReviewModalPr
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
