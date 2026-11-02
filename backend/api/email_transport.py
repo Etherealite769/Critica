@@ -20,13 +20,20 @@ from email.utils import parseaddr
 from urllib.parse import urlparse
 
 import requests
-import resend
 from django.conf import settings
 from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
+# Imported defensively: this module is loaded by the auth views, so a host that installed an
+# older requirements file must still boot (and serve CORS headers); only Resend sends fail.
+try:
+    import resend
+except ImportError:
+    resend = None
+
 RESEND_TEST_DOMAIN = 'resend.dev'
+RESEND_MISSING = 'the resend package is not installed on this host (pip install -r requirements.txt)'
 
 
 def _smtp_text(raw) -> str:
@@ -39,6 +46,8 @@ def _from_domain() -> str:
 
 
 def _configure_resend() -> None:
+    if resend is None:
+        raise RuntimeError(RESEND_MISSING)
     resend.api_key = settings.RESEND_API_KEY
     resend.default_http_client = resend.RequestsClient(timeout=settings.EMAIL_TIMEOUT)
 
@@ -62,7 +71,7 @@ def send_email(subject: str, recipient: str, text: str, html: str) -> str:
     return ''
 
 
-def _resend_hint(exc: resend.exceptions.ResendError) -> str:
+def _resend_hint(exc) -> str:
     code = str(exc.code)
     if code == '401' or exc.error_type in ('missing_api_key', 'invalid_api_key', 'restricted_api_key'):
         return 'check RESEND_API_KEY'
@@ -78,7 +87,7 @@ def _resend_hint(exc: resend.exceptions.ResendError) -> str:
 
 def describe_email_error(exc: Exception) -> str:
     """One-line description of a send failure, including the HTTP or SMTP status code when there is one."""
-    if isinstance(exc, resend.exceptions.ResendError):
+    if resend is not None and isinstance(exc, resend.exceptions.ResendError):
         hint = _resend_hint(exc)
         return f'Resend API {exc.code} {exc.error_type}: {exc.message}' + (f' ({hint})' if hint else '')
     if isinstance(exc, requests.RequestException):
@@ -108,6 +117,9 @@ describe_smtp_error = describe_email_error
 
 def verify_resend() -> bool:
     """Checks the API key and the sending domain without sending anything."""
+    if resend is None:
+        logger.error('Email: RESEND_API_KEY is set but %s.', RESEND_MISSING)
+        return False
     if not settings.RESEND_API_KEY.startswith('re_'):
         logger.error('Email: RESEND_API_KEY does not look like a Resend key (expected the "re_" prefix).')
         return False

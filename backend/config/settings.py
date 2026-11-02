@@ -37,6 +37,24 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fahptlbc+_5y8o_2^da#895p1v
 DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
 from corsheaders.defaults import default_headers
+from urllib.parse import urlparse
+
+
+def _origin(url):
+    """
+    scheme://host[:port] of a URL. Browsers send Origin without a path or trailing slash,
+    so 'https://critica-sigma.vercel.app/' in an env var would never match (corsheaders E014).
+    """
+    parsed = urlparse(url.strip())
+    return f'{parsed.scheme}://{parsed.netloc}' if parsed.scheme and parsed.netloc else ''
+
+
+def _origins_from_env(name):
+    return [o for o in (_origin(v) for v in os.getenv(name, '').split(',')) if o]
+
+
+# The deployed frontend (also used for links in emails, see FRONTEND_URL below) is always allowed
+_frontend_origin = _origin(os.getenv('FRONTEND_URL', ''))
 
 _default_allowed_hosts = [
     'localhost',
@@ -64,13 +82,11 @@ _default_cors_origins = [
     'https://critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
     'https://critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
 ]
-_env_cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
-if _env_cors_origins:
-    CORS_ALLOWED_ORIGINS = list(dict.fromkeys(
-        _default_cors_origins + [origin.strip() for origin in _env_cors_origins.split(',') if origin.strip()]
-    ))
-else:
-    CORS_ALLOWED_ORIGINS = _default_cors_origins
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(
+    _default_cors_origins
+    + _origins_from_env('CORS_ALLOWED_ORIGINS')
+    + ([_frontend_origin] if _frontend_origin else [])
+))
 
 # Automatically allow all Vercel preview and production subdomains
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -95,13 +111,12 @@ _default_csrf_origins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
 ]
-_env_csrf_origins = os.getenv('CSRF_TRUSTED_ORIGINS', '')
-if _env_csrf_origins:
-    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
-        _default_csrf_origins + [origin.strip() for origin in _env_csrf_origins.split(',') if origin.strip()]
-    ))
-else:
-    CSRF_TRUSTED_ORIGINS = _default_csrf_origins
+# CSRF origins may use a leading wildcard (https://*.vercel.app), so only trailing slashes are trimmed
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
+    _default_csrf_origins
+    + [o.strip().rstrip('/') for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+    + ([_frontend_origin] if _frontend_origin else [])
+))
 
 
 
