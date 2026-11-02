@@ -128,7 +128,7 @@ class PasswordResetTests(TestCase):
         self.assertEqual(len(mail.outbox), 2)
 
     def test_send_failure_still_generic(self):
-        with mock.patch('api.password_reset.send_mail', side_effect=OSError('smtp down')):
+        with mock.patch('api.email_transport.send_mail', side_effect=OSError('smtp down')):
             res = self._forgot()
         self.assertEqual(res.status_code, 200)
 
@@ -201,7 +201,7 @@ class PasswordResetTests(TestCase):
     # ── error surfacing ──
     @override_settings(DEBUG=True)
     def test_smtp_failure_returns_json_500_in_debug(self):
-        with mock.patch('api.password_reset.send_mail', side_effect=OSError('smtp down')):
+        with mock.patch('api.email_transport.send_mail', side_effect=OSError('smtp down')):
             res = self._forgot()
         self.assertEqual(res.status_code, 500)
         self.assertEqual(res.json()['detail'], 'Failed to send reset email. Check SMTP settings.')

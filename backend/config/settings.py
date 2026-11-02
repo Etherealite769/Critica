@@ -276,14 +276,18 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'api.exceptions.json_exception_handler',
 }
 
-# Email (verification codes) — Gmail SMTP by default.
-# Set in backend/.env (see backend/.env.example):
-#   EMAIL_SERVER_HOST=smtp.gmail.com   EMAIL_SERVER_PORT=587
-#   EMAIL_SERVER_USER=you@gmail.com    EMAIL_SERVER_PASSWORD=<16-char Gmail App Password>
-#   EMAIL_FROM="Critica Bureau <you@gmail.com>"
-# (Values come from backend/.env, loaded by load_dotenv() at the top of this file.)
-# If USER or PASSWORD is missing, api/email_verification.py skips sending and
-# logs the code and one-click verification URL to the server console instead.
+# Email (verification codes, password resets) — sent by api/email_transport.py.
+# Preferred: the Resend HTTPS API (port 443 works on hosts that block outbound SMTP).
+#   RESEND_API_KEY=re_...
+#   EMAIL_FROM="Critica Bureau <no-reply@your-verified-domain>"
+#     The From domain must be verified at resend.com/domains. The test sender
+#     onboarding@resend.dev only delivers to your own Resend account address.
+# Fallback when RESEND_API_KEY is empty: Gmail SMTP with EMAIL_SERVER_* below.
+# If neither is configured, the code and links are printed to the server console instead.
+RESEND_API_KEY = (os.getenv('RESEND_API_KEY') or '').strip()
+if TESTING:
+    RESEND_API_KEY = ''   # tests never call the Resend API
+EMAIL_PROVIDER = 'resend' if RESEND_API_KEY else 'smtp'
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_SERVER_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_SERVER_PORT', 587))
@@ -299,12 +303,34 @@ EMAIL_TIMEOUT = 15
 # Django only logs in to SMTP when BOTH user and password are non-empty;
 # without a password Gmail answers "530 Authentication Required"
 # (SMTPSenderRefused), so verification emails fall back to console logging.
-EMAIL_DELIVERY_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
-DEFAULT_FROM_EMAIL = (os.getenv('EMAIL_FROM') or '').strip() or f'Inspector Crit <{EMAIL_HOST_USER}>'
+EMAIL_DELIVERY_CONFIGURED = bool(RESEND_API_KEY) or bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+DEFAULT_FROM_EMAIL = (os.getenv('EMAIL_FROM') or '').strip() or (
+    'Critica Bureau <onboarding@resend.dev>' if EMAIL_PROVIDER == 'resend'
+    else f'Inspector Crit <{EMAIL_HOST_USER}>')
 SERVER_EMAIL = EMAIL_HOST_USER
 
-# Public frontend URL, used for the one-click verification link in emails
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+# Public frontend URL, used for the verification and password-reset links in emails.
+# Must be set on the deployed backend (e.g. https://critica.vercel.app), otherwise the
+# links point at localhost. A bare host gets https:// so links are always absolute.
+FRONTEND_URL = (os.getenv('FRONTEND_URL') or 'http://localhost:3000').strip().rstrip('/')
+if '://' not in FRONTEND_URL:
+    FRONTEND_URL = f'https://{FRONTEND_URL}'
+
+# Console logging for the api package (email delivery results, SMTP startup check, telemetry
+# warnings). Without this, INFO lines are dropped and errors only reach Python's fallback handler.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+    },
+    'loggers': {
+        'api': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}
 
 # JWT Configuration
 from datetime import timedelta

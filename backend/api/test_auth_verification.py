@@ -231,7 +231,7 @@ class AuthVerificationTests(TestCase):
         self.assertEqual(res.data['code'], 'expired')
 
     def test_send_failure_rolls_back_and_reports(self):
-        with mock.patch('api.email_verification.send_mail', side_effect=OSError('smtp down')):
+        with mock.patch('api.email_transport.send_mail', side_effect=OSError('smtp down')):
             res = self._register()
         self.assertEqual(res.status_code, 502)
         self.assertEqual(res.data['error'], 'Failed to send clearance code to specified email address')

@@ -15,12 +15,12 @@ from html import escape
 
 import hmac
 from django.conf import settings
-from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework.throttling import AnonRateThrottle
 
 from .email_verification import _hash_code, _now
+from .email_transport import describe_email_error, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +165,7 @@ def send_password_reset_email(user, token: str) -> bool:
             '=' * 64,
             f'[DEV EMAIL] Password reset for {user.email}',
             f'  Reset link : {url}',
-            '  (Set EMAIL_SERVER_USER / EMAIL_SERVER_PASSWORD to send real email.)',
+            '  (Set RESEND_API_KEY to send real email.)',
             '=' * 64,
         ])
         logger.warning(banner)
@@ -174,11 +174,12 @@ def send_password_reset_email(user, token: str) -> bool:
 
     text, html = _render_reset_email(user.first_name, url, minutes)
     try:
-        send_mail('CRITICA BUREAU — passphrase reset', text, settings.DEFAULT_FROM_EMAIL,
-                  [user.email], html_message=html)
+        message_id = send_email('CRITICA BUREAU — passphrase reset', user.email, text, html)
+        logger.info('Password reset email sent to %s via %s %s', user.email, settings.EMAIL_PROVIDER, message_id)
         return True
-    except Exception:
-        logger.exception('Failed to send password reset email to %s', user.email)
+    except Exception as exc:
+        logger.error('Failed to send password reset email to %s: %s', user.email, describe_email_error(exc),
+                     exc_info=True)
         return False
 
 
