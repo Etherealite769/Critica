@@ -1,6 +1,7 @@
 # backend/api/test_email_transport.py
-# Email dispatch through Resend (HTTPS) with the SMTP fallback. The Resend SDK is mocked:
-# no request leaves the test run.
+# Email dispatch through Brevo / Resend (HTTPS) with the SMTP fallback. Brevo's HTTP calls and
+# the Resend SDK are mocked: no request leaves the test run.
+import json
 from types import SimpleNamespace
 from unittest import mock
 
@@ -9,7 +10,8 @@ import resend
 from django.core import mail
 from django.test import TestCase, override_settings
 
-from api.email_transport import describe_email_error, send_email, verify_resend
+from api.email_transport import (
+    BrevoError, describe_email_error, send_email, verify_brevo, verify_email_transport, verify_resend)
 from api.email_verification import send_verification_email
 from api.password_reset import send_password_reset_email
 
@@ -122,3 +124,112 @@ class ResendStartupCheckTests(TestCase):
                 self.assertLogs('api.email_transport', level='WARNING') as logs:
             self.assertTrue(verify_resend())
         self.assertIn('test sender', logs.output[0])
+
+
+# ── Brevo (HTTPS API via requests) ───────────────────────────────────
+BREVO = dict(
+    EMAIL_PROVIDER='brevo', BREVO_API_KEY='xkeysib-test', RESEND_API_KEY='', EMAIL_DELIVERY_CONFIGURED=True,
+    DEFAULT_FROM_EMAIL='Inspector Crit <agentcritica@gmail.com>', FRONTEND_URL='https://critica.example',
+    EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+)
+BREVO_REQUEST = 'api.email_transport.requests.request'
+
+
+def brevo_response(status, body):
+    """A stand-in for requests.Response with a JSON body."""
+    content = json.dumps(body).encode()
+    return mock.Mock(status_code=status, content=content, text=content.decode(), reason='',
+                     json=mock.Mock(return_value=body))
+
+
+@override_settings(**BREVO)
+class BrevoDispatchTests(TestCase):
+    @mock.patch('resend.Emails.send')
+    @mock.patch(BREVO_REQUEST, return_value=brevo_response(201, {'messageId': '<abc@smtp-relay.mailin.fr>'}))
+    def test_verification_email_goes_through_brevo(self, request, resend_send):
+        with self.assertLogs('api.email_verification', level='INFO') as logs:
+            self.assertTrue(send_verification_email('cadet@example.com', '123456', 'Ada', 'tok'))
+        method, url = request.call_args.args
+        kwargs = request.call_args.kwargs
+        self.assertEqual((method, url), ('POST', 'https://api.brevo.com/v3/smtp/email'))
+        self.assertEqual(kwargs['headers'], {'api-key': 'xkeysib-test', 'accept': 'application/json'})
+        self.assertEqual(kwargs['timeout'], 15)
+        payload = kwargs['json']
+        self.assertEqual(payload['sender'], {'name': 'Inspector Crit', 'email': 'agentcritica@gmail.com'})
+        self.assertEqual(payload['to'], [{'email': 'cadet@example.com'}])
+        self.assertIn('verification code', payload['subject'])
+        self.assertIn('https://critica.example/auth/verify?token=tok', payload['htmlContent'])
+        self.assertIn('123456', payload['textContent'])
+        self.assertTrue(any('via brevo <abc@smtp-relay.mailin.fr>' in line for line in logs.output))
+        resend_send.assert_not_called()
+        self.assertEqual(len(mail.outbox), 0)   # SMTP not used
+
+    @mock.patch('resend.Emails.send')
+    @mock.patch(BREVO_REQUEST, return_value=brevo_response(201, {'messageId': '<def@smtp-relay.mailin.fr>'}))
+    def test_password_reset_goes_through_brevo(self, request, resend_send):
+        user = SimpleNamespace(id='abc123', email='cadet@example.com', first_name='Ada')
+        self.assertTrue(send_password_reset_email(user, 'reset-token'))
+        payload = request.call_args.kwargs['json']
+        self.assertEqual(payload['to'], [{'email': 'cadet@example.com'}])
+        self.assertIn('passphrase reset', payload['subject'])
+        self.assertIn('https://critica.example/auth/reset-password?token=reset-token', payload['htmlContent'])
+        resend_send.assert_not_called()
+        self.assertEqual(len(mail.outbox), 0)
+
+    def assert_send_error(self, status, body, *expected):
+        with mock.patch(BREVO_REQUEST, return_value=brevo_response(status, body)):
+            with self.assertLogs('api.email_verification', level='ERROR') as logs:
+                self.assertFalse(send_verification_email('cadet@example.com', '123456', 'Ada', 'tok'))
+        for text in expected:
+            self.assertIn(text, logs.output[0])
+
+    def test_unverified_sender_hint(self):
+        self.assert_send_error(400, {'code': 'invalid_parameter', 'message': 'Sender is not valid. Validate your sender.'},
+                               'Brevo API 400 invalid_parameter', 'EMAIL_FROM must be a verified Brevo sender')
+
+    def test_unknown_ip_hint(self):
+        self.assert_send_error(401, {'code': 'unauthorized', 'message': 'We have detected you are using an unrecognised IP address 74.220.48.1.'},
+                               'Brevo API 401 unauthorized', 'Authorised IPs')
+
+    def test_bad_key_hint(self):
+        self.assert_send_error(401, {'code': 'unauthorized', 'message': 'Key not found'},
+                               'Brevo API 401 unauthorized: Key not found', 'check BREVO_API_KEY')
+
+    def test_inactive_account_and_quota_hints(self):
+        self.assertIn('activated', describe_email_error(BrevoError(403, 'permission_denied', 'Unable to send email')))
+        self.assertIn('300 emails/day', describe_email_error(BrevoError(429, 'too_many_requests', 'Rate limit')))
+
+    def test_network_error_names_brevo(self):
+        with mock.patch(BREVO_REQUEST, side_effect=requests.ConnectionError('dns failure')):
+            with self.assertLogs('api.email_verification', level='ERROR') as logs:
+                self.assertFalse(send_verification_email('cadet@example.com', '123456', 'Ada', 'tok'))
+        self.assertIn('could not reach the Brevo API', logs.output[0])
+
+
+@override_settings(**BREVO)
+class BrevoStartupCheckTests(TestCase):
+    SENDERS = {'senders': [
+        {'id': 1, 'name': 'Inspector Crit', 'email': 'AgentCritica@gmail.com', 'active': True},
+        {'id': 2, 'name': 'Old', 'email': 'old@example.com', 'active': False},
+    ]}
+
+    @mock.patch(BREVO_REQUEST, return_value=brevo_response(200, SENDERS))
+    def test_active_sender_passes(self, request):
+        with self.assertLogs('api.email_transport', level='INFO') as logs:
+            self.assertTrue(verify_email_transport())
+        self.assertEqual(request.call_args.args, ('GET', 'https://api.brevo.com/v3/senders'))
+        self.assertIn('Email: Brevo check OK', logs.output[-1])
+
+    @mock.patch(BREVO_REQUEST, return_value=brevo_response(200, SENDERS))
+    def test_inactive_sender_fails(self, _):
+        with override_settings(DEFAULT_FROM_EMAIL='Old <old@example.com>'), \
+                self.assertLogs('api.email_transport', level='ERROR') as logs:
+            self.assertFalse(verify_brevo())
+        self.assertIn('Email: Brevo key OK, but EMAIL_FROM old@example.com is not an active sender', logs.output[0])
+
+    @mock.patch(BREVO_REQUEST, return_value=brevo_response(401, {'code': 'unauthorized', 'message': 'Key not found'}))
+    def test_bad_key_fails(self, _):
+        with self.assertLogs('api.email_transport', level='ERROR') as logs:
+            self.assertFalse(verify_brevo())
+        self.assertIn('Email: Brevo check FAILED, Brevo API 401 unauthorized', logs.output[0])
+        self.assertIn('check BREVO_API_KEY', logs.output[0])

@@ -165,7 +165,7 @@ def send_password_reset_email(user, token: str) -> bool:
             '=' * 64,
             f'[DEV EMAIL] Password reset for {user.email}',
             f'  Reset link : {url}',
-            '  (Set RESEND_API_KEY to send real email.)',
+            '  (Set BREVO_API_KEY to send real email.)',
             '=' * 64,
         ])
         logger.warning(banner)
