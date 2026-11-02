@@ -8,6 +8,10 @@ class TelemetryLogDocument(me.Document):
     module             = me.StringField(required=True)
     word_id            = me.StringField(default='')
     clue_word_id       = me.StringField(default='')
+    # "case" | "step" | "hint"; "" on rows logged before event types existed
+    event_type         = me.StringField(default='')
+    # UUID shared with the SQLite copy of the same event ("" on old rows)
+    event_id           = me.StringField(default='')
     is_correct         = me.BooleanField(default=False)
     hint_used          = me.BooleanField(default=False)
     hint_tier          = me.IntField(default=0)

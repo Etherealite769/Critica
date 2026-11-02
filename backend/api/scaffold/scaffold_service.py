@@ -1,6 +1,17 @@
+import logging
+import uuid
+from datetime import datetime, timezone
+
 from .models import TelemetryLog
 from .mongo_models import TelemetryLogDocument
-from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
+
+# Telemetry event types
+EVENT_CASE = 'case'   # one per exercise submit (evaluate route)
+EVENT_STEP = 'step'   # a single tap / tile / scan (log-attempt route)
+EVENT_HINT = 'hint'   # a hint / feedback request (feedback route)
+SCORED_EVENT_TYPES = (EVENT_CASE, EVENT_STEP)
 
 class ScaffoldEngineService:
 
@@ -10,15 +21,18 @@ class ScaffoldEngineService:
     @staticmethod
     def should_trigger(student_id, node_id,
                        inactivity_seconds=0):
+        # Hint requests are not wrong answers, so they never count toward the streak
         recent_records = []
         try:
             recent_records = list(
                 TelemetryLogDocument.objects(
                     student_id=str(student_id),
                     node_id=str(node_id),
-                ).order_by('-timestamp')[:3]
+                    event_type__ne=EVENT_HINT,
+                ).order_by('-timestamp', '-id')[:3]
             )
-        except Exception:
+        except Exception as e:
+            logger.warning("should_trigger: MongoDB telemetry read failed: %s", e)
             recent_records = []
 
         if not recent_records:
@@ -27,9 +41,11 @@ class ScaffoldEngineService:
                     TelemetryLog.objects.filter(
                         student_id=str(student_id),
                         node_id=str(node_id),
-                    ).order_by('-timestamp')[:3]
+                    ).exclude(event_type=EVENT_HINT)
+                    .order_by('-timestamp', '-id')[:3]
                 )
-            except Exception:
+            except Exception as e:
+                logger.warning("should_trigger: SQLite telemetry read failed: %s", e)
                 recent_records = []
 
         all_wrong = (
@@ -70,42 +86,81 @@ class ScaffoldEngineService:
         else:                           return 3
 
     @staticmethod
+    def _prior_consecutive_errors(student_id, node_id, event_type):
+        """Wrong rows of this event type for the student + node, newest first, up to the first correct one.
+
+        Timestamps have millisecond precision, so insertion order (-id) breaks ties.
+        """
+        def count(rows):
+            streak = 0
+            for row in rows:
+                if row.is_correct:
+                    break
+                streak += 1
+            return streak
+
+        try:
+            return count(TelemetryLogDocument.objects(
+                student_id=str(student_id),
+                node_id=str(node_id),
+                event_type=event_type,
+            ).order_by('-timestamp', '-id').only('is_correct'))
+        except Exception as e:
+            logger.warning("consecutive_errors: MongoDB read failed, using SQLite: %s", e)
+        try:
+            return count(TelemetryLog.objects.filter(
+                student_id=str(student_id),
+                node_id=str(node_id),
+                event_type=event_type,
+            ).order_by('-timestamp', '-id').only('is_correct').iterator())
+        except Exception as e:
+            logger.warning("consecutive_errors: SQLite read failed: %s", e)
+            return 0
+
+    @staticmethod
     def log_attempt(student_id, node_id, module,
-                    is_correct, hint_used=False,
+                    is_correct, event_type='',
+                    hint_used=False,
                     hint_tier=0,
                     inactivity_trigger=False,
                     word_id='', clue_word_id=''):
+        # One event: the same id and instant go to both stores
+        event_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+        now = now.replace(microsecond=now.microsecond // 1000 * 1000)   # Mongo keeps milliseconds
+        is_correct = bool(is_correct)
+
+        consecutive_errors = 0
+        if event_type in SCORED_EVENT_TYPES and not is_correct:
+            consecutive_errors = ScaffoldEngineService._prior_consecutive_errors(
+                student_id, node_id, event_type) + 1
+
+        fields = dict(
+            student_id=str(student_id),
+            node_id=str(node_id),
+            module=str(module),
+            event_type=str(event_type or ''),
+            event_id=event_id,
+            is_correct=is_correct,
+            hint_used=bool(hint_used),
+            hint_tier=int(hint_tier or 0),
+            consecutive_errors=consecutive_errors,
+            inactivity_trigger=bool(inactivity_trigger),
+            word_id=str(word_id or ''),
+            clue_word_id=str(clue_word_id or ''),
+            timestamp=now,
+        )
+
         # 1. Primary: Save to MongoDB Atlas collection for global sync
         try:
-            doc = TelemetryLogDocument(
-                student_id=str(student_id),
-                node_id=str(node_id),
-                module=str(module),
-                is_correct=bool(is_correct),
-                hint_used=bool(hint_used),
-                hint_tier=int(hint_tier or 0),
-                inactivity_trigger=bool(inactivity_trigger),
-                word_id=str(word_id or ''),
-                clue_word_id=str(clue_word_id or ''),
-                timestamp=now,
-            )
-            doc.save()
+            TelemetryLogDocument(**fields).save()
         except Exception as e:
-            print(f"[Warning] Failed to save telemetry to MongoDB: {e}")
+            logger.warning("Failed to save telemetry event %s to MongoDB: %s", event_id, e)
 
         # 2. Secondary / Local backup: Save to SQLite
         try:
-            TelemetryLog.objects.create(
-                student_id=str(student_id),
-                node_id=str(node_id),
-                module=str(module),
-                is_correct=bool(is_correct),
-                hint_used=bool(hint_used),
-                hint_tier=int(hint_tier or 0),
-                inactivity_trigger=bool(inactivity_trigger),
-                word_id=str(word_id or ''),
-                clue_word_id=str(clue_word_id or ''),
-            )
-        except Exception:
-            pass
+            TelemetryLog.objects.create(**fields)
+        except Exception as e:
+            logger.warning("Failed to save telemetry event %s to SQLite: %s", event_id, e)
+
+        return event_id

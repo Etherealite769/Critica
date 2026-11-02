@@ -352,9 +352,14 @@ class SessionService:
         elif module == 'snap_gap':
             board_state = submission_payload.get('board_state', {})
             correct_tile_map = ex.get('correct_tile_map', {})
+
+            def norm_tile(tile):
+                # Same rule as the frontend: case- and whitespace-insensitive
+                return str(tile or '').strip().lower()
+
             incorrect_pairs = [
                 pid for pid, tile in board_state.items()
-                if correct_tile_map.get(pid) != tile
+                if norm_tile(correct_tile_map.get(pid)) != norm_tile(tile)
             ]
             is_correct = (len(incorrect_pairs) == 0 and len(board_state) == len(correct_tile_map))
             res = {
