@@ -21,10 +21,9 @@ from html import escape
 from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
-from django.core.mail import send_mail
 from rest_framework.throttling import AnonRateThrottle
 
-from .email_transport import describe_smtp_error
+from .email_transport import describe_email_error, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +249,7 @@ def send_verification_email(to: str, code: str, cadet_name: str, link_token: str
             f'[DEV EMAIL] Verification for {to}',
             f'  Clearance code : {code}',
             f'  One-click link : {url}',
-            '  (Set EMAIL_SERVER_USER / EMAIL_SERVER_PASSWORD to send real email.)',
+            '  (Set RESEND_API_KEY to send real email.)',
             '=' * 64,
         ])
         logger.warning(banner)
@@ -260,11 +259,11 @@ def send_verification_email(to: str, code: str, cadet_name: str, link_token: str
     subject = 'CRITICA BUREAU CLEARANCE — your verification code'
     text, html = _render_verification_email(cadet_name, code, url, minutes)
     try:
-        send_mail(subject, text, settings.DEFAULT_FROM_EMAIL, [to], html_message=html)
-        logger.info('Verification email sent to %s', to)
+        message_id = send_email(subject, to, text, html)
+        logger.info('Verification email sent to %s via %s %s', to, settings.EMAIL_PROVIDER, message_id)
         return True
     except Exception as exc:
-        logger.error('Failed to send verification email to %s: %s', to, describe_smtp_error(exc), exc_info=True)
+        logger.error('Failed to send verification email to %s: %s', to, describe_email_error(exc), exc_info=True)
         return False
 
 
