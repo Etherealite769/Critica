@@ -21,6 +21,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework.throttling import AnonRateThrottle
 
 from .email_verification import _hash_code, _now
+from .email_transport import describe_smtp_error
 
 logger = logging.getLogger(__name__)
 
@@ -176,9 +177,11 @@ def send_password_reset_email(user, token: str) -> bool:
     try:
         send_mail('CRITICA BUREAU — passphrase reset', text, settings.DEFAULT_FROM_EMAIL,
                   [user.email], html_message=html)
+        logger.info('Password reset email sent to %s', user.email)
         return True
-    except Exception:
-        logger.exception('Failed to send password reset email to %s', user.email)
+    except Exception as exc:
+        logger.error('Failed to send password reset email to %s: %s', user.email, describe_smtp_error(exc),
+                     exc_info=True)
         return False
 
 

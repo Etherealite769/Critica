@@ -303,8 +303,28 @@ EMAIL_DELIVERY_CONFIGURED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
 DEFAULT_FROM_EMAIL = (os.getenv('EMAIL_FROM') or '').strip() or f'Inspector Crit <{EMAIL_HOST_USER}>'
 SERVER_EMAIL = EMAIL_HOST_USER
 
-# Public frontend URL, used for the one-click verification link in emails
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+# Public frontend URL, used for the verification and password-reset links in emails.
+# Must be set on the deployed backend (e.g. https://critica.vercel.app), otherwise the
+# links point at localhost. A bare host gets https:// so links are always absolute.
+FRONTEND_URL = (os.getenv('FRONTEND_URL') or 'http://localhost:3000').strip().rstrip('/')
+if '://' not in FRONTEND_URL:
+    FRONTEND_URL = f'https://{FRONTEND_URL}'
+
+# Console logging for the api package (email delivery results, SMTP startup check, telemetry
+# warnings). Without this, INFO lines are dropped and errors only reach Python's fallback handler.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'plain': {'format': '[{asctime}] {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'plain'},
+    },
+    'loggers': {
+        'api': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+    },
+}
 
 # JWT Configuration
 from datetime import timedelta
