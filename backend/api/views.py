@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -109,6 +109,7 @@ def _find_user_by_email(email):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 def register(request):
     """
     User registration endpoint
@@ -194,6 +195,7 @@ def register(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 def login(request):
     """
     User login endpoint
@@ -247,6 +249,7 @@ def login(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 @throttle_classes([CheckEmailThrottle])
 def check_email(request):
     """
@@ -318,6 +321,7 @@ def verify_email(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 @throttle_classes([ResendVerificationThrottle])
 def resend_verification(request):
     """
@@ -353,6 +357,7 @@ FORGOT_PASSWORD_GENERIC = 'If that cadet email is registered, a passphrase reset
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 @throttle_classes([ForgotPasswordThrottle])
 def forgot_password(request):
     """
@@ -396,6 +401,7 @@ def forgot_password(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])   # sign-in flow: a stale token in the browser must not block it
 @throttle_classes([ResetPasswordThrottle])
 def reset_password(request):
     """

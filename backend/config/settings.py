@@ -102,20 +102,14 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',
 ]
 
-# CSRF Trusted Origins for Django 4+ (required for cross-origin POST/PUT/PATCH/DELETE)
-_default_csrf_origins = [
-    'https://*.vercel.app',
-    'https://critica-sigma.vercel.app',
-    'https://critica-git-deployment-cubiangd93-1476s-projects.vercel.app',
-    'https://critica-jch90jzha-cubiangd93-1476s-projects.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-]
-# CSRF origins may use a leading wildcard (https://*.vercel.app), so only trailing slashes are trimmed
+# CSRF Trusted Origins for Django 4+ (required for cross-origin POST/PUT/PATCH/DELETE).
+# Every CORS-allowed origin (localhost:3000, 127.0.0.1:3000, the Vercel URLs, FRONTEND_URL and
+# CORS_ALLOWED_ORIGINS from the env) is trusted, plus any Vercel preview and CSRF_TRUSTED_ORIGINS.
+# CSRF origins may use a leading wildcard (https://*.vercel.app), so only trailing slashes are trimmed.
 CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
-    _default_csrf_origins
+    CORS_ALLOWED_ORIGINS
+    + ['https://*.vercel.app']
     + [o.strip().rstrip('/') for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
-    + ([_frontend_origin] if _frontend_origin else [])
 ))
 
 
@@ -266,6 +260,10 @@ if not DEBUG:
     if SECRET_KEY.startswith('django-insecure-'):
         import warnings
         warnings.warn('SECRET_KEY is the insecure development default — set SECRET_KEY on the host!')
+else:
+    # Local development runs over plain http://localhost, where browsers drop Secure cookies
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # Default Auto Field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
