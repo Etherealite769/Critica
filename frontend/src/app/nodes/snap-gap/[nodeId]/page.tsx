@@ -18,10 +18,11 @@ import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/so
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import LessonManual from '@/components/logic-thread/LessonManual'
 import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
-  ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, Puzzle, RotateCcw,
+  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, Puzzle, RotateCcw,
 } from 'lucide-react'
 import { Montserrat } from 'next/font/google'
 import desk from '@/components/dashboard/desk.module.css'
@@ -332,6 +333,10 @@ export default function SnapInGapPage() {
   // feedback state
   const [hintTier,      setHintTier]      = useState(0)
   const [tutorialOpen,  setTutorialOpen]  = useState(false)
+  // Lesson Manual: the node's own lesson, opened from the header next to TUTORIAL
+  const [manualOpen, setManualOpen] = useState(false)
+  const [lessonTitle, setLessonTitle] = useState('')   // node title; AI sessions show each case's topic instead
+  const closeManual = useCallback(() => setManualOpen(false), [])
 
   // hint state: hints are spoken by Inspector Crit's lower-left bubble
   const [hintOverlay,     setHintOverlay]     = useState(false)   // a hint was used on this case
@@ -437,6 +442,7 @@ export default function SnapInGapPage() {
       )
       const activeEx = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
 
+      setLessonTitle(sessionData.title)
       setSnapNode({
         node_id: sessionData.node_id,
         title: activeEx?.topic_title || sessionData.title,
@@ -1165,6 +1171,9 @@ export default function SnapInGapPage() {
               <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`} onClick={openTutorial}>
                 <HelpCircle size={14} aria-hidden /> Tutorial
               </button>
+              <button type="button" className={styles.caseBtn} onClick={() => setManualOpen(true)}>
+                <BookOpen size={14} aria-hidden /> Lesson Manual
+              </button>
             </div>
           </header>
 
@@ -1318,6 +1327,17 @@ export default function SnapInGapPage() {
         open={confirmReset}
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => { setConfirmReset(false); handleRetryDocket() }}
+      />
+
+      <LessonManual
+        open={manualOpen}
+        onClose={closeManual}
+        lesson={snapNode ? {
+          nodeId: snapNode.node_id,
+          title: lessonTitle || snapNode.title,
+          focus: snapNode.focus,
+          text: snapNode.micro_lesson_text,
+        } : null}
       />
 
       <CaseDebriefModal
