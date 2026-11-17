@@ -301,3 +301,106 @@ class GeminiAIIntegrationTests(TestCase):
         # Flawed sentences should not all be s3
         self.assertFalse(all(fid == 's3' for fid in flawed_ids), "Flawed sentence should not always be s3")
 
+
+class Grade11ContentTests(TestCase):
+    """Grade 11 tier calibration across the Gemini prompts, validators, fallback bank and session flow."""
+
+    MODULES = ['logic_thread', 'snap_gap', 'tap_clues', 'fact_scanner']
+    NODES = {
+        'logic_thread': ['log_node_01', 'log_node_05', 'log_node_09'],
+        'snap_gap': ['snp_node_04', 'snp_node_08', 'snp_node_12'],
+        'tap_clues': ['tap_node_07', 'tap_node_02', 'tap_node_06'],
+        'fact_scanner': ['fac_node_01', 'fac_node_05', 'fac_node_09'],
+    }
+
+    def test_prompts_carry_grade11_standard_and_tier_rules(self):
+        from .prompt_builder import MODULE_TIER_RULES
+        self.assertIn('Grade 11', build_system_instruction())
+        for mod in self.MODULES:
+            for diff, label in [(1, 'BASICS'), (2, 'INTERMEDIATE'), (3, 'ADVANCED')]:
+                prompt = build_generation_prompt(mod, {'node_id': self.NODES[mod][diff - 1], 'difficulty': diff})
+                self.assertIn('Grade 11', prompt)
+                self.assertIn(f'TIER CALIBRATION - {label}', prompt)
+                self.assertIn(MODULE_TIER_RULES[mod][diff], prompt)
+        # An unknown tier falls back to Basics instead of failing
+        self.assertIn('TIER CALIBRATION - BASICS', build_generation_prompt('tap_clues', {'difficulty': 9}))
+
+    def test_tap_clues_validator_recomputes_position_index(self):
+        ex = {
+            "reading_passage": "The skeleton was remarkably pristine, after millions of years in “dry”—arid sand.",
+            "locked_words": [{"word_id": "w1", "word": "pristine", "position_index": 2, "correct_clue_ids": ["millions"]}],
+        }
+        ok, msg = validate_tap_clues_exercise(ex)
+        self.assertTrue(ok, msg)
+        self.assertEqual(ex['locked_words'][0]['position_index'], 4)   # tokens: The skeleton was remarkably pristine,
+        ex['locked_words'][0]['word'] = 'pristin'
+        self.assertFalse(validate_tap_clues_exercise(ex)[0])
+
+    def test_fallback_bank_schema_and_tier_coverage(self):
+        from .fallback_pool import FALLBACK_BANK
+        from .validators import validate_module_exercise
+        import copy
+        for mod in self.MODULES:
+            cases = FALLBACK_BANK[mod]
+            for diff in (1, 2, 3):
+                self.assertGreaterEqual(sum(c['difficulty'] == diff for c in cases), 5, f'{mod} tier {diff}')
+            for c in cases:
+                ok, msg = validate_module_exercise(mod, copy.deepcopy(c))
+                self.assertTrue(ok, f"{c['exercise_id']}: {msg}")
+                self.assertTrue(c['topic_title'] and c['family'])
+                self.assertEqual(sorted(h['tier'] for h in c['scaffold_hints']), [1, 2, 3])
+                if mod == 'logic_thread':
+                    self.assertEqual(len(c['paragraph_blocks']), {1: 3, 2: 4, 3: 5}[c['difficulty']])
+                elif mod == 'snap_gap':
+                    self.assertEqual(len(c['sentence_pairs']), 1 if c['difficulty'] == 1 else 2)
+                    for pid, tile in c['correct_tile_map'].items():
+                        for t in c['transition_tile_dock']:
+                            if t != tile:
+                                self.assertIn(f'{pid}__{t}', c['tile_error_explanations'])
+                elif mod == 'tap_clues':
+                    w = c['locked_words'][0]
+                    self.assertEqual(w['target_clues_count'], len(w['correct_clue_ids']))
+                    self.assertNotRegex(c['reading_passage'], rf"(?i)\b{w['word']},? (or|meaning)\b")
+                else:
+                    self.assertEqual([s['sentence_id'] for s in c['article_sentences']], ['s1', 's2', 's3', 's4'])
+                    self.assertIn(c['craap_criterion'], {'CURRENCY', 'RELEVANCE', 'AUTHORITY', 'ACCURACY', 'PURPOSE'})
+
+    def test_fallback_batch_stays_in_tier_and_prefers_node_family(self):
+        from .fallback_pool import node_family
+        for mod in self.MODULES:
+            for diff in (1, 2, 3):
+                node = self.NODES[mod][diff - 1]
+                family = node_family(mod, node, 'AUTHORITY' if mod == 'fact_scanner' else None)
+                batch = get_fallback_batch(mod, diff, count=5, family=family)
+                self.assertEqual(len(batch), 5)
+                self.assertEqual({ex['difficulty'] for ex in batch}, {diff})
+                self.assertEqual(len({ex['exercise_id'] for ex in batch}), 5)
+                self.assertEqual(batch[0]['family'], family)
+                if mod == 'logic_thread':
+                    for ex in batch:
+                        self.assertNotEqual([b['block_id'] for b in ex['paragraph_blocks']], ex['correct_sequence'])
+
+    def test_fallback_batch_puts_unseen_cases_first(self):
+        first = get_fallback_batch('tap_clues', 2, count=3)
+        seen = {calculate_question_hash('tap_clues', ex) for ex in first}
+        second = get_fallback_batch('tap_clues', 2, count=3, exclude_hashes=seen)
+        self.assertFalse(seen & {calculate_question_hash('tap_clues', ex) for ex in second})
+        # Logic Thread cases hash the same however their cards were shuffled
+        a = get_fallback_batch('logic_thread', 3, count=6)
+        b = get_fallback_batch('logic_thread', 3, count=6)
+        self.assertEqual({calculate_question_hash('logic_thread', ex) for ex in a},
+                         {calculate_question_hash('logic_thread', ex) for ex in b})
+
+    def test_offline_sessions_serve_tiered_grade11_cases(self):
+        from .fallback_pool import FALLBACK_BANK
+        bank_ids = {c['exercise_id'] for cases in FALLBACK_BANK.values() for c in cases}
+        for mod in self.MODULES:
+            for diff, node in enumerate(self.NODES[mod], 1):
+                session = SessionService.start_or_get_session(
+                    student_id=f'grade11_{mod}', module=mod, node_id=node, force_fresh=True)
+                self.assertEqual(session['total_exercises'], 5)
+                self.assertTrue(session['is_fallback'])
+                self.assertEqual(session['difficulty'], diff)
+                for ex in session['exercises']:
+                    self.assertIn(ex['exercise_id'], bank_ids)
+                    self.assertEqual(ex['difficulty'], diff)

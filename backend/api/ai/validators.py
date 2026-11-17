@@ -21,7 +21,8 @@ def calculate_question_hash(module: str, exercise: Dict[str, Any]) -> str:
 
     if module == 'logic_thread':
         blocks = exercise.get('paragraph_blocks', [])
-        content = norm_passage + "_" + "".join(normalize_text(b.get('text', '')) for b in blocks)
+        # Sorted: cards are shuffled for display, and the same case must hash the same however it was dealt
+        content = norm_passage + "_" + "".join(sorted(normalize_text(b.get('text', '')) for b in blocks))
     elif module == 'snap_gap':
         pairs = exercise.get('sentence_pairs', [])
         content = norm_passage + "_" + "".join(
@@ -157,6 +158,32 @@ def validate_snap_gap_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
     return True, ""
 
 
+_TOKEN_SEP_RE = re.compile(r'(\s+|[—–])')
+_EDGE_PUNCT_RE = re.compile(r'^[^A-Za-z0-9]*(.*?)[^A-Za-z0-9]*$')
+
+
+def passage_word_cores(passage: str) -> List[str]:
+    """
+    Splits a passage exactly as the Tap Clues screen does: on whitespace and em/en dashes, then strips
+    leading/trailing punctuation from each chunk. Index i of the result is the frontend's token index.
+    """
+    cores = []
+    for chunk in _TOKEN_SEP_RE.split(passage or ''):
+        if not chunk or _TOKEN_SEP_RE.fullmatch(chunk):
+            continue
+        cores.append(_EDGE_PUNCT_RE.match(chunk).group(1))
+    return cores
+
+
+def locate_word_index(passage: str, word: str) -> Optional[int]:
+    """0-based token index of the first exact (case-insensitive, punctuation-stripped) match, or None."""
+    target = (word or '').strip().lower()
+    for i, core in enumerate(passage_word_cores(passage)):
+        if core.lower() == target:
+            return i
+    return None
+
+
 def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
     passage = ex.get('reading_passage', '')
     norm_passage = normalize_text(passage)
@@ -174,6 +201,12 @@ def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
         if not re.search(r'\b' + re.escape(target_word) + r'\b', norm_passage):
             return False, f"Locked word '{w.get('word')}' not found as standalone token in reading passage."
 
+        # The model's position_index is unreliable: recompute it from the passage the way the screen tokenizes it
+        idx = locate_word_index(passage, w.get('word', ''))
+        if idx is None:
+            return False, f"Locked word '{w.get('word')}' does not match any passage token exactly."
+        w['position_index'] = idx
+
         clue_ids = w.get('correct_clue_ids', [])
         if not clue_ids:
             return False, f"No clue words defined for locked word '{w.get('word')}'."
@@ -182,7 +215,7 @@ def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
             norm_clue = normalize_text(clue)
             if not norm_clue:
                 continue
-            if norm_clue == target_word:
+            if norm_clue == target_word or target_word in norm_clue.split():
                 return False, f"Clue '{clue}' cannot be identical to target word '{w.get('word')}'."
             if not re.search(r'\b' + re.escape(norm_clue) + r'\b', norm_passage):
                 return False, f"Clue word '{clue}' for '{w.get('word')}' is not present as standalone token in passage."

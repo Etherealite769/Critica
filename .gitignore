@@ -17,6 +17,8 @@ staticfiles/
 backend/staticfiles/
 # micro-lesson backups written by backend/scripts/update_micro_lessons.py
 backend/scripts/micro_lessons_backup_*.json
+# exercise backups written by backend/scripts/update_node_exercises.py
+backend/scripts/exercises_backup_*.json
 
 
 # Node / Next.js

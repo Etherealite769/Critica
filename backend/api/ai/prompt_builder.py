@@ -37,11 +37,80 @@ EDUCATIONAL_DOMAINS = [
     "Acoustics and Architectural Sound Design",
 ]
 
+# Every tier is pitched at Grade 11 Senior High School (Philippine DepEd SHS Reading and Writing / EAPP).
+# The tiers scale WITHIN that grade: Basics is Grade 11 entry level, never elementary.
+GRADE_11_STANDARD = (
+    "Grade 11 Senior High School critical reading (Philippine DepEd SHS Reading and Writing Skills / "
+    "English for Academic and Professional Purposes). Prose is authentic expository, scientific, historical "
+    "or journalistic writing of the kind found in SHS textbooks, science features and quality newspapers. "
+    "Never write for elementary or junior high readers: no cartoon scenarios, no household chores or recipes, "
+    "no one-clause 'The cat sat' sentences."
+)
+
 DIFFICULTY_DESCRIPTORS = {
-    1: "Basics / Foundation (Lexile 700-900L / CEFR B1): Clear and direct sentence structures, obvious transitions/clues, high clarity, and concise passages with exactly 3 paragraph blocks to connect in sequence (50-80 words per exercise).",
-    2: "Intermediate (Lexile 950-1150L / CEFR B2): Moderate syntactic complexity, multi-step logical linkages, subtle distractors, and standard academic prose with exactly 4 paragraph blocks to connect in sequence (80-120 words per exercise).",
-    3: "Advanced (Lexile 1200-1400L+ / CEFR C1): Nuanced academic prose, complex multi-clause sentences, fine distinctions between closely related concepts, and deep comprehension demands with exactly 5 paragraph blocks to connect in sequence (120-170 words per exercise)."
+    1: "Basics / Grade 11 entry level (Lexile 1000-1150L / CEFR B2): accessible but authentic SHS informational prose, "
+       "2-3 sentences per passage or card set, explicit structural signals the node's lesson teaches, and plausible distractors "
+       "that can only be ruled out by reading the whole passage, never by spotting one buzzword.",
+    2: "Intermediate / Grade 11 standard (Lexile 1150-1300L / CEFR B2+-C1): denser academic, scientific or journalistic prose "
+       "(3-4 sentences), fewer surface keywords, and near-miss distractors that differ from the answer in one precise logical "
+       "or semantic respect.",
+    3: "Advanced / Grade 11 honors, college-prep (Lexile 1300-1450L / CEFR C1): complex multi-clause academic argument with "
+       "implicit cohesion (reference words, ellipsis, parallel structure), Tier-2/Tier-3 academic vocabulary, minimal "
+       "starter-word crutches, and answers that require fine discrimination between closely related options.",
 }
+
+# Tier calibration per module: what Basics, Intermediate and Advanced must look like in this module.
+MODULE_TIER_RULES = {
+    'logic_thread': {
+        1: "Cards carry explicit time-order, definition, comparison or causal markers (e.g. 'By the 1890s', 'This process', "
+           "'In contrast', 'As a result'), but at least one card must be placed by its content, not by a marker. "
+           "No recipes, chores or 'First... Then... Finally' lists.",
+        2: "Only some cards open with a transition. The rest are placed through pronoun and noun antecedents "
+           "('this shift', 'such deposits', 'the latter') and the conceptual flow from claim to support. Include one "
+           "card that looks like an opener (a general statement) but actually depends on an earlier card.",
+        3: "At most one card may open with an explicit transition word. Order is fixed by implicit referential cohesion "
+           "(demonstratives, synonyms that rename an earlier noun, a term defined before it is used), by given-new "
+           "information flow, and by the argument's logic (claim -> mechanism -> qualification -> implication).",
+    },
+    'snap_gap': {
+        1: "One clearly defined logical relation between Exhibit A and Exhibit B. Distractors come from other "
+           "relation families (e.g. contrast vs. addition vs. cause) and are each wrong for a reason the "
+           "student can state.",
+        2: "Include at least one NEAR-MISS distractor from the same broad family as the answer, e.g. concession "
+           "('Nonetheless') vs. direct contrast ('In contrast'), result ('Consequently') vs. inference ('Thus'), "
+           "addition ('Moreover') vs. exemplification ('For instance'). The sentence content must decide between them.",
+        3: "Both pairs need fine discrimination: the dock holds two or more near-misses per pair, and Exhibit A/B "
+           "are multi-clause academic sentences whose relation (e.g. concession, corrective contrast, consequence "
+           "vs. summary) is implicit in their content rather than signalled by obvious opposite words.",
+    },
+    'tap_clues': {
+        1: "Tier-2 academic word (e.g. 'meticulous', 'arid', 'ambiguous'). The clue is explicit and of the node's "
+           "type (synonym, definition, antonym or example) but NOT a lazy appositive handout like 'X, or Y,' or "
+           "'X, meaning Y': the clue sits in a separate clause or sentence and has to be connected to the word.",
+        2: "Tier-2/Tier-3 word in denser prose. The meaning must be synthesised from 2 clues spread across "
+           "clauses or sentences; at least one plausible non-clue word (a topic word near the target) must be present "
+           "as a trap.",
+        3: "Tier-3 or less frequent Tier-2 word (e.g. 'recalcitrant', 'equivocal', 'ephemeral'). Clues are layered "
+           "and partly implicit: an example plus a contrast, or a consequence the reader must interpret. No clue "
+           "word may be a direct dictionary synonym placed beside the target.",
+    },
+    'fact_scanner': {
+        1: "One clearly verifiable violation of the criterion, written realistically (e.g. CURRENCY: a figure from a "
+           "study published before a widely reported revision; AUTHORITY: a claim attributed to an unnamed viral post). "
+           "No cartoonish errors like '1952 textbooks' for smartphones or insults.",
+        2: "The flaw is subtle: a credentialed source speaking outside their field, an advocacy group's own study, "
+           "a relevant-sounding but off-scope statistic, or a correlation quietly presented as cause. The sound "
+           "statements must be equally specific so the flaw does not stand out by tone.",
+        3: "The flaw is methodological or statistical and requires inference: cherry-picked time windows, "
+           "relative-risk figures without base rates, survivorship or self-selection in a sample, data superseded by "
+           "a later revision, or disguised commercial sponsorship. Sound statements cite plausible, verifiable sources.",
+    },
+}
+
+
+def _tier_rules(module: str, difficulty: int) -> str:
+    rule = MODULE_TIER_RULES.get(module, {}).get(difficulty, '')
+    return f"\n[TIER CALIBRATION - {['', 'BASICS', 'INTERMEDIATE', 'ADVANCED'][difficulty]}]:\n- {rule}\n" if rule else ''
 
 
 def build_system_instruction() -> str:
@@ -55,7 +124,9 @@ def build_system_instruction() -> str:
         "3. PLAUSIBLE DISTRACTORS: Incorrect options and distractors must be grammatically plausible but clearly flawed based on the lesson principles.\n"
         "4. FRESHNESS & ABSOLUTE NOVELTY: Every exercise MUST explore a novel, fascinating scenario. Vary themes, subject matters, and sentence templates. NEVER repeat scenarios or passage text.\n"
         "5. COMPREHENSIVE EXPLANATIONS: Provide educational, encouraging explanations for all common distractor errors and 3-tiered scaffold hints.\n"
-        "6. OUTPUT FORMAT: Output valid, structured JSON adhering strictly to the requested schema."
+        "6. OUTPUT FORMAT: Output valid, structured JSON adhering strictly to the requested schema.\n"
+        f"7. READING LEVEL: Every exercise targets {GRADE_11_STANDARD} Scale difficulty only within that grade, "
+        "exactly as the node's tier calibration describes."
     )
 
 
@@ -86,7 +157,9 @@ def build_generation_prompt(
     focus = node_info.get('focus', 'Mastery of target reading skill')
     micro_lesson = node_info.get('micro_lesson_text', '')
     difficulty = node_info.get('difficulty', 1)
-    diff_desc = DIFFICULTY_DESCRIPTORS.get(difficulty, DIFFICULTY_DESCRIPTORS[1])
+    if difficulty not in DIFFICULTY_DESCRIPTORS:
+        difficulty = 1
+    diff_desc = DIFFICULTY_DESCRIPTORS[difficulty]
 
     selected_domains = select_novel_domains(previous_topics, count)
 
@@ -109,7 +182,8 @@ def build_generation_prompt(
 - Title: {title}
 - Focus: {focus}
 - Difficulty Level: Tier {difficulty} ({diff_desc})
-
+- Reading Standard: {GRADE_11_STANDARD}
+{_tier_rules(module, difficulty)}
 [MICRO-LESSON THEORY & PEDAGOGICAL SCOPE]:
 \"\"\"{micro_lesson}\"\"\"
 
@@ -178,9 +252,10 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
 5. `structural_explanations`: Explanations for why invalid pairings fail (e.g., 'p2__p1': 'Chronological dependency requires p1 first').
 6. `scaffold_hints`: Exactly 3 Socratic hints, each 1-2 sentences and at most 35 words, written as Inspector Crit coaching a cadet:
    - tier 1: a guiding question about what kind of signal to look for (e.g. which event could only happen first?).
-   - tier 2: point to ONE transition signal word that appears in the cards (quote it, e.g. "first", "meanwhile", "finally") and what it implies about position.
+   - tier 2: point to ONE signal that appears in the cards (quote it): a transition word (e.g. "meanwhile", "as a result") or, when the cards rely on implicit cohesion, a reference word or phrase (e.g. "this shift", "such deposits", "the latter") and what it implies about position.
    - tier 3: identify which card opens OR which card closes the chain by quoting its first few words. Never state the full order or any block ids.
 7. SYNTACTIC VARIETY: Forbid repeating opening phrases, cloned sentence structures, or identical transition markers across exercises in this batch.
+8. UNAMBIGUOUS ORDER: Exactly one order must be defensible. Before finalising, check that no two cards could swap places without breaking a reference, a time marker, or the claim-to-support flow.
 """
 
     elif module == 'snap_gap':
@@ -193,8 +268,14 @@ Assigned target domains for this session: {', '.join(selected_domains)}.
             dock_guidance = "Focus on contrast/concession markers (e.g., 'However', 'Conversely', 'In contrast', 'Nonetheless', 'On the other hand'). Distractors should be drawn from addition ('Furthermore') and cause-and-effect ('Therefore')."
         elif "snp_node_07" in n_id or "snp_node_08" in n_id or "snp_node_09" in n_id or "cause" in focus.lower():
             dock_guidance = "Focus on cause-and-effect markers (e.g., 'Therefore', 'Consequently', 'As a result', 'Thus', 'Accordingly'). Distractors should be drawn from contrast ('However') and addition ('Moreover')."
+        elif "snp_node_10" in n_id or "snp_node_11" in n_id or "snp_node_12" in n_id or "conclusion" in focus.lower():
+            dock_guidance = "Focus on conclusion and summary markers (e.g., 'In conclusion', 'Overall', 'In short', 'Ultimately', 'On balance'). Sentence B must genuinely sum up or close the reasoning in sentence A. Distractors should be drawn from addition ('Moreover'), contrast ('However') and exemplification ('For instance')."
         else:
             dock_guidance = "Candidate tiles should include the target transition plus grammatically plausible but logically opposing distractors."
+        if difficulty >= 2:
+            dock_guidance += (" At this tier the dock MUST also contain near-miss tiles from the answer's own family "
+                              "(e.g. 'Nonetheless' vs. 'In contrast', 'Consequently' vs. 'Thus', 'In short' vs. "
+                              "'Ultimately'); the content of the two sentences must rule each one out.")
 
         prompt += f"""
 [SNAP-IN GAP SPECIFIC REQUIREMENTS]:
@@ -210,8 +291,9 @@ For each of the {count} exercises:
 4. `transition_tile_dock`: A list of 4-5 transition words containing the correct transition(s) plus plausible distractors. Ensure all words are correctly spelled (e.g. 'Conversely', NEVER 'Conversly').
    - DOCK SHUFFLE RULE: Scramble and randomly distribute the tiles in this list. NEVER put the correct tile for pair 1 in the first slot or pair 2 in the second slot. The order of correct answers in the dock must vary unpredictably across every exercise.
 5. `correct_tile_map`: Dict mapping each pair_id to its correct transition tile from the dock (e.g. {{'pair_1': 'Furthermore'}}).
-6. `tile_error_explanations`: Dict providing a clear, 1-sentence explanation for why each distractor is incorrect for the pair (e.g. 'pair_1__However': 'However indicates contrast, but sentence B adds another supporting point.'). Every distractor for every pair MUST have an entry.
+6. `tile_error_explanations`: Dict providing a clear, 1-sentence explanation for why each distractor is incorrect for the pair (e.g. 'pair_1__However': 'However indicates contrast, but sentence B adds another supporting point.'). Every distractor for every pair MUST have an entry. For a near-miss tile, name the precise difference (e.g. 'Nonetheless concedes a point against the claim, but sentence B simply describes the opposite case').
 7. `scaffold_hints`: Exactly 3 hints (tier 1: logical relation cue, tier 2: signal word guidance, tier 3: explicit answer reveal).
+8. EXACTLY ONE FIT: For each pair, only one tile in the dock may produce a logically correct passage. If two tiles could both work, rewrite the sentences or replace the distractor.
 """
 
     elif module == 'tap_clues':
@@ -219,15 +301,17 @@ For each of the {count} exercises:
 [TAP THE CLUES SPECIFIC REQUIREMENTS]:
 For each of the {count} exercises:
 1. `topic_title`: A distinct, descriptive title.
-2. `reading_passage`: A rich, 2-3 sentence passage containing 1 target academic vocabulary word and clear contextual clue words.
+2. `reading_passage`: A {'2-3' if difficulty == 1 else ('3-4' if difficulty == 2 else '3-5')} sentence Grade 11 passage containing 1 target academic vocabulary word and the context clues the node's focus teaches.
    - CLUE POSITION VARIETY RULE: Vary the distance and position of context clues relative to the locked word. Some clues should appear before the target word, some after, and some in an adjacent sentence.
+   - NO HANDOUTS: Never write 'word, or synonym,' / 'word, meaning synonym' / 'word (synonym)' appositives. The clue must be connected to the word through the sentence's logic.
 3. `locked_words`: A list containing 1 locked word object.
-   - `word`: The target word found verbatim in the passage.
-   - `correct_clue_ids`: 1-2 exact clue words or phrases present in the reading passage that reveal the word's meaning.
+   - `word`: The target word, copied verbatim (same spelling and inflection) from the passage, as ONE word with no punctuation. It must appear EXACTLY ONCE in the passage.
+   - `position_index`: 0-based index of the target in the passage split on whitespace (punctuation stays attached to its word). It is recomputed by the server, but be accurate.
+   - `correct_clue_ids`: {'1-2' if difficulty == 1 else '2-3'} single content words copied verbatim from the passage (no articles, pronouns or other function words; no word that contains or is contained in the target). Each must genuinely reveal the meaning.
    - `definition`: A concise, academic definition.
    - `contextual_usage`: How the word functions in this passage.
    - `translation`: Direct synonym.
-4. `clue_error_explanations`: Feedback explaining why non-clue words do not help define the locked word.
+4. `clue_error_explanations`: Feedback keyed 'w1__<word>' explaining why tempting non-clue words (especially the topic words next to the target) do not define the locked word.
 5. `scaffold_hints`: Exactly 3 hints (tier 1, 2, 3).
 """
 
@@ -239,10 +323,10 @@ For each of the {count} exercises:
 For each of the {count} exercises:
 1. `topic_title`: A distinct, descriptive title.
 2. `craap_criterion`: '{craap}'
-3. `reading_passage`: A 4-5 sentence short article.
-4. `article_sentences`: Exactly 4-5 sentence objects ('s1', 's2', 's3', 's4').
-   - Exactly 1 or 2 sentences must have `is_flawed: true` (a clear violation of the {craap} criterion, e.g. using a 1980s source for modern tech if Currency, or anonymous blogs for medical advice if Authority).
-   - The remaining sentences must have `is_flawed: false`.
+3. `reading_passage`: A 4-sentence short article written as realistic Grade 11 journalistic or research-summary prose.
+4. `article_sentences`: Exactly 4 sentence objects ('s1', 's2', 's3', 's4'), the four witness statements.
+   - {'Exactly 1 sentence' if difficulty < 3 else 'Exactly 1 or 2 sentences'} must have `is_flawed: true`: a {'clearly verifiable' if difficulty == 1 else 'subtle'} violation of the {craap} criterion as the tier calibration describes.
+   - The remaining sentences must have `is_flawed: false` and be just as specific and realistic (named institutions, years, figures), so the flaw cannot be spotted by tone alone.
    - `flaw_reason`: Clear explanation of the violation if flawed, empty string if sound.
    - POSITION VARIETY RULE: Across the {count} exercises in this batch, dynamically vary WHICH sentence ID is flawed (e.g., Ex 1 has 's2' flawed, Ex 2 has 's4' flawed, Ex 3 has 's1' flawed, Ex 4 has 's3' flawed, Ex 5 has 's2' flawed). NEVER place the flaw in 's3' repeatedly.
 5. `sentence_explanations`: Dict explaining why each sentence is sound or flawed.
