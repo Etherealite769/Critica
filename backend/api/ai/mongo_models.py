@@ -38,6 +38,7 @@ class GeneratedSessionDocument(me.Document):
     difficulty    = me.IntField(default=1)
     exercises     = me.ListField(me.DictField(), default=list)
     current_index = me.IntField(default=0)
+    hints_used    = me.IntField(default=0)
     is_completed  = me.BooleanField(default=False)
     is_fallback   = me.BooleanField(default=False)
     model_used    = me.StringField(default='')

@@ -750,17 +750,20 @@ export default function TapCluesPage() {
           try {
             const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
             const cleared = unsolved === 0
+            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
             let finalRes: MasteryResponse = {}
             if (cleared) {
               playVictorySound()
-              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+                method: 'POST',
+                body: JSON.stringify({ hints_used: totalHints }),
+              })
             }
             if (sessionStartId) clearSession('tap_clues', sessionStartId)
             writeSkipped(sessionStartId, [])
             const totalCases = sessionExercises.length || sessionQueue.length || 5
             const correctCases = updatedCases.filter(r => r.correct).length
             const firstTryCases = updatedCases.filter(r => r.firstTry).length
-            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
             const totalTries = updatedCases.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
             const accuracy = totalTries > 0 ? Math.round((correctCases / totalTries) * 100) : 100
             const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))
@@ -846,17 +849,17 @@ export default function TapCluesPage() {
           const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
           const cleared = unsolved === 0
           if (cleared) playVictorySound()
+          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
           let finalRes: MasteryResponse = res
           if (sessionStartId && cleared) {
             finalRes = await apiFetch(`/nodes/tap-clues/${sessionStartId}/mastery/`,
-              { method: 'POST', body: JSON.stringify({ commit_only: true }) })
+              { method: 'POST', body: JSON.stringify({ commit_only: true, hints_used: totalHints }) })
           }
           if (sessionStartId) clearSession('tap_clues', sessionStartId)
           writeSkipped(sessionStartId, [])
           const totalCases = sessionQueue.length || 5
           const correctCases = updatedCases.filter(r => r.correct).length
           const firstTryCases = updatedCases.filter(r => r.firstTry).length
-          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
           const totalTries = updatedCases.reduce((acc, r) => acc + (r.attempts || (r.correct ? 1 : 0)), 0)
             const accuracy = totalTries > 0 ? Math.round((correctCases / totalTries) * 100) : 100
           const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartedAt) / 1000))

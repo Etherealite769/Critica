@@ -251,7 +251,11 @@ class ProgressionManagementService:
         profile = ProgressionManagementService\
             .get_or_create_profile(
                 student_id, username)
-        is_first_completion = node_id not in profile.completed_nodes
+        # Re-mastering a previously completed node awards replay XP (25 XP) per TC-PROG-004
+        mastered = getattr(profile, 'mastered_nodes', None)
+        if mastered is None:
+            mastered = list(profile.completed_nodes)
+        is_first_completion = node_id not in mastered
         profile.complete_node(node_id)
         streak_result = profile.increment_streak()
 

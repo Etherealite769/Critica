@@ -433,13 +433,17 @@ export default function FactScannerPage() {
   const finishDocket = async (updated: CaseResult[], finishedAt: number, missed: MissedCase[]) => {
     const unsolved = unsolvedCases(updated)   // read before the saved misses are cleared
     const cleared = unsolved === 0
+    const totalHints = updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
     let finalRes: MasteryResponse = {}
     if (cleared) {
       playVictorySound()
       try {
-        if (aiCase) finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+        if (aiCase) finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+          method: 'POST',
+          body: JSON.stringify({ hints_used: totalHints }),
+        })
         else if (sessionStartId) finalRes = await apiFetch(`/nodes/fact-scanner/${sessionStartId}/mastery/`,
-          { method: 'POST', body: JSON.stringify({ commit_only: true }) })
+          { method: 'POST', body: JSON.stringify({ commit_only: true, hints_used: totalHints }) })
       } catch { /* the debrief still opens; the report shows no next node */ }
     }
     if (sessionStartId) clearSession('fact_scanner', sessionStartId)

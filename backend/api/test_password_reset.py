@@ -237,7 +237,9 @@ class PasswordResetTests(TestCase):
             self.assertEqual(res.status_code, 400, pw)
             self.assertIn(ev.COMMON_PASSWORD_LABEL, res.data['password_requirements'])
 
-    def test_extended_special_characters_accepted(self):
-        for pw in ('Sleuth#Case2026', 'Sleuth^Case2026', 'Sleuth[Case]26', 'Sleuth_Case2026'):
+    def test_special_characters_accepted(self):
+        for pw in ('Sleuth@Case2026', 'Sleuth$Case2026', 'Sleuth!Case2026', 'Sleuth%Case2026', 'Sleuth*Case2026', 'Sleuth?Case2026', 'Sleuth&Case2026'):
             self.assertEqual(ev.password_policy_errors(pw), [], pw)
+        # TC-AUTH-023: Other symbols like # do not satisfy the symbol rule
+        self.assertIn(f'a special character ({ev.PASSWORD_SPECIALS})', ev.password_policy_errors('Abcdefg1#'))
         self.assertIn(f'a special character ({ev.PASSWORD_SPECIALS})', ev.password_policy_errors('Sleuth~Case2026'))

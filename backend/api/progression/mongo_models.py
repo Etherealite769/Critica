@@ -19,6 +19,10 @@ class StudentProfileDocument(me.Document):
     completed_nodes = me.ListField(
                           me.StringField(),
                           default=list)
+    # Lifetime mastered nodes (preserved across node resets for TC-PROG-004 replay XP calculation)
+    mastered_nodes  = me.ListField(
+                          me.StringField(),
+                          default=list)
     streak_count    = me.IntField(default=0)
     total_xp        = me.IntField(default=0)
     current_level   = me.IntField(default=1)
@@ -39,8 +43,18 @@ class StudentProfileDocument(me.Document):
             self.save()
 
     def complete_node(self, node_id: str):
+        changed = False
         if node_id not in self.completed_nodes:
             self.completed_nodes.append(node_id)
+            changed = True
+        mastered = getattr(self, 'mastered_nodes', None)
+        if mastered is None:
+            self.mastered_nodes = list(self.completed_nodes)
+            changed = True
+        elif node_id not in self.mastered_nodes:
+            self.mastered_nodes.append(node_id)
+            changed = True
+        if changed:
             self.save()
 
     def add_xp(self, amount: int):

@@ -172,6 +172,7 @@ class MasteryView(APIView):
     def post(self, request, node_id):
         student_id        = str(request.user.id)
         commit_only       = request.data.get('commit_only', False)
+        hints_used        = int(request.data.get('hints_used', 0) or 0)
 
         if commit_only:
             result = ProgressionManagementService\
@@ -179,6 +180,7 @@ class MasteryView(APIView):
                     student_id=student_id,
                     node_id=node_id,
                     username=request.user.email,
+                    hints_used=hints_used,
                 )
             return Response({
                 'status':       'mastered',
@@ -220,6 +222,7 @@ class MasteryView(APIView):
                     student_id=student_id,
                     node_id=node_id,
                     username=request.user.email,
+                    hints_used=hints_used,
                 )
             return Response({
                 'status':       'mastered',
