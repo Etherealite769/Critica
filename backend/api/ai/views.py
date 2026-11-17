@@ -238,11 +238,13 @@ class SessionMasteryView(APIView):
     def post(self, request, session_id):
         student_id = str(request.user.id)
         email = getattr(request.user, 'email', '')
+        hints_used = int(request.data.get('hints_used', 0) or 0)
 
         result = SessionService.complete_session(
             session_id=session_id,
             student_id=student_id,
-            username=email
+            username=email,
+            hints_used=hints_used,
         )
 
         if result.get('status') == 'error':

@@ -476,6 +476,13 @@ class SessionService:
             hint = _tidy_hint(client.generate_live_socratic_hint(prompt, temperature=0.4))
         else:
             hint = client.generate_live_socratic_hint(prompt)
+
+        try:
+            session_doc.hints_used = (getattr(session_doc, 'hints_used', 0) or 0) + 1
+            session_doc.save()
+        except Exception:
+            pass
+
         return {'socratic_hint': hint or fallback or 'Examine how the ideas connect in sequence.'}
 
     @classmethod
@@ -528,6 +535,18 @@ class SessionService:
             exp_map = ex.get('sentence_explanations', {})
             explanation = exp_map.get(sid, "Check whether this sentence adheres to the CRAAP criterion.")
 
+        try:
+            tier_int = int(requested_tier)
+        except (ValueError, TypeError):
+            tier_int = 1
+
+        if tier_int >= 1 or hint_text:
+            try:
+                session_doc.hints_used = (getattr(session_doc, 'hints_used', 0) or 0) + 1
+                session_doc.save()
+            except Exception:
+                pass
+
         return {
             'explanation': explanation,
             'hint': hint_text,
@@ -535,7 +554,7 @@ class SessionService:
         }
 
     @classmethod
-    def complete_session(cls, session_id: str, student_id: str, username: str) -> Dict[str, Any]:
+    def complete_session(cls, session_id: str, student_id: str, username: str, hints_used: int = 0) -> Dict[str, Any]:
         """Marks the session complete and advances progression in the database."""
         session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
         if not session_doc:
@@ -544,11 +563,27 @@ class SessionService:
         session_doc.is_completed = True
         session_doc.save()
 
+        # Check total hints used from session tracking, client parameter, or telemetry
+        doc_hints = getattr(session_doc, 'hints_used', 0) or 0
+        total_hints = max(int(hints_used or 0), doc_hints)
+        if total_hints == 0:
+            try:
+                from api.scaffold.mongo_models import TelemetryLogDocument
+                telem_hints = TelemetryLogDocument.objects(
+                    student_id=student_id,
+                    node_id=session_doc.node_id,
+                    hint_used=True,
+                ).count()
+                total_hints = max(total_hints, telem_hints)
+            except Exception:
+                pass
+
         # Update student progression
         prog_result = ProgressionManagementService.update_progression(
             student_id=student_id,
             node_id=session_doc.node_id,
             username=username,
+            hints_used=total_hints,
         )
 
         return {

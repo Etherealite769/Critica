@@ -14,6 +14,7 @@ import {
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { notifyProgressionUpdated } from '@/lib/realtime-sync'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
@@ -906,17 +907,31 @@ export default function SnapInGapPage() {
           try {
             const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
             const cleared = unsolved === 0
-            let finalRes: { next_node?: string | null; streak?: number; xp_awarded?: number } = {}
+            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
+            let finalRes: { next_node?: string | null; streak?: number; xp_awarded?: number; [k: string]: any } = {}
             if (cleared) {
               playVictorySound()
-              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+              finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+                method: 'POST',
+                body: JSON.stringify({ hints_used: totalHints }),
+              })
+              notifyProgressionUpdated({
+                action: 'node_mastered',
+                streak: finalRes.streak,
+                streak_new_day: finalRes.streak_new_day,
+                xp_awarded: finalRes.xp_awarded,
+                total_xp: finalRes.total_xp,
+                level: finalRes.level,
+                level_title: finalRes.level_title,
+                level_up: finalRes.level_up,
+                progress_pct: finalRes.progress_pct,
+              })
             }
             if (sessionStartId) clearSession('snap_gap', sessionStartId)
             writeSkipped(sessionStartId, [])
             const totalCases = sessionExercises.length || sessionQueue.length || 5
             const correctCases = updatedCases.filter(r => r.correct).length
             const firstTryCases = updatedCases.filter(r => r.firstTry).length
-            const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
             const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
             const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
 
@@ -990,6 +1005,7 @@ export default function SnapInGapPage() {
           setQuestionIndex(nextIdx)
           loadQuestion(nextIdx, sessionQueue)
         } else {
+          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
           const unsolved = unsolvedCases(updatedCases)   // read before the saved misses are cleared
           const cleared = unsolved === 0
           if (cleared) playVictorySound()
@@ -1001,9 +1017,24 @@ export default function SnapInGapPage() {
                 method: 'POST',
                 body: JSON.stringify({
                   commit_only: true,
+                  hints_used: totalHints,
                 }),
               },
             )
+          }
+
+          if (cleared) {
+            notifyProgressionUpdated({
+              action: 'node_mastered',
+              streak: finalRes.streak,
+              streak_new_day: (finalRes as any).streak_new_day,
+              xp_awarded: finalRes.xp_awarded,
+              total_xp: (finalRes as any).total_xp,
+              level: (finalRes as any).level,
+              level_title: (finalRes as any).level_title,
+              level_up: (finalRes as any).level_up,
+              progress_pct: (finalRes as any).progress_pct,
+            })
           }
 
           const newNextNode = cleared ? (savedNextNode || finalRes.next_node) : null
@@ -1014,7 +1045,6 @@ export default function SnapInGapPage() {
           const totalCases = sessionQueue.length || 5
           const correctCases = updatedCases.filter(r => r.correct).length
           const firstTryCases = updatedCases.filter(r => r.firstTry).length
-          const totalHints = updatedCases.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
           const accuracy = Math.round((firstTryCases / Math.max(1, totalCases)) * 100)
           const timeTakenSeconds = Math.max(1, Math.round((Date.now() - sessionStartTimeRef.current) / 1000))
 

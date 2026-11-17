@@ -11,6 +11,7 @@ import {
 import CaseLoadingLobby from '@/components/shared/CaseLoadingLobby'
 import NodeEvaluationReport, { type CaseResult } from '@/components/shared/NodeEvaluationReport'
 import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
+import { notifyProgressionUpdated } from '@/lib/realtime-sync'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
@@ -590,17 +591,35 @@ export default function LogicThreadPage() {
   const closeDocket = async (updated: CaseResult[], legacyRes?: MasteryResponse) => {
     const solved = updated.filter(r => r.correct).length
     const cleared = unsolvedCases(updated) === 0
+    const totalHints = updated.reduce((acc, r) => acc + (r.hintsUsed || 0), 0)
     let finalRes: MasteryResponse = legacyRes ?? {}
     if (cleared) {
       playVictorySound()
       try {
         if (sessionId && sessionExercises.length > 0) {
-          finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, { method: 'POST' })
+          finalRes = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
+            method: 'POST',
+            body: JSON.stringify({ hints_used: totalHints }),
+          })
         } else if (sessionStartId) {
-          finalRes = await apiFetch(`/nodes/logic-thread/${sessionStartId}/mastery/`,
-            { method: 'POST', body: JSON.stringify({ commit_only: true }) })
+          finalRes = await apiFetch(`/nodes/logic-thread/${sessionStartId}/mastery/`, {
+            method: 'POST',
+            body: JSON.stringify({ commit_only: true, hints_used: totalHints }),
+          })
         }
       } catch { /* the report still shows; the docket can be replayed */ }
+
+      notifyProgressionUpdated({
+        action: 'node_mastered',
+        streak: finalRes.streak,
+        streak_new_day: (finalRes as any).streak_new_day,
+        xp_awarded: finalRes.xp_awarded,
+        total_xp: (finalRes as any).total_xp,
+        level: (finalRes as any).level,
+        level_title: (finalRes as any).level_title,
+        level_up: (finalRes as any).level_up,
+        progress_pct: (finalRes as any).progress_pct,
+      })
     }
     if (sessionStartId) clearSession('logic_thread', sessionStartId)
     writeSkipped(sessionStartId, [])

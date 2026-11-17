@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 # ── Policies ────────────────────────────────────────────────────────────────
 EMAIL_RE = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
 
-PASSWORD_SPECIALS = '!@#$%^&*()_+-=[]{}|;:,.<>?'
+# TC-AUTH-023: Only @$!%*?& satisfy the symbol rule
+PASSWORD_SPECIALS = '@$!%*?&'
 PASSWORD_RULES = [
     (re.compile(r'.{8,}'), 'at least 8 characters'),
     (re.compile(r'[A-Z]'), 'an uppercase letter'),
