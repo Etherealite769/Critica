@@ -65,7 +65,7 @@ export function analyzeSequence(
         notes.push(`“${sig.word}” points back to an earlier event, so “${snippet(text(id))}” can't open the sequence.`)
     })
     if (notes.length === 0)
-      notes.push('The thread breaks somewhere. Trace each card to the event it depends on, and look for time markers such as “then”, “meanwhile” and “finally”.')
+      notes.push('The thread breaks somewhere. Trace each card back to the card it depends on: look for words that point back, such as a pronoun, a renamed idea, a time marker or a cause-and-effect link.')
     return { correctSlots: null, total, notes: notes.slice(0, 3) }
   }
 

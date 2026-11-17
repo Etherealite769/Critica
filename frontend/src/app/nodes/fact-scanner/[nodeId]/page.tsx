@@ -18,6 +18,8 @@ import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { useCaseHints } from '@/components/logic-thread/useCaseHints'
+import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
 import LessonManual from '@/components/logic-thread/LessonManual'
 import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
@@ -120,7 +122,7 @@ const RETRY_REMARKS = [
   'Steady, Cadet. Read each statement as if the witness were under oath.',
 ]
 const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
-const HINT_FALLBACK = 'Re-read the micro-lesson and apply the criterion to each sentence.'
+const HINT_FALLBACK = 'Check every witness statement against the target CRAAP rule: look closely at dates, sources, and whether the claim is backed by evidence.'
 const THINKING_TEXT = 'Inspector Crit is cross-examining the witnesses'
 const SOCRATIC_FALLBACK = 'Re-read the target criterion question and check if the claim has proper backing evidence.'
 
@@ -206,7 +208,6 @@ export default function FactScannerPage() {
   const closeManual = useCallback(() => setManualOpen(false), [])
 
   // Hints and feedback are spoken by Inspector Crit's lower-left bubble
-  const [socraticLoading, setSocraticLoading] = useState(false)
   const [remark,          setRemark]          = useState<Remark | null>(null)
   const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
 
@@ -231,6 +232,11 @@ export default function FactScannerPage() {
 
 
   const [sessionId,        setSessionId]        = useState<string | null>(null)
+  // 3 hints per case: resets on the next case and on a new session; the server enforces the same cap
+  const caseHints = useCaseHints(sessionId, questionIndex, THINKING_TEXT)
+  const { reset: resetCaseHints, syncFromSession: syncCaseHints } = caseHints
+  // Crit's bubble: the hint drawer when it was opened after the latest remark, otherwise the remark
+  const showHintDrawer = caseHints.isOpen && caseHints.openedAt >= (remark?.id ?? 0)
   const [sessionExercises, setSessionExercises] = useState<FactExercise[]>([])
 
   /** Clear everything that belongs to a single case. */
@@ -274,10 +280,12 @@ export default function FactScannerPage() {
     setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
+    resetCaseHints()
 
     try {
       const sessionData = await fetchNodeSession('fact_scanner', start, forceFresh)
       setSessionId(sessionData.session_id)
+      syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
 
       // A fresh start (Retry / Fresh Case) always opens a new full docket at case 1
@@ -353,7 +361,7 @@ export default function FactScannerPage() {
           })
       }
     }
-  }, [nodeId, router, resetCase])
+  }, [nodeId, router, resetCase, resetCaseHints, syncCaseHints])
 
   useEffect(() => {
     startSession(false)
@@ -384,39 +392,29 @@ export default function FactScannerPage() {
   }, [aiCase, sessionId, questionIndex, factNode, nodeId])
 
   // ── Hint: Crit thinks, then speaks the scaffold hint ───────
-  const fetchHint = useCallback(async () => {
-    say(THINKING_TEXT, 'thinking')
-    let text = HINT_FALLBACK
-    try {
+  const fetchHint = useCallback(() => {
+    caseHints.openGuidance(async () => {
       const res = aiCase
         ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`,
-            { method: 'POST', body: JSON.stringify({ tier: 2 }) })
+            { method: 'POST', body: JSON.stringify({ tier: 0 }) })
         : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
             { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: 61 }) })
-      text = res.hint || res.explanation || HINT_FALLBACK
-      setHintsUsed(h => h + 1)
-    } catch { /* keep the fallback hint */ }
-    say(text, 'hint')
-  }, [aiCase, nodeId, factNode, sessionId, questionIndex, say])
+      return { text: res.hint || res.explanation || HINT_FALLBACK }
+    }, HINT_FALLBACK)
+  }, [aiCase, nodeId, factNode, sessionId, questionIndex, caseHints])
 
   // ── Dig deeper: a live Socratic clue from the AI ───────────
-  const handleAskSocraticAdvice = async () => {
+  const handleAskSocraticAdvice = () => {
     if (!sessionId) return
-    setSocraticLoading(true)
-    say(THINKING_TEXT, 'thinking')
-    try {
+    caseHints.digDeeper(async () => {
       const res = await fetchLiveSocraticHint(
         sessionId,
         questionIndex,
         { quarantined_ids: quarantined, selected_id: selected, attempts, flaws_found: flawsFound },
         wrongs + 1,
       )
-      say(res.socratic_hint || 'Consider applying the CRAAP criterion strictly to each claim.', 'hint')
-    } catch {
-      say(SOCRATIC_FALLBACK, 'hint')
-    } finally {
-      setSocraticLoading(false)
-    }
+      return { text: res.socratic_hint || SOCRATIC_FALLBACK, used: res.hints_used }
+    }, SOCRATIC_FALLBACK).then(out => { if (out === 'ok') setHintsUsed(h => h + 1) })
   }
 
   // ── Case outcome helpers ───────────────────────────────────
@@ -915,9 +913,11 @@ export default function FactScannerPage() {
 
       {/* ── Slide-out action tabs (icons peek from the left edge) ── */}
       <div className={styles.sideTabs}>
-        <button type="button" onClick={() => fetchHint()} className={styles.sideTab} title="Hint" data-tutorial="sidebar">
-          <span className={styles.sideTabLabel}>Hint</span>
+        <button type="button" onClick={() => fetchHint()} className={styles.sideTab}
+          title={hintTabTitle(caseHints.remaining)} aria-label={hintTabTitle(caseHints.remaining)} data-tutorial="sidebar">
+          <span className={styles.sideTabLabel}>{hintTabLabel(caseHints.remaining)}</span>
           <span className={styles.sideTabIcon}><Lightbulb size={18} aria-hidden /></span>
+          <HintCounter remaining={caseHints.remaining} />
         </button>
         <button type="button" onClick={() => setConfirmReset(true)} className={styles.sideTab} title="Fresh Case" data-tutorial="sidebar">
           <span className={styles.sideTabLabel}>Fresh Case</span>
@@ -1198,10 +1198,11 @@ export default function FactScannerPage() {
 
       {!debrief && (
         <CritRemark
-          remark={remark}
-          onDismiss={() => setRemark(null)}
+          remark={showHintDrawer ? caseHints.remark : remark}
+          onDismiss={() => { caseHints.close(); setRemark(null) }}
           onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
-          asking={socraticLoading}
+          asking={caseHints.pending === 'deeper'}
+          hintsRemaining={caseHints.remaining}
         />
       )}
     </div>

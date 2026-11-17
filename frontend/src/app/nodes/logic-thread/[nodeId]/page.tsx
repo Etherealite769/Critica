@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
 import { useRouter, useParams }             from 'next/navigation'
 import { apiFetch }                          from '@/lib/api'
 import {
@@ -19,6 +19,8 @@ import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import LessonManual, { type NodeLesson } from '@/components/logic-thread/LessonManual'
 import LogicThreadTutorial, { hasSeenLogicThreadTutorial } from '@/components/logic-thread/LogicThreadTutorial'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { useCaseHints } from '@/components/logic-thread/useCaseHints'
+import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import { analyzeSequence } from '@/components/logic-thread/sequenceFeedback'
 import {
   ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Network, Paperclip, RotateCcw,
@@ -92,7 +94,7 @@ function explainCorrectThread(answerKey: string[] | null, blocks: Block[]): stri
   const thread = answerKey.map((id, i) => `${i + 1}) “${snip(id)}”`).join(' → ')
   return `Three strikes — this one is filed as unverified. The thread runs: ${thread}. Notice how each opening signal word fixes its place.`
 }
-const HINT_FALLBACK = 'Re-read how each card opens — signal words like First, Then, Meanwhile and Finally give the order away.'
+const HINT_FALLBACK = 'Look at how each card opens: find the one that introduces the topic before any results or follow-up steps.'
 const THINKING_TEXT = 'Inspector Crit is examining the evidence trail'
 const SOCRATIC_FALLBACK = 'Ask yourself which event has to happen before each card. Which one could only come last?'
 
@@ -288,7 +290,6 @@ export default function LogicThreadPage() {
   const [submitState,  setSubmitState]  = useState<SubmitState>('idle')
   const [wrongCount,   setWrongCount]   = useState(0)
   const [showHint,     setShowHint]     = useState(false)
-  const [socraticLoading, setSocraticLoading] = useState(false)
   const [masteryData,  setMasteryData]  = useState<any>(null)
   const [errorMsg,     setErrorMsg]     = useState('')
   const [tutorialOpen, setTutorialOpen] = useState(false)
@@ -317,6 +318,9 @@ export default function LogicThreadPage() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [missedCases, setMissedCases] = useState<MissedCase[]>([])
   const [remark,     setRemark]     = useState<Remark | null>(null)
+  // 3 hints per case: resets on the next case and on a new session; the server enforces the same cap
+  const caseHints = useCaseHints(sessionId, questionIndex, THINKING_TEXT)
+  const { reset: resetCaseHints, syncFromSession: syncCaseHints } = caseHints
   const [lesson,     setLesson]     = useState<NodeLesson | null>(null)
   const [manualOpen, setManualOpen] = useState(false)
   const [fitScale,   setFitScale]   = useState(1)
@@ -363,6 +367,7 @@ export default function LogicThreadPage() {
     setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
+    resetCaseHints()
     if (forceFresh) {
       // Retry / Fresh Case: wipe the whole docket, not just the failed case
       setSessionResults([]); setMissedCases([])
@@ -373,6 +378,7 @@ export default function LogicThreadPage() {
     try {
       const sessionData = await fetchNodeSession('logic_thread', start, forceFresh)
       setSessionId(sessionData.session_id)
+      syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
       
       // A fresh start (Retry / Fresh Case) always opens a brand-new full docket at case 1
@@ -459,7 +465,7 @@ export default function LogicThreadPage() {
           })
       }
     }
-  }, [nodeId, router])
+  }, [nodeId, router, resetCaseHints, syncCaseHints])
 
   useEffect(() => {
     startSession(false)
@@ -475,37 +481,29 @@ export default function LogicThreadPage() {
   // Inspector Crit speaks from the lower-left corner: remarks fade on their own, hints stay until dismissed
   const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
 
-  const fetchHint = useCallback(async (tier: number) => {
-    setShowHint(true)   // counts as a hint used on this case
-    say(THINKING_TEXT, 'thinking')   // Inspector Crit ponders while the hint loads
-    let text = HINT_FALLBACK
-    try {
+  // Sidebar lightbulb: Crit's opening guidance for this case (free; never touches the hint counter)
+  const fetchHint = useCallback(() => {
+    caseHints.openGuidance(async () => {
       const res = sessionId && sessionExercises.length > questionIndex
         ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
             method: 'POST',
-            body: JSON.stringify({ tier }),
+            body: JSON.stringify({ tier: 0 }),
           })
         : await apiFetch(`/nodes/logic-thread/${node?.node_id ?? nodeId}/feedback/`, {
             method: 'POST',
             body: JSON.stringify({ source_id: '', target_id: '', inactivity_seconds: 61 }),
           })
-      text = res.hint || res.explanation || HINT_FALLBACK
-    } catch { /* keep the fallback hint */ }
-    say(text, 'hint')
-  }, [nodeId, node, sessionId, sessionExercises, questionIndex, say])
+      return { text: res.hint || res.explanation || HINT_FALLBACK }
+    }, HINT_FALLBACK)
+  }, [nodeId, node, sessionId, sessionExercises, questionIndex, caseHints])
 
-  const handleAskSocraticAdvice = async () => {
+  // DIG DEEPER: the only action that spends one of the case's 3 hints
+  const handleAskSocraticAdvice = () => {
     if (!sessionId) return
-    setSocraticLoading(true)
-    say(THINKING_TEXT, 'thinking')
-    try {
+    caseHints.digDeeper(async () => {
       const res = await fetchLiveSocraticHint(sessionId, questionIndex, { sequence: chain }, wrongCount + 1)
-      say(res.socratic_hint || SOCRATIC_FALLBACK, 'hint')
-    } catch {
-      say(SOCRATIC_FALLBACK, 'hint')
-    } finally {
-      setSocraticLoading(false)
-    }
+      return { text: res.socratic_hint || SOCRATIC_FALLBACK, used: res.hints_used }
+    }, SOCRATIC_FALLBACK).then(out => { if (out === 'ok') setShowHint(true) })
   }
 
   // ── Card dragging (pointer events: mouse, pen and touch) ────
@@ -687,7 +685,7 @@ export default function LogicThreadPage() {
       setDisputed(true)
       setSubmitState('incorrect')
       if (newWrongs >= 3) {
-        fetchHint(Math.min(newWrongs, 3))
+        fetchHint()
       } else {
         say(pick(RETRY_REMARKS))
       }
@@ -867,6 +865,8 @@ export default function LogicThreadPage() {
   )
 
   // ── TASK PHASE ──────────────────────────────────────────────
+  // Crit's bubble: the hint drawer when it was opened after the latest remark, otherwise the remark
+  const showHintDrawer = caseHints.isOpen && caseHints.openedAt >= (remark?.id ?? 0)
   const allChained = chain.length === blocks.length
   const threadColor = submitState === 'correct' ? '#2f6418' : '#a83232'
   const level = node!.difficulty ?? nodeDifficulty(nodeId)
@@ -879,7 +879,11 @@ export default function LogicThreadPage() {
       {/* ── Side folder tabs ── */}
       <div className={styles.sideTabs}>
         {[
-          { label: 'Hint', icon: Lightbulb, action: () => fetchHint(Math.min(wrongCount + 1, 3)) },
+          {
+            id: 'hint', label: hintTabLabel(caseHints.remaining), title: hintTabTitle(caseHints.remaining),
+            icon: Lightbulb, action: () => fetchHint(),
+            badge: <HintCounter remaining={caseHints.remaining} />,
+          },
           { label: 'Fresh Case', icon: RotateCcw, action: () => setConfirmReset(true) },
           { label: 'End Session', icon: LogOut, action: () => {
             if (sessionId) {
@@ -894,10 +898,11 @@ export default function LogicThreadPage() {
             }
             router.push('/dashboard')
           }},
-        ].map(({ label, icon: Icon, action }) => (
-          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
+        ].map(({ label, icon: Icon, action, ...tab }: { label: string; icon: typeof Lightbulb; action: () => void; id?: string; title?: string; badge?: ReactNode }) => (
+          <button key={tab.id ?? label} type="button" onClick={action} className={styles.sideTab} title={tab.title ?? label} aria-label={tab.title ?? label} data-tutorial="sidebar">
             <span className={styles.sideTabLabel}>{label}</span>
             <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
+            {tab.badge}
           </button>
         ))}
       </div>
@@ -1167,10 +1172,11 @@ export default function LogicThreadPage() {
 
       {!debrief && (
         <CritRemark
-          remark={remark}
-          onDismiss={() => setRemark(null)}
+          remark={showHintDrawer ? caseHints.remark : remark}
+          onDismiss={() => { caseHints.close(); setRemark(null) }}
           onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
-          asking={socraticLoading}
+          asking={caseHints.pending === 'deeper'}
+          hintsRemaining={caseHints.remaining}
         />
       )}
     </div>

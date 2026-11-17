@@ -2,7 +2,7 @@
 
 import {
   Fragment, useState, useEffect,
-  useRef, useCallback,
+  useRef, useCallback, type ReactNode,
 } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { apiFetch } from '@/lib/api'
@@ -18,6 +18,8 @@ import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { useCaseHints } from '@/components/logic-thread/useCaseHints'
+import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
 import LessonManual from '@/components/logic-thread/LessonManual'
 import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
@@ -128,7 +130,7 @@ const RETRY_REMARKS = [
   'Steady, Cadet. Read the whole sentence around the gold word again.',
 ]
 const pick = (list: string[]) => list[Math.floor(Math.random() * list.length)]
-const HINT_FALLBACK = 'Look for words near the locked word that hint at its meaning.'
+const HINT_FALLBACK = 'Read the sentence before and after the locked word: does the author give a cause, a contrast, or an example?'
 const THINKING_TEXT = 'Inspector Crit is examining the evidence trail'
 const SOCRATIC_FALLBACK = 'Focus on words in the sentence that provide direct context or cause-and-effect signals.'
 
@@ -339,7 +341,6 @@ export default function TapCluesPage() {
 
   // Hints and feedback are spoken by Inspector Crit's lower-left bubble
   const [hintOverlay,     setHintOverlay]     = useState(false)   // a hint was used on this case
-  const [socraticLoading, setSocraticLoading] = useState(false)
   const [remark,          setRemark]          = useState<Remark | null>(null)
   const say = useCallback((text: string, kind: RemarkKind = 'remark') => setRemark({ id: Date.now(), text, kind }), [])
 
@@ -362,6 +363,11 @@ export default function TapCluesPage() {
 
 
   const [sessionId,        setSessionId]        = useState<string | null>(null)
+  // 3 hints per case: resets on the next case and on a new session; the server enforces the same cap
+  const caseHints = useCaseHints(sessionId, questionIndex, THINKING_TEXT)
+  const { reset: resetCaseHints, syncFromSession: syncCaseHints } = caseHints
+  // Crit's bubble: the hint drawer when it was opened after the latest remark, otherwise the remark
+  const showHintDrawer = caseHints.isOpen && caseHints.openedAt >= (remark?.id ?? 0)
   const [sessionExercises, setSessionExercises] = useState<any[]>([])
 
   const loadQuestion = useCallback(async (targetIndex: number, queue: string[]) => {
@@ -409,10 +415,12 @@ export default function TapCluesPage() {
     setPhase('loading')
     const start = nodeId
     setSessionStartId(start)
+    resetCaseHints()
 
     try {
       const sessionData = await fetchNodeSession('tap_clues', start, forceFresh)
       setSessionId(sessionData.session_id)
+      syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
 
       // A fresh start (Retry / Fresh Case) always opens a new full docket at case 1
@@ -493,7 +501,7 @@ export default function TapCluesPage() {
           })
       }
     }
-  }, [nodeId, router])
+  }, [nodeId, router, resetCaseHints, syncCaseHints])
 
   useEffect(() => {
     startSession(false)
@@ -536,44 +544,34 @@ export default function TapCluesPage() {
   }, [nodeId, tapNode, sessionId, sessionExercises, questionIndex])
 
   /** HINT: Crit thinks, then speaks the scaffold hint. */
-  const fetchHint = useCallback(async (tier = 1) => {
-    setHintOverlay(true)
-    say(THINKING_TEXT, 'thinking')
-    let text = HINT_FALLBACK
-    try {
+  const fetchHint = useCallback(() => {
+    caseHints.openGuidance(async () => {
       const res = sessionId && sessionExercises.length > questionIndex
         ? await apiFetch(`/ai/session/${sessionId}/feedback/${questionIndex}/`, {
             method: 'POST',
-            body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier }),
+            body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', tier: 0 }),
           })
         : await apiFetch(`/nodes/tap-clues/${tapNode?.node_id ?? nodeId}/feedback/`, {
             method: 'POST',
             body: JSON.stringify({ word_id: activeWordId ?? '', clue_word: '', inactivity_seconds: 61 }),
           })
-      text = res.hint || res.explanation || HINT_FALLBACK
-    } catch { /* keep the fallback hint */ }
-    say(text, 'hint')
-  }, [nodeId, activeWordId, tapNode, sessionId, sessionExercises, questionIndex, say])
+      return { text: res.hint || res.explanation || HINT_FALLBACK }
+    }, HINT_FALLBACK)
+  }, [nodeId, activeWordId, tapNode, sessionId, sessionExercises, questionIndex, caseHints])
 
   /** Dig deeper: a live Socratic clue from the AI. */
-  const handleAskSocraticAdvice = useCallback(async () => {
+  const handleAskSocraticAdvice = useCallback(() => {
     if (!sessionId) return
-    setSocraticLoading(true)
-    say(THINKING_TEXT, 'thinking')
-    try {
+    caseHints.digDeeper(async () => {
       const res = await fetchLiveSocraticHint(
         sessionId,
         questionIndex,
         { word_id: activeWordId, found_clues: activeWordId ? (foundClues[activeWordId] ?? []) : [] },
         wrongs + 1,
       )
-      say(res.socratic_hint || SOCRATIC_FALLBACK, 'hint')
-    } catch {
-      say(SOCRATIC_FALLBACK, 'hint')
-    } finally {
-      setSocraticLoading(false)
-    }
-  }, [sessionId, questionIndex, activeWordId, foundClues, wrongs, say])
+      return { text: res.socratic_hint || SOCRATIC_FALLBACK, used: res.hints_used }
+    }, SOCRATIC_FALLBACK).then(out => { if (out === 'ok') setHintOverlay(true) })
+  }, [sessionId, questionIndex, activeWordId, foundClues, wrongs, caseHints])
 
   const logWordToLexical = useCallback(async (word: string, definition: string, contextual_usage: string, translation: string) => {
     const activeNodeId = tapNode?.node_id ?? nodeId
@@ -989,7 +987,7 @@ export default function TapCluesPage() {
       }).catch(() => {})
     }
     if (nextWrongs >= 3) {
-      fetchHint(Math.min(nextWrongs, 3))
+      fetchHint()
     } else {
       say(pick(RETRY_REMARKS))
     }
@@ -1206,13 +1204,18 @@ export default function TapCluesPage() {
       {/* ── Slide-out action tabs (icons peek from the left edge) ── */}
       <div className={styles.sideTabs}>
         {[
-          { label: 'Hint',        icon: Lightbulb, action: () => fetchHint(Math.min(wrongs + 1, 3)) },
+          {
+            id: 'hint', label: hintTabLabel(caseHints.remaining), title: hintTabTitle(caseHints.remaining),
+            icon: Lightbulb, action: () => fetchHint(),
+            badge: <HintCounter remaining={caseHints.remaining} />,
+          },
           { label: 'Fresh Case',  icon: RotateCcw, action: () => setConfirmReset(true) },
           { label: 'End Session', icon: LogOut,    action: endSession },
-        ].map(({ label, icon: Icon, action }) => (
-          <button key={label} type="button" onClick={action} className={styles.sideTab} title={label} data-tutorial="sidebar">
+        ].map(({ label, icon: Icon, action, ...tab }: { label: string; icon: typeof Lightbulb; action: () => void; id?: string; title?: string; badge?: ReactNode }) => (
+          <button key={tab.id ?? label} type="button" onClick={action} className={styles.sideTab} title={tab.title ?? label} aria-label={tab.title ?? label} data-tutorial="sidebar">
             <span className={styles.sideTabLabel}>{label}</span>
             <span className={styles.sideTabIcon}><Icon size={18} aria-hidden /></span>
+            {tab.badge}
           </button>
         ))}
       </div>
@@ -1558,10 +1561,11 @@ export default function TapCluesPage() {
 
       {!debrief && (
         <CritRemark
-          remark={remark}
-          onDismiss={() => setRemark(null)}
+          remark={showHintDrawer ? caseHints.remark : remark}
+          onDismiss={() => { caseHints.close(); setRemark(null) }}
           onAskMore={sessionId ? handleAskSocraticAdvice : undefined}
-          asking={socraticLoading}
+          asking={caseHints.pending === 'deeper'}
+          hintsRemaining={caseHints.remaining}
         />
       )}
     </div>

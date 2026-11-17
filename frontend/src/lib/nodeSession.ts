@@ -122,7 +122,7 @@ export async function fetchLiveSocraticHint(
   exerciseIndex: number,
   submissionState: any,
   errorCount = 1,
-): Promise<{ socratic_hint: string }> {
+): Promise<{ socratic_hint: string; hints_used?: number; hints_remaining?: number; max_hints?: number }> {
   return await apiFetch(`/ai/session/${sessionId}/live-hint/${exerciseIndex}/`, {
     method: 'POST',
     body: JSON.stringify({ submission_state: submissionState, error_count: errorCount }),

@@ -1,0 +1,29 @@
+/* Hints-left counter on the Hint side tab. The tab is transformed, so it anchors this badge;
+   top-right sits on the icon strip that stays visible while the tab is retracted. */
+.counter {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  z-index: 1;
+  min-width: 28px;
+  padding: 2px 5px;
+  font-family: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: #2b2016;
+  background: #f3e8cb;
+  border: 1px solid #8b6b3a;
+  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* Spent: a crimson stamp */
+.counterSpent {
+  color: #fffdf7;
+  background: #a63a3a;
+  border-color: #7a1f1f;
+}

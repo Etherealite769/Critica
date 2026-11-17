@@ -6,6 +6,8 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional, Tuple, Set
 
+from pymongo import ReturnDocument
+
 from api.progression.services import ProgressionManagementService
 from .mongo_models import StudentQuestionHistoryDocument, GeneratedSessionDocument
 from .gemini_client import GeminiClient
@@ -17,6 +19,7 @@ from .validators import (
     check_intra_session_diversity,
 )
 from .fallback_pool import get_fallback_batch, node_family
+from .case_hints import case_hint
 
 # Module document imports
 from api.modules.logic_thread.mongo_models import LogicThreadNodeDocument
@@ -28,6 +31,54 @@ logger = logging.getLogger(__name__)
 
 SESSION_EXPIRY_HOURS = 2
 EXERCISES_PER_SESSION = 5
+MAX_HINTS_PER_QUESTION = 3
+
+
+class HintLimitReached(Exception):
+    """The student has already used every hint allowed on this case."""
+
+
+# A feedback request that carries the student's wrong answer is an explanation of that answer, not a hint request
+_ANSWER_FIELDS = {
+    'logic_thread': ('source_id', 'target_id'),
+    'snap_gap': ('selected_tile',),
+    'tap_clues': ('clue_word',),
+    'fact_scanner': ('sentence_id',),
+}
+
+
+def _is_answer_explanation(module: str, query: Dict[str, Any]) -> bool:
+    fields = _ANSWER_FIELDS.get(module, ())
+    return bool(fields) and all(str(query.get(f) or '').strip() for f in fields)
+
+
+def _claim_case_hint(session_doc, exercise_index: int) -> int:
+    """
+    Atomically counts one hint against this case and returns the new count, or raises HintLimitReached.
+    The check and the increment are one conditional update, so parallel requests cannot exceed the cap.
+    """
+    key = f'case_hints.{exercise_index}'
+    doc = GeneratedSessionDocument._get_collection().find_one_and_update(
+        {'_id': session_doc.pk, '$or': [{key: {'$exists': False}}, {key: {'$lt': MAX_HINTS_PER_QUESTION}}]},
+        {'$inc': {key: 1, 'hints_used': 1}},
+        projection={'case_hints': 1},
+        return_document=ReturnDocument.AFTER,
+    )
+    if doc is None:
+        raise HintLimitReached()
+    return int((doc.get('case_hints') or {}).get(str(exercise_index), 0))
+
+
+def _log_case_hint(session_doc, exercise_index: int, text: str) -> None:
+    """Keeps the served hint so the student can re-read it, including after a page refresh."""
+    if text:
+        GeneratedSessionDocument._get_collection().update_one(
+            {'_id': session_doc.pk}, {'$push': {f'case_hint_log.{exercise_index}': text}})
+
+
+def _hint_counts(used: int) -> Dict[str, int]:
+    return {'hints_used': used, 'hints_remaining': max(0, MAX_HINTS_PER_QUESTION - used),
+            'max_hints': MAX_HINTS_PER_QUESTION}
 
 
 def _get_node_difficulty(node_id: str) -> int:
@@ -448,42 +499,39 @@ class SessionService:
         error_count: int = 1,
     ) -> Dict[str, Any]:
         """
-        Generates dynamic on-demand Socratic pedagogical advice using Gemini.
+        "Dig deeper": the next Socratic hint on this case (levels 1-3), passage-specific and more pointed each time.
+        Each call counts toward the 3-hint cap; the opening guidance from get_exercise_feedback is free.
         """
         session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
         if not session_doc or exercise_index < 0 or exercise_index >= len(session_doc.exercises):
             return {'socratic_hint': 'Review the passage carefully for key transitions and clues.'}
 
+        level = _claim_case_hint(session_doc, exercise_index)   # 1, 2 or 3; raises HintLimitReached at the cap
+        module = session_doc.module
         ex = session_doc.exercises[exercise_index]
+        # Offline hint for this level, built from the case and the cadet's board (Snap Gap: the gap they are on)
+        baseline = case_hint(module, ex, level, submission_payload if isinstance(submission_payload, dict) else None)
+
         client = GeminiClient()
-        if not client.is_available():
-            # Fallback to pre-generated tier 2 hint
-            hints = ex.get('scaffold_hints', [])
-            fallback_hint = hints[1].get('hint_text', '') if len(hints) > 1 else 'Look closely at logical connections.'
-            return {'socratic_hint': fallback_hint}
+        hint = None
+        if client.is_available():
+            prompt = build_socratic_hint_prompt(
+                module=module,
+                exercise=ex,
+                submission_state=submission_payload,
+                error_count=error_count,
+                level=level,
+                baseline=baseline,
+            )
+            if module == 'logic_thread':
+                # Lower temperature keeps the clue on the cards; card ids in the text send it to the fallback
+                hint = _tidy_hint(client.generate_live_socratic_hint(prompt, temperature=0.4))
+            else:
+                hint = client.generate_live_socratic_hint(prompt)
 
-        prompt = build_socratic_hint_prompt(
-            module=session_doc.module,
-            exercise=ex,
-            submission_state=submission_payload,
-            error_count=error_count,
-        )
-
-        hints = ex.get('scaffold_hints', [])
-        fallback = hints[1].get('hint_text', '') if len(hints) > 1 else 'Examine how the ideas connect in sequence.'
-        if session_doc.module == 'logic_thread':
-            # Lower temperature keeps the clue focused on the cards' signal words
-            hint = _tidy_hint(client.generate_live_socratic_hint(prompt, temperature=0.4))
-        else:
-            hint = client.generate_live_socratic_hint(prompt)
-
-        try:
-            session_doc.hints_used = (getattr(session_doc, 'hints_used', 0) or 0) + 1
-            session_doc.save()
-        except Exception:
-            pass
-
-        return {'socratic_hint': hint or fallback or 'Examine how the ideas connect in sequence.'}
+        text = (hint or '').strip() or baseline
+        _log_case_hint(session_doc, exercise_index, text)
+        return {'socratic_hint': text, 'hint_level': level, **_hint_counts(level)}
 
     @classmethod
     def get_exercise_feedback(
@@ -492,7 +540,7 @@ class SessionService:
         exercise_index: int,
         feedback_query: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Provides dynamic explanations and tiered scaffold hints for the current exercise."""
+        """Explanation of a wrong answer, or the free opening guidance (level 0) for the current case."""
         session_doc = GeneratedSessionDocument.objects(session_id=session_id).first()
         if not session_doc:
             return {'explanation': 'Session not found.', 'hint': '', 'hint_tier': 1}
@@ -500,20 +548,16 @@ class SessionService:
         if exercise_index < 0 or exercise_index >= len(session_doc.exercises):
             return {'explanation': 'Invalid index.', 'hint': '', 'hint_tier': 1}
 
+        module = session_doc.module
+        is_explanation = _is_answer_explanation(module, feedback_query)
+        used = int((session_doc.case_hints or {}).get(str(exercise_index), 0))
         ex = session_doc.exercises[exercise_index]
-        hints = ex.get('scaffold_hints', [])
-        requested_tier = feedback_query.get('tier', 1)
-
-        hint_text = ''
-        for h in hints:
-            if h.get('tier') == requested_tier:
-                hint_text = h.get('hint_text', '')
-                break
-        if not hint_text and hints:
-            hint_text = hints[0].get('hint_text', '')
+        # Opening guidance (the sidebar lightbulb, or a wrong answer's explanation) is level 0: free and never more
+        # than an orientation. Whatever tier a client asks for, deeper hints come only from "Dig deeper".
+        hint_text = case_hint(module, ex, 0)
+        requested_tier = 0
 
         # Module-specific error explanations
-        module = session_doc.module
         explanation = ''
         if module == 'logic_thread':
             src = feedback_query.get('source_id', '')
@@ -535,22 +579,15 @@ class SessionService:
             exp_map = ex.get('sentence_explanations', {})
             explanation = exp_map.get(sid, "Check whether this sentence adheres to the CRAAP criterion.")
 
-        try:
-            tier_int = int(requested_tier)
-        except (ValueError, TypeError):
-            tier_int = 1
-
-        if tier_int >= 1 or hint_text:
-            try:
-                session_doc.hints_used = (getattr(session_doc, 'hints_used', 0) or 0) + 1
-                session_doc.save()
-            except Exception:
-                pass
+        if is_explanation:
+            # A wrong answer's explanation still counts in the session total as before (it feeds XP)
+            GeneratedSessionDocument._get_collection().update_one({'_id': session_doc.pk}, {'$inc': {'hints_used': 1}})
 
         return {
             'explanation': explanation,
             'hint': hint_text,
             'hint_tier': requested_tier,
+            **_hint_counts(used),
         }
 
     @classmethod
@@ -618,5 +655,9 @@ class SessionService:
             'exercises': session_doc.exercises,
             'current_index': session_doc.current_index,
             'is_fallback': getattr(session_doc, 'is_fallback', False),
+            # Per-case hint state, so a refresh keeps the 3-hint cap and the hints already unlocked
+            'max_hints_per_question': MAX_HINTS_PER_QUESTION,
+            'case_hints': {k: int(v) for k, v in (getattr(session_doc, 'case_hints', None) or {}).items()},
+            'case_hint_log': dict(getattr(session_doc, 'case_hint_log', None) or {}),
             'model_used': getattr(session_doc, 'model_used', ''),
         }

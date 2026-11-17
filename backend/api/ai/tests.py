@@ -404,3 +404,145 @@ class Grade11ContentTests(TestCase):
                 for ex in session['exercises']:
                     self.assertIn(ex['exercise_id'], bank_ids)
                     self.assertEqual(ex['difficulty'], diff)
+
+
+class _HintStubUser:
+    is_authenticated = True
+
+    def __init__(self, uid):
+        self.id = uid
+        self.email = f'{uid}@example.com'
+
+
+class HintLimitPerCaseTests(TestCase):
+    """
+    Opening guidance (sidebar lightbulb) is free; only "Dig deeper" counts, at most 3 per case (question),
+    enforced by the session API whatever the client does. Every level is built from the active case.
+    """
+
+    NODES = {'logic_thread': 'log_node_10', 'snap_gap': 'snp_node_01',
+             'tap_clues': 'tap_node_01', 'fact_scanner': 'fac_node_01'}
+
+    def client_for(self, uid):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=_HintStubUser(uid))
+        return client
+
+    def start(self, uid, module):
+        return SessionService.start_or_get_session(student_id=uid, module=module,
+                                                   node_id=self.NODES[module], force_fresh=True)
+
+    def test_guidance_is_free_and_only_dig_deeper_counts_in_every_module(self):
+        from .case_hints import case_hint
+        for module in self.NODES:
+            uid = f'hint_cap_{module}'
+            session = self.start(uid, module)
+            client, sid, ex = self.client_for(uid), session['session_id'], session['exercises'][0]
+            feedback, live = f'/api/ai/session/{sid}/feedback/0/', f'/api/ai/session/{sid}/live-hint/0/'
+            # Opening the guidance any number of times, at any requested tier, costs nothing
+            for tier in (0, 1, 3, 3):
+                res = client.post(feedback, {'tier': tier}, format='json')
+                self.assertEqual(res.status_code, 200, (module, res.data))
+                self.assertEqual((res.data['hints_remaining'], res.data['hint_tier']), (3, 0), module)
+                self.assertEqual(res.data['hint'], case_hint(module, ex, 0))
+            # Dig deeper: 3 -> 2 -> 1 -> 0, each level a different, case-specific hint
+            texts = []
+            for level in (1, 2, 3):
+                res = client.post(live, {'submission_state': {}}, format='json')
+                self.assertEqual(res.status_code, 200, (module, level))
+                self.assertEqual((res.data['hint_level'], res.data['hints_used'], res.data['hints_remaining']),
+                                 (level, level, 3 - level), module)
+                self.assertEqual(res.data['socratic_hint'], case_hint(module, ex, level))   # Gemini is off in tests
+                texts.append(res.data['socratic_hint'])
+            self.assertEqual(len(set(texts)), 3, module)
+            res = client.post(live, {'submission_state': {}}, format='json')
+            self.assertEqual(res.status_code, 429, module)
+            self.assertEqual(res.data['error'], 'hint_limit_reached')
+            self.assertEqual(res.data['detail'], 'Maximum of 3 hints per question reached.')
+            # The opening guidance stays readable after the cap
+            self.assertEqual(client.post(feedback, {'tier': 1}, format='json').status_code, 200)
+            # The next case starts with a fresh allowance
+            res = client.post(f'/api/ai/session/{sid}/live-hint/1/', {'submission_state': {}}, format='json')
+            self.assertEqual((res.status_code, res.data['hints_remaining']), (200, 2), module)
+
+    def test_hint_gradient_on_every_offline_case(self):
+        """Short nudge -> specific clue -> eliminate distractors -> walkthrough, from each case's own content."""
+        from .case_hints import case_hint, _family, _NUDGE
+        from .fallback_pool import FALLBACK_BANK
+        for module, cases in FALLBACK_BANK.items():
+            for ex in cases:
+                levels = [case_hint(module, ex, lvl) for lvl in range(4)]
+                eid = ex['exercise_id']
+                self.assertEqual(len(set(levels)), 4, eid)
+                self.assertLessEqual(len(levels[0].split()), 30, eid)            # the free nudge fits at a glance
+                for text in levels:
+                    self.assertLessEqual(len(text.split()), 70, eid)             # every level fits the popover
+                    self.assertTrue(text.rstrip().endswith(('.', '?', '"')), (eid, text))   # whole sentences only
+                    for stock in ('First, Then', 'Meanwhile and Finally'):
+                        self.assertNotIn(stock, text)
+                if module == 'snap_gap':
+                    pid = ex['sentence_pairs'][0]['pair_id']
+                    tile = ex['correct_tile_map'][pid]
+                    self.assertIn(_NUDGE[_family(tile)], levels[0], eid)          # the right kind of link is on offer
+                    self.assertNotIn(f'"{tile}"', levels[0] + levels[1], eid)    # ...but no tile is named yet
+                    self.assertIn('Rule out', levels[2], eid)
+                    self.assertNotIn(f'Rule out "{tile}"', levels[2], eid)       # never eliminates the answer
+                    self.assertIn(f'Choose "{tile}"', levels[3], eid)
+                elif module == 'tap_clues':
+                    w = ex['locked_words'][0]
+                    self.assertIn(w['word'], levels[0], eid)
+                    for clue in w['correct_clue_ids']:
+                        self.assertNotIn(f'"{clue}"', levels[0], eid)
+                        self.assertIn(f'"{clue}"', levels[3], eid)
+                    self.assertIn('Not "', levels[2], eid)
+                elif module == 'fact_scanner':
+                    flawed = [x['sentence_id'] for x in ex['article_sentences'] if x['is_flawed']]
+                    self.assertIn(ex['craap_criterion'], levels[0], eid)
+                    self.assertIn('holds up', levels[2], eid)
+                    for sid in flawed:
+                        self.assertNotIn(f'{sid} holds up', levels[2], eid)       # never clears the flawed one
+                    self.assertIn(f'Quarantine {flawed[0]}', levels[3], eid)
+                else:
+                    opener = next(b['text'] for b in ex['paragraph_blocks'] if b['block_id'] == ex['correct_sequence'][0])
+                    self.assertIn(' '.join(opener.split()[:3]).rstrip(',;:.'), levels[3], eid)
+
+    def test_wrong_answer_explanations_are_free_and_only_carry_level_zero(self):
+        from .case_hints import case_hint
+        uid = 'hint_explain'
+        session = self.start(uid, 'snap_gap')
+        client, sid = self.client_for(uid), session['session_id']
+        ex = session['exercises'][0]
+        pair_id = ex['sentence_pairs'][0]['pair_id']
+        wrong = next(t for t in ex['transition_tile_dock'] if t != ex['correct_tile_map'][pair_id])
+        for _ in range(5):
+            res = client.post(f'/api/ai/session/{sid}/feedback/0/',
+                              {'pair_id': pair_id, 'selected_tile': wrong, 'tier': 3}, format='json')
+            self.assertEqual(res.status_code, 200)
+            self.assertEqual(res.data['hints_remaining'], 3)
+            self.assertEqual(res.data['hint'], case_hint('snap_gap', ex, 0))
+            self.assertTrue(res.data['explanation'])
+
+    def test_reload_keeps_the_count_and_the_unlocked_hints(self):
+        uid = 'hint_reload'
+        session = self.start(uid, 'tap_clues')
+        client, sid = self.client_for(uid), session['session_id']
+        client.post(f'/api/ai/session/{sid}/feedback/0/', {'tier': 0}, format='json')   # free, not logged
+        texts = [client.post(f'/api/ai/session/{sid}/live-hint/0/', {'submission_state': {}}, format='json')
+                 .data['socratic_hint'] for _ in range(2)]
+        reloaded = SessionService.start_or_get_session(student_id=uid, module='tap_clues',
+                                                       node_id=self.NODES['tap_clues'], force_fresh=False)
+        self.assertEqual(reloaded['session_id'], sid)
+        self.assertEqual(reloaded['max_hints_per_question'], 3)
+        self.assertEqual(reloaded['case_hints'], {'0': 2})
+        self.assertEqual(reloaded['case_hint_log'], {'0': texts})
+        # A fresh start (Retry docket / Fresh Case) is a new session with a clean allowance
+        fresh = self.start(uid, 'tap_clues')
+        self.assertNotEqual(fresh['session_id'], sid)
+        self.assertEqual(fresh['case_hints'], {})
+
+    def test_live_hint_requires_the_session_owner(self):
+        session = self.start('hint_owner', 'fact_scanner')
+        res = self.client_for('someone_else').post(
+            f"/api/ai/session/{session['session_id']}/live-hint/0/", {'submission_state': {}}, format='json')
+        self.assertEqual(res.status_code, 403)
