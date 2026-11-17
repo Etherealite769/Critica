@@ -326,6 +326,9 @@ export default function SnapInGapPage() {
   const [board,       setBoard]       = useState<Record<string, string>>({})
   const [locked,      setLocked]      = useState<string[]>([])
   const [tileState,   setTileState]   = useState<TileState>('idle')
+  // Dock: the tile last tapped (shown as SELECTED while a wrong pick is flagged) and the one hovered / focused
+  const [pickedTile,  setPickedTile]  = useState<string | null>(null)
+  const [hoverTile,   setHoverTile]   = useState<string | null>(null)
   const [wrongs,      setWrongs]      = useState(0)
   const [masteryData, setMasteryData] = useState<any>(null)
   const [submitting,  setSubmitting]  = useState(false)
@@ -702,6 +705,7 @@ export default function SnapInGapPage() {
   const handleTile = async (tile: string) => {
     if (!snapNode || tileState !== 'idle' || revealing) return
     setDisputed(false)
+    setPickedTile(tile)
     const pair = snapNode.sentence_pairs[pairIdx]
     if (!pair) return
 
@@ -1093,6 +1097,11 @@ export default function SnapInGapPage() {
   const sentenceB   = currentPair?.sentence_b
     ? currentPair.sentence_b.charAt(0).toUpperCase() + currentPair.sentence_b.slice(1)
     : ''
+  // Bridge slot: the tile locked into this pair, else the wrong pick being flagged, else a hover preview
+  const sameTile    = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+  const bridgedTile = currentPair ? board[currentPair.pair_id] : undefined
+  const slotWord    = revealing?.tile ?? bridgedTile ?? (tileState === 'incorrect' ? pickedTile : null) ?? (tileState === 'idle' ? hoverTile : null)
+  const slotState   = revealing?.tile || bridgedTile ? 'bridged' : tileState === 'incorrect' ? 'wrong' : slotWord ? 'preview' : null
 
   const openTutorial  = () => setTutorialOpen(true)
   const closeTutorial = () => setTutorialOpen(false)
@@ -1210,26 +1219,54 @@ export default function SnapInGapPage() {
 
             <div className={styles.dock} data-tutorial="dock">
               <div className={styles.dockLabel}>TRANSITION TILE DOCK</div>
+
+              {/* Evidence bridge slot: red string to both exhibits, the chosen (or previewed) transition in the middle */}
+              <div className={`${styles.bridgeSlot} ${slotState ? styles[`bridgeSlot_${slotState}`] : ''}`}>
+                <span className={styles.bridgeSlotLabel}>EVIDENCE BRIDGE SLOT</span>
+                <span className={`${bodyFont.className} ${styles.bridgeSlotWord} ${slotWord ? '' : styles.bridgeSlotEmpty}`}>
+                  {slotWord ?? '[ ? ]'}
+                </span>
+              </div>
+
               <div className={`${styles.dockStatus} ${tileState === 'correct' ? styles.dockStatusOk : tileState === 'incorrect' ? styles.dockStatusBad : ''}`}
                 role="status">
                 {revealing
                   ? 'CASE FILED — NEXT CASE INCOMING'
                   : tileState === 'correct'
-                    ? `✓ ${currentPair ? (board[currentPair.pair_id] ?? '') : ''}`
-                    : tileState === 'incorrect' ? '✕ WRONG TILE' : 'bridge the gap'}
+                    ? '✓ BRIDGE HOLDS'
+                    : tileState === 'incorrect' ? '✕ WRONG TILE' : allDone ? '✓ ALL GAPS BRIDGED' : 'bridge the gap'}
               </div>
+
               <div className={styles.tiles}>
-                {snapNode!.transition_tile_dock.map(tile => (
-                  <button
-                    key={tile}
-                    type="button"
-                    disabled={tileState !== 'idle' || allDone || !!revealing}
-                    onClick={() => handleTile(tile)}
-                    className={`${bodyFont.className} ${styles.tile} ${revealing?.tile && revealing.tile.trim().toLowerCase() === tile.trim().toLowerCase() ? styles.tileReveal : ''}`}
-                  >
-                    {tile}
-                  </button>
-                ))}
+                {snapNode!.transition_tile_dock.map((tile, i) => {
+                  const isBridged = !!bridgedTile && sameTile(bridgedTile, tile)
+                  const isSelected = !isBridged && tileState === 'incorrect' && !!pickedTile && sameTile(pickedTile, tile)
+                  const isAnswer = !!revealing?.tile && sameTile(revealing.tile, tile)
+                  const state = isAnswer ? styles.tileReveal : isBridged ? styles.tileBridged : isSelected ? styles.tileSelected : ''
+                  return (
+                    <button
+                      key={tile}
+                      type="button"
+                      disabled={tileState !== 'idle' || allDone || !!revealing}
+                      onClick={() => handleTile(tile)}
+                      onMouseEnter={() => setHoverTile(tile)}
+                      onMouseLeave={() => setHoverTile(null)}
+                      onFocus={() => setHoverTile(tile)}
+                      onBlur={() => setHoverTile(null)}
+                      aria-pressed={isBridged || isSelected}
+                      className={`${styles.tile} ${state}`}
+                    >
+                      <span className={styles.tileIndex} aria-hidden>
+                        <span className={styles.tileHole} />
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className={`${bodyFont.className} ${styles.tileWord}`}>{tile}</span>
+                      {(isBridged || isSelected || isAnswer) && (
+                        <span className={styles.tileBadge}>{isAnswer ? 'ANSWER' : isBridged ? 'BRIDGED' : 'SELECTED'}</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
