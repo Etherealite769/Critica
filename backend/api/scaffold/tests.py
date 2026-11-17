@@ -151,8 +151,8 @@ class FeedbackViewTests(MongoTestCase):
         self.assertEqual((doc.node_id, doc.module), ('tap_node_02', 'tap_clues'))
 
     def test_tier_is_cast_safely(self):
-        sid = self.make_session()
         for raw, expected in (('3', 3), ('abc', 1), (None, 1), (2, 2)):
+            sid = self.make_session()   # a fresh case each time: a case allows only 3 hints
             TelemetryLogDocument.drop_collection()
             self.assertEqual(self.post(sid, {'tier': raw}).status_code, 200)
             self.assertEqual(TelemetryLogDocument.objects.get().hint_tier, expected, raw)

@@ -339,11 +339,89 @@ For each of the {count} exercises:
 
 # Shared output rules for live hints: short, plain, Socratic, never the answer
 SOCRATIC_OUTPUT_RULES = """[OUTPUT RULES]:
-- 2 or 3 sentences, at most 60 words in total. Plain text only: no markdown, lists, headings or emojis.
-- Be Socratic: end with a question that makes the student check the evidence themselves.
-- Highlight transition signal words by quoting them in double quotes (e.g. "first", "next", "meanwhile", "finally").
-- NEVER reveal the full order, card positions or numbers, block ids (like p1, p2) or which card goes where in the sequence.
+- 2 or 3 short sentences, at most 50 words in total, written for a Grade 11 student. Plain text only: no markdown,
+  lists, headings or emojis.
+- Each level must be EASIER to act on than the one before: clearer and more concrete, never more abstract or wordy.
+- Ground every hint in THIS case: quote only short phrases (a few words) that actually appear on the board. Never
+  use stock examples (such as "first", "then", "meanwhile", "finally") unless those exact words appear in the case.
+- Never reveal block ids (like p1, p2).
 - Speak as Inspector Crit to a cadet: warm, sharp, encouraging. Do not greet or sign off."""
+
+# The hint gradient. The free opening nudge (level 0) is built offline; these are the "Dig deeper" levels, each one
+# easier to act on than the last.
+_DIG_LEVELS = {
+    'logic_thread': {
+        1: "SPECIFIC CLUE: point to the one phrase on a card (a reference word like \"this\"/\"such\", a time marker or a "
+           "causal phrase) that unlocks the chain, and ask which card it points back to. Do not give the order.",
+        2: "ELIMINATE: rule out one or two wrong links, quoting the first words of the cards involved and saying in plain "
+           "words why each link breaks.",
+        3: "WALKTHROUGH: give the full order by quoting each card's first few words, and say in one sentence why each card "
+           "follows the one before it.",
+    },
+    'snap_gap': {
+        1: "SPECIFIC CLUE: quote the key words of Exhibit B and ask one plain question about its job (adds a point, "
+           "contrasts, results, gives an example, sums up). Do not name a tile.",
+        2: "ELIMINATE: rule out one or two wrong tiles by name and say why each does not fit these two exhibits, leaving "
+           "the correct tile and its closest rival as the final two.",
+        3: "WALKTHROUGH: name the correct tile, explain in plain words the exact link it makes between A and B, and say "
+           "why the closest rival tile is the trap.",
+    },
+    'tap_clues': {
+        1: "SPECIFIC CLUE: quote the short phrase that holds a clue and ask what it tells the cadet about the locked word. "
+           "Do not list all the clue words.",
+        2: "ELIMINATE: rule out one or two tempting words that are NOT clues (topic words near the locked word) and say why.",
+        3: "WALKTHROUGH: name the clue words and explain in one sentence how together they reveal the meaning.",
+    },
+    'fact_scanner': {
+        1: "SPECIFIC CLUE: point to the exact detail (a date, a source, a figure, a sponsor, a loaded word) that the "
+           "active CRAAP criterion turns on, and ask whether it passes. Do not name the statement id.",
+        2: "ELIMINATE: clear one or two sound statements by id and say why they pass the criterion, leaving the final two.",
+        3: "WALKTHROUGH: name the statement that fails and explain in plain words exactly why it fails the criterion.",
+    },
+}
+
+_MODULE_ROLE = {
+    'logic_thread': 'ordering shuffled exhibit cards into one logical sequence',
+    'snap_gap': 'choosing the transition tile that bridges Exhibit A and Exhibit B',
+    'tap_clues': 'tapping the context-clue words that unlock a vocabulary word',
+    'fact_scanner': 'quarantining the witness statement that fails the active CRAAP criterion',
+}
+
+
+def _case_context(module: str, exercise: Dict[str, Any]) -> str:
+    """The active case as Gemini needs it, answer key included for reasoning only."""
+    title = exercise.get('topic_title', 'Exercise')
+    lines = [f"[CASE: {title}]"]
+    if module == 'logic_thread':
+        blocks = exercise.get('paragraph_blocks', []) or []
+        text_of = {b.get('block_id'): b.get('text', '') for b in blocks}
+        lines.append("[CARDS ON THE BOARD (shuffled)]:")
+        lines += [f'- "{b.get("text", "")}"' for b in blocks]
+        answer = " -> ".join(f'"{text_of.get(bid, "")[:60]}"' for bid in exercise.get('correct_sequence', []))
+        lines.append(f"[ANSWER KEY - reasoning only, never recite]: {answer}")
+    elif module == 'snap_gap':
+        tile_map = exercise.get('correct_tile_map', {}) or {}
+        lines.append("[EXHIBIT PAIRS]:")
+        for p in exercise.get('sentence_pairs', []) or []:
+            lines.append(f'- Exhibit A: "{p.get("sentence_a", "")}" | Exhibit B: "{p.get("sentence_b", "")}" '
+                         f'| correct tile (reasoning only): {tile_map.get(p.get("pair_id"), "")}')
+        lines.append(f"[TILE DOCK]: {', '.join(exercise.get('transition_tile_dock', []) or [])}")
+    elif module == 'tap_clues':
+        words = exercise.get('locked_words', []) or []
+        w = words[0] if words else {}
+        clues = ", ".join(w.get('correct_clue_ids') or w.get('context_clues') or [])
+        lines.append(f'[PASSAGE]: "{exercise.get("reading_passage", "")}"')
+        lines.append(f'[LOCKED WORD]: "{w.get("word", "")}" (meaning, reasoning only: {w.get("definition", "")})')
+        lines.append(f"[CLUE WORDS - reasoning only]: {clues}")
+    elif module == 'fact_scanner':
+        lines.append(f"[ACTIVE CRAAP CRITERION]: {exercise.get('craap_criterion', '')}")
+        lines.append("[WITNESS STATEMENTS]:")
+        for s in exercise.get('article_sentences', []) or []:
+            flaw = f' [FLAWED - reasoning only: {s.get("flaw_reason", "")}]' if s.get('is_flawed') else ''
+            lines.append(f'- {s.get("sentence_id")}: "{s.get("text", "")}"{flaw}')
+    else:
+        lines.append(f'[PASSAGE]: "{exercise.get("reading_passage", "")}"')
+    return "\n".join(lines)
 
 
 def build_socratic_hint_prompt(
@@ -351,54 +429,26 @@ def build_socratic_hint_prompt(
     exercise: Dict[str, Any],
     submission_state: Dict[str, Any],
     error_count: int = 1,
+    level: int = 1,
+    baseline: str = '',
 ) -> str:
     """
-    Builds a prompt for generating dynamic, on-demand Socratic pedagogical advice.
+    Prompt for a "Dig deeper" hint at `level` (1-3), grounded in the active case. `baseline` is the offline hint for
+    the same level, given as a reference for how specific this level may be.
     """
-    passage = exercise.get('reading_passage', '')
-    title = exercise.get('topic_title', 'Exercise')
+    level = max(1, min(3, int(level or 1)))
+    rule = _DIG_LEVELS.get(module, {}).get(level, 'Give one concise Socratic clue grounded in the case.')
+    previous = f'hint {level - 1}' if level > 1 else "Crit's opening guidance"
+    reference = (f'[REFERENCE HINT FOR THIS LEVEL - match its content and specificity; you may rephrase it more naturally]: "{baseline}"\n'
+                 if baseline else '')
+    return f"""You are Inspector Crit, the Socratic reading detective in CRITICA.
+A cadet is {_MODULE_ROLE.get(module, 'working on a reading exercise')} and pressed "Dig deeper" (hint {level} of 3 on this case; {max(0, error_count - 1)} wrong attempt(s) so far).
 
-    if module == 'logic_thread':
-        blocks = exercise.get('paragraph_blocks', []) or []
-        text_of = {b.get('block_id'): b.get('text', '') for b in blocks}
-        cards = "\n".join(f'- "{b.get("text", "")}"' for b in blocks)
-        chain = [text_of.get(bid, '') for bid in (submission_state or {}).get('sequence', []) if bid in text_of]
-        attempt = "\n".join(f'{i + 1}. "{t}"' for i, t in enumerate(chain)) or "(no cards threaded yet)"
-        answer = " -> ".join(f'"{text_of.get(bid, "")[:60]}"' for bid in exercise.get('correct_sequence', []))
+{_case_context(module, exercise)}
 
-        return f"""You are Inspector Crit, the Socratic reading detective in CRITICA.
-A cadet is ordering shuffled paragraph cards into a logical sequence (Forensic Textual Analysis) and asked for help (request #{error_count}).
-
-[EXERCISE TOPIC]: {title}
-
-[CARDS ON THE BOARD (shuffled)]:
-{cards}
-
-[THE CADET'S CURRENT CHAIN]:
-{attempt}
-
-[ANSWER KEY - for your reasoning only, never reveal it]: {answer}
-
-[TASK]:
-Give one concise Socratic clue that moves the cadet one step closer: point to a transition signal word on the cards
-(or the absence of one) and what it implies, or question a link in their current chain that does not hold.
-Do not solve the puzzle for them.
+[THE CADET'S CURRENT STATE]: {submission_state}
+{reference}[THIS LEVEL]: {rule}
+Hint {level} must be clearer and easier to act on than {previous}. {'End with a question that sends the cadet back to the evidence.' if level < 3 else 'This is the last hint: explain plainly so the cadet can choose with confidence and learn why.'}
 
 {SOCRATIC_OUTPUT_RULES}
-"""
-
-    return f"""You are Agent Crit, the Socratic Reading Detective and pedagogical coach in CRITICA.
-A student is working on the following reading exercise in {module.upper()} and made an incorrect attempt (Attempt #{error_count}).
-
-[EXERCISE TOPIC]: {title}
-[READING PASSAGE]:
-\"\"\"{passage}\"\"\"
-
-[STUDENT SUBMISSION STATE]:
-{submission_state}
-
-[TASK]:
-Provide a concise (2-3 sentences), encouraging, Socratic hint that guides the student's thinking without giving away the direct answer.
-Point them toward key sentence clues, transition signals, or criterion questions to help them uncover the solution themselves.
-Tone: Detective instructor, encouraging, intellectually engaging.
 """

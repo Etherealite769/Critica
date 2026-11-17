@@ -9,7 +9,7 @@ from rest_framework import status
 from api.progression.services import ProgressionManagementService
 from api.scaffold.scaffold_service import (
     ScaffoldEngineService, EVENT_CASE, EVENT_STEP, EVENT_HINT)
-from .session_service import SessionService
+from .session_service import SessionService, HintLimitReached, MAX_HINTS_PER_QUESTION
 from .gemini_client import GeminiClient
 from .mongo_models import GeneratedSessionDocument
 
@@ -29,6 +29,16 @@ def _owned_session(request, session_id):
                        session_id, request.user.id, session_doc.student_id)
         return None, Response({'error': 'This session belongs to another student.'}, status=status.HTTP_403_FORBIDDEN)
     return session_doc, None
+
+
+def _hint_limit_response():
+    return Response({
+        'error': 'hint_limit_reached',
+        'detail': f'Maximum of {MAX_HINTS_PER_QUESTION} hints per question reached.',
+        'hints_used': MAX_HINTS_PER_QUESTION,
+        'hints_remaining': 0,
+        'max_hints': MAX_HINTS_PER_QUESTION,
+    }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
 
 class AIHealthCheckView(APIView):
@@ -146,11 +156,14 @@ class SessionFeedbackView(APIView):
             return denied
 
         feedback_data = request.data
-        res = SessionService.get_exercise_feedback(
-            session_id=session_id,
-            exercise_index=int(exercise_index),
-            feedback_query=feedback_data
-        )
+        try:
+            res = SessionService.get_exercise_feedback(
+                session_id=session_id,
+                exercise_index=int(exercise_index),
+                feedback_query=feedback_data
+            )
+        except HintLimitReached:
+            return _hint_limit_response()
 
         try:
             tier = int(feedback_data.get('tier', 1))
@@ -216,15 +229,24 @@ class SessionLiveHintView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id, exercise_index):
+        _session_doc, denied = _owned_session(request, session_id)
+        if denied:
+            return denied
         payload = request.data.get('submission_state', request.data)
-        error_count = int(request.data.get('error_count', 1))
+        try:
+            error_count = int(request.data.get('error_count', 1))
+        except (TypeError, ValueError):
+            error_count = 1
 
-        res = SessionService.get_live_socratic_hint(
-            session_id=session_id,
-            exercise_index=int(exercise_index),
-            submission_payload=payload,
-            error_count=error_count,
-        )
+        try:
+            res = SessionService.get_live_socratic_hint(
+                session_id=session_id,
+                exercise_index=int(exercise_index),
+                submission_payload=payload,
+                error_count=error_count,
+            )
+        except HintLimitReached:
+            return _hint_limit_response()
         return Response(res, status=status.HTTP_200_OK)
 
 
