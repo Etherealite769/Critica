@@ -467,47 +467,150 @@
   word-break: break-word;
 }
 
-/* Transition tile dock */
-.dock { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-height: 0; }
-.dockLabel { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-align: center; color: var(--hat); }
-.dockStatus { min-height: 18px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-align: center; text-transform: uppercase; color: #8c7a63; transition: color 0.25s; }
-.dockStatusOk { color: var(--ok-ink); }
-.dockStatusBad { color: var(--stamp); }
-
-.tiles {
-  flex: 1;
-  min-height: 0;
+/* Transition tile dock: hugs its tiles and sits centred between the two exhibits */
+.dock {
+  --tag-paper: #f7f3e8;
+  --tag-ink: #57524e;
+  --bridge-red: #a63a3a;
+  --bridge-green: #2d9d78;
+  align-self: center;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  padding: 10px;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.dockLabel { font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-align: center; color: var(--hat); }
+.dockStatus { min-height: 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-align: center; text-transform: uppercase; color: #8c7a63; transition: color 0.25s; }
+.dockStatusOk { color: var(--ok-ink); }
+.dockStatusBad { color: var(--bridge-red); }
+
+/* Evidence bridge slot, tied to Exhibit A and Exhibit B by red string across the 30px gutters */
+.bridgeSlot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 10px 8px;
+  background: rgba(247, 243, 232, 0.85);
+  border: 1.5px dashed var(--tag-ink);
+  border-radius: 3px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.bridgeSlot::before,
+.bridgeSlot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 31px;
+  border-top: 2px dashed rgba(166, 58, 58, 0.7);
+  transition: border-color 0.2s;
+  pointer-events: none;
+}
+
+.bridgeSlot::before { right: 100%; }
+.bridgeSlot::after { left: 100%; }
+
+.bridgeSlotLabel { font-size: 8.5px; font-weight: 800; letter-spacing: 0.18em; color: #8c7a63; }
+.bridgeSlotWord { min-height: 22px; font-size: 16px; font-weight: 700; line-height: 22px; color: var(--ink); text-align: center; }
+.bridgeSlotEmpty { font-family: var(--type); letter-spacing: 0.2em; color: #a8977d; }
+
+.bridgeSlot_preview { border-style: dashed; border-color: var(--hat); }
+.bridgeSlot_preview .bridgeSlotWord { color: #8c7a63; font-style: italic; }
+.bridgeSlot_bridged { border-style: solid; border-color: var(--bridge-green); background: rgba(45, 157, 120, 0.1); }
+.bridgeSlot_bridged::before,
+.bridgeSlot_bridged::after { border-top-style: solid; border-top-color: var(--bridge-green); }
+.bridgeSlot_bridged .bridgeSlotWord { color: #1f6e54; }
+.bridgeSlot_wrong { border-style: solid; border-color: var(--bridge-red); background: rgba(166, 58, 58, 0.08); }
+.bridgeSlot_wrong .bridgeSlotWord { color: var(--bridge-red); text-decoration: line-through; }
+
+.tiles {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  padding: 9px 8px 11px;
   overflow-y: auto;
   background: rgba(250, 246, 237, 0.55);
   border: 1px dashed rgba(139, 115, 85, 0.6);
   border-radius: 4px;
 }
 
+/* Forensic evidence tag: paper strip, punched index edge, charcoal lip */
 .tile {
+  position: relative;
   flex-shrink: 0;
-  padding: 11px 12px;
-  font-size: 14.5px;
-  font-weight: 600;
-  line-height: 1.3;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;              /* comfortable touch target */
+  padding: 0 10px 0 0;
+  font-family: var(--type);
+  text-align: left;
   color: var(--ink);
-  background: var(--exhibit);
-  border: 1px solid #c9b48a;
-  border-left: 4px solid var(--hat);
-  border-radius: 2px;
-  box-shadow: 0 2px 0 rgba(60, 40, 20, 0.25), 0 3px 6px -2px rgba(60, 40, 20, 0.25);
+  background: var(--tag-paper);
+  border: 1.5px solid var(--tag-ink);
+  border-radius: 3px;
+  box-shadow: 0 3px 0 var(--tag-ink);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.1s, box-shadow 0.15s;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.15s, background 0.15s;
 }
 
-.tile:hover:not(:disabled) { color: #f9f6ed; background: var(--hat); transform: translateY(-1px); }
-.tile:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 1px 0 rgba(60, 40, 20, 0.25); }
-.tile:disabled { opacity: 0.45; cursor: not-allowed; }
-.tile:focus-visible { outline: 2px solid #76b852; outline-offset: 2px; }
+.tileIndex {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  align-self: stretch;
+  width: 30px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #8c7a63;
+  border-right: 1.5px dashed rgba(87, 82, 78, 0.45);
+}
+
+.tileHole {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d9ccad;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.tileWord { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+
+.tileBadge {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+}
+
+.tile:hover:not(:disabled) { transform: translateY(-2px) rotate(-0.6deg); box-shadow: 0 5px 0 var(--tag-ink); }
+.tile:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--tag-ink); }
+.tile:disabled { opacity: 0.5; cursor: not-allowed; }
+.tile:focus-visible { outline: 2px solid #76b852; outline-offset: 3px; }
+
+/* Chosen tiles stay fully visible (and pressed in) while the dock is locked */
+.tile.tileSelected,
+.tile.tileBridged,
+.tile.tileReveal { opacity: 1; transform: translateY(2px); }
+
+.tile.tileSelected { color: var(--bridge-red); border-color: var(--bridge-red); box-shadow: 0 1px 0 var(--bridge-red), 0 0 0 3px rgba(166, 58, 58, 0.18); }
+.tile.tileBridged,
+.tile.tileReveal { color: #1f6e54; border-color: var(--bridge-green); background: #eef7f1; box-shadow: 0 1px 0 var(--bridge-green), 0 0 0 3px rgba(45, 157, 120, 0.2); }
+.tile.tileSelected .tileIndex,
+.tile.tileBridged .tileIndex,
+.tile.tileReveal .tileIndex { color: inherit; border-right-color: currentColor; }
 
 /* Footer bar */
 .submitBar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0 18px; margin-top: 14px; border-top: 1px dashed rgba(139, 115, 85, 0.55); }
@@ -552,16 +655,6 @@
 .attemptPips { display: inline-flex; gap: 4px; }
 .attemptPips i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid currentColor; opacity: 0.6; }
 .attemptPips i.pipOn { background: currentColor; opacity: 1; }
-
-/* Third miss: the correct tile is revealed while the dock is locked */
-.tile.tileReveal,
-.tile.tileReveal:disabled {
-  opacity: 1;
-  color: #f9f6ed;
-  background: var(--ok-ink);
-  border-color: var(--ok-ink);
-  box-shadow: 0 0 0 3px rgba(118, 184, 82, 0.45), 0 2px 0 rgba(60, 40, 20, 0.25);
-}
 
 /* Red status line under the counter after a wrong tile */
 .attemptMsg { font-size: 12.5px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--stamp); }
