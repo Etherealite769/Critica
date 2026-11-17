@@ -19,10 +19,11 @@ import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/so
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
+import LessonManual from '@/components/logic-thread/LessonManual'
 import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
-  ArrowRight, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Scale, ShieldAlert,
+  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Scale, ShieldAlert,
 } from 'lucide-react'
 import { Montserrat } from 'next/font/google'
 import desk from '@/components/dashboard/desk.module.css'
@@ -199,6 +200,10 @@ export default function FactScannerPage() {
   const [submitting,  setSubmitting]  = useState(false)
 
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  // Lesson Manual: the node's own lesson, opened from the header next to TUTORIAL
+  const [manualOpen, setManualOpen] = useState(false)
+  const [lessonTitle, setLessonTitle] = useState('')   // node title; AI sessions show each case's topic instead
+  const closeManual = useCallback(() => setManualOpen(false), [])
 
   // Hints and feedback are spoken by Inspector Crit's lower-left bubble
   const [socraticLoading, setSocraticLoading] = useState(false)
@@ -282,6 +287,7 @@ export default function FactScannerPage() {
       )
       const activeEx = sessionData.exercises?.[resumeIdx] || sessionData.exercises?.[0]
 
+      setLessonTitle(sessionData.title)
       setFactNode({
         node_id: sessionData.node_id,
         title: activeEx?.topic_title || sessionData.title,
@@ -959,6 +965,9 @@ export default function FactScannerPage() {
               <button type="button" className={`${styles.caseBtn} ${styles.caseBtnGhost}`} onClick={() => setTutorialOpen(true)}>
                 <HelpCircle size={14} aria-hidden /> Tutorial
               </button>
+              <button type="button" className={styles.caseBtn} onClick={() => setManualOpen(true)}>
+                <BookOpen size={14} aria-hidden /> Lesson Manual
+              </button>
             </div>
           </header>
 
@@ -1163,6 +1172,17 @@ export default function FactScannerPage() {
         open={confirmReset}
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => { setConfirmReset(false); handleRetryDocket() }}
+      />
+
+      <LessonManual
+        open={manualOpen}
+        onClose={closeManual}
+        lesson={factNode ? {
+          nodeId: factNode.node_id,
+          title: lessonTitle || factNode.title,
+          focus: factNode.focus,
+          text: factNode.micro_lesson_text,
+        } : null}
       />
 
       <CaseDebriefModal
