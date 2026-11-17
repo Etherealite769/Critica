@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  useState, useEffect,
+  Fragment, useState, useEffect,
   useRef, useCallback,
 } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -23,7 +23,7 @@ import LessonManual from '@/components/logic-thread/LessonManual'
 import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import { SpotlightTutorial, hasSeenTutorial, type TutorialStep } from '@/components/logic-thread/LogicThreadTutorial'
 import {
-  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, LogOut, Paperclip, RotateCcw, Search, X,
+  ArrowRight, BookOpen, FileText, FolderOpen, HelpCircle, Lightbulb, Lock, LogOut, Paperclip, RotateCcw, Search, X,
 } from 'lucide-react'
 import { Montserrat } from 'next/font/google'
 import desk from '@/components/dashboard/desk.module.css'
@@ -245,20 +245,48 @@ function MasteryScreen({ node, data, onDashboard, onNext, onReplay }: {
 }
 
 // ── Helper ─────────────────────────────────────────
-function tokenizePassage(
-  passage:     string,
-  lockedWords: LockedWordMeta[],
-): { text: string; isLocked: boolean; word_id?: string; idx: number }[] {
-  const tokens: { text: string; isLocked: boolean; word_id?: string; idx: number }[] = []
-  const words = passage.split(/(\s+)/)
+interface PassageToken {
+  text:      string   // the whole chunk, punctuation included
+  lead:      string   // punctuation before the word, e.g. an opening quote
+  core:      string   // the word itself: the only part that is highlighted or tapped
+  trail:     string   // punctuation after the word, e.g. a comma or full stop
+  isWord:    boolean  // false for whitespace, dashes and punctuation-only chunks
+  isLocked:  boolean
+  word_id?:  string
+  idx:       number
+}
+
+// Common function words are never context clues, so tapping them is not a guess (unless a case lists one)
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'nor', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as',
+  'is', 'was', 'were', 'are', 'be', 'been', 'am', 'it', 'its', 'this', 'that', 'these', 'those',
+  'he', 'she', 'they', 'we', 'you', 'i', 'his', 'her', 'their', 'our', 'your', 'my',
+])
+
+function tokenizePassage(passage: string, lockedWords: LockedWordMeta[]): PassageToken[] {
+  const tokens: PassageToken[] = []
   let wordIdx = 0
-  words.forEach(chunk => {
-    if (/^\s+$/.test(chunk)) { tokens.push({ text: chunk, isLocked: false, idx: -1 }); return }
-    const clean  = chunk.replace(/[^a-zA-Z']/g, '').toLowerCase()
-    const locked = lockedWords.find(lw => lw.position_index === wordIdx || lw.word.toLowerCase() === clean)
-    tokens.push({ text: chunk, isLocked: !!locked, word_id: locked?.word_id, idx: wordIdx })
-    wordIdx++
-  })
+  // Whitespace and dashes separate words ("skepticism—doubt" is two words)
+  for (const chunk of passage.split(/(\s+|[\u2014\u2013])/)) {
+    if (!chunk) continue
+    if (/^(\s+|[\u2014\u2013])$/.test(chunk)) {
+      tokens.push({ text: chunk, lead: '', core: chunk, trail: '', isWord: false, isLocked: false, idx: -1 })
+      continue
+    }
+    const [, lead, core, trail] = chunk.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/) ?? ['', '', chunk, '']
+    tokens.push({ text: chunk, lead, core, trail, isWord: /[A-Za-z0-9]/.test(core), isLocked: false, idx: wordIdx++ })
+  }
+  // Lock each target on its own text. position_index from generated cases is often wrong, so it
+  // only chooses between repeats of the same word; it never locks a different word.
+  for (const lw of lockedWords) {
+    const target = (lw.word || '').trim().toLowerCase()
+    const hits = tokens.filter(t => t.isWord && !t.isLocked && t.core.toLowerCase() === target)
+    if (hits.length === 0) continue
+    const pos = typeof lw.position_index === 'number' ? lw.position_index : 0
+    const best = hits.reduce((a, b) => (Math.abs(b.idx - pos) < Math.abs(a.idx - pos) ? b : a))
+    best.isLocked = true
+    best.word_id = lw.word_id
+  }
   return tokens
 }
 
@@ -563,6 +591,10 @@ export default function TapCluesPage() {
     const current = foundClues[activeWordId] ?? []
     const updated = current.filter(c => c.toLowerCase() !== clueToRemove.toLowerCase())
     setFoundClues(prev => ({ ...prev, [activeWordId]: updated }))
+    // Deselecting below the required clue count re-locks the word (and SUBMIT with it)
+    const meta = tapNode?.locked_words.find(lw => lw.word_id === activeWordId)
+    const required = meta?.target_clues_count || (meta?.correct_clue_ids || meta?.context_clues || []).length || current.length
+    if (updated.length < required) setUnlockedWords(prev => prev.filter(id => id !== activeWordId))
   }
 
   const handleWordTap = async (word: string, token: { text: string; isLocked: boolean; word_id?: string; idx: number }) => {
@@ -1126,6 +1158,9 @@ export default function TapCluesPage() {
 
   // ── TASK PHASE ─────────────────────────────────
   const tokens         = tokenizePassage(tapNode!.reading_passage, tapNode!.locked_words)
+  // Every clue word this case accepts (so a listed clue is never treated as a plain function word)
+  const caseClueWords  = new Set(tapNode!.locked_words.flatMap(lw =>
+    (lw.correct_clue_ids || lw.context_clues || []).flatMap(c => c.toLowerCase().split(/\s+/))))
   const allUnlocked    = unlockedWords.length === tapNode!.locked_words.length
   const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
   const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
@@ -1248,28 +1283,38 @@ export default function TapCluesPage() {
               <span className={styles.exhibitNo}>EXHIBIT A {'//'} WITNESS STATEMENT</span>
               <div className={`${bodyFont.className} ${styles.passageText}`}>
                 {tokens.map((token, i) => {
-                  if (/^\s+$/.test(token.text)) return <span key={i}>{token.text}</span>
+                  if (!token.isWord) return <span key={i}>{token.text}</span>
                   const wordId     = token.word_id
                   const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
                   const isActive   = wordId ? activeWordId === wordId : false
-                  const cleanWord  = token.text.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
-                  const isFoundClue = !!cleanWord && activeClues.some((c: string) => clueMatches(c, cleanWord))
+                  const cleanWord  = token.core.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
+                  const isFoundClue = !token.isLocked && !!cleanWord && activeClues.some((c: string) => clueMatches(c, cleanWord))
+                  // Function words and the locked target itself are not taps that cost an attempt
+                  const isPlain = !token.isLocked && STOP_WORDS.has(cleanWord) && !caseClueWords.has(cleanWord) && !isFoundClue
                   const cls =
                     token.isLocked && isUnlocked ? styles.wordUnlocked :
                     token.isLocked && isActive   ? styles.wordTargetActive :
                     token.isLocked               ? styles.wordTarget :
                     isFoundClue                  ? styles.wordClue :
                     revealing && cleanWord && isRevealedClue(cleanWord) ? styles.wordRevealed :
-                    pulseClue === cleanWord      ? styles.wordPulse : ''
+                    pulseClue === cleanWord      ? styles.wordPulse :
+                    isPlain                      ? styles.wordPlain : ''
                   return (
-                    <span
-                      key={i}
-                      onClick={() => handleWordTap(token.text, token)}
-                      title={isFoundClue ? 'Found context clue (click to remove)' : undefined}
-                      className={`${styles.word} ${cls}`}
-                    >
-                      {token.text}
-                    </span>
+                    <Fragment key={i}>
+                      {token.lead}
+                      <span
+                        onClick={isPlain ? undefined : () => handleWordTap(token.core, token)}
+                        title={
+                          token.isLocked ? (isUnlocked ? 'Unlocked word' : 'Locked target word: tap the clues around it')
+                          : isFoundClue ? 'Selected clue (tap again to deselect)' : undefined}
+                        aria-pressed={!token.isLocked && !isPlain ? isFoundClue : undefined}
+                        className={`${styles.word} ${cls}`}
+                      >
+                        {token.core}
+                        {token.isLocked && !isUnlocked && <Lock size={11} strokeWidth={2.5} className={styles.targetLockIcon} aria-label="locked" />}
+                      </span>
+                      {token.trail}
+                    </Fragment>
                   )
                 })}
               </div>
