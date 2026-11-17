@@ -1,0 +1,2543 @@
+{
+  "_about": "Grade 11 SHS (DepEd Reading and Writing / EAPP) seed exercises keyed by node_id. Applied by scripts/update_node_exercises.py, which only $sets these exercise fields.",
+  "nodes": {
+    "fac_node_01": {
+      "reading_passage": "NASA's New Horizons spacecraft flew past Pluto in July 2015, returning the first close-up images of its icy surface. According to a 2004 astronomy reference cited by the article, Pluto is the ninth planet of the solar system. The images revealed a vast heart-shaped region, informally named Tombaugh Regio, whose western lobe is a glacier of nitrogen ice. Mission scientists continue to publish analyses of the flyby data in peer-reviewed journals.",
+      "word_count": 71,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "NASA's New Horizons spacecraft flew past Pluto in July 2015, returning the first close-up images of its icy surface.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "According to a 2004 astronomy reference cited by the article, Pluto is the ninth planet of the solar system.",
+          "is_flawed": true,
+          "flaw_reason": "The International Astronomical Union reclassified Pluto as a dwarf planet in 2006, so a 2004 reference is out of date on this point."
+        },
+        {
+          "sentence_id": "s3",
+          "text": "The images revealed a vast heart-shaped region, informally named Tombaugh Regio, whose western lobe is a glacier of nitrogen ice.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Mission scientists continue to publish analyses of the flyby data in peer-reviewed journals.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A dated, verifiable event from the mission itself; current for the topic.",
+        "s2": "This relies on a source published before a major, widely reported revision of the classification.",
+        "s3": "This comes from the 2015 flyby data, the most recent close-up observations available.",
+        "s4": "Ongoing publication keeps the findings current."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Check the date of every source. Has anything about Pluto changed since then?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence relies on a reference published before a famous 2006 decision about Pluto."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s2 cites a 2004 reference that predates Pluto's reclassification."
+        }
+      ]
+    },
+    "fac_node_02": {
+      "reading_passage": "The 2025 transport master plan targets the busiest corridors in Metro Manila, where many commuters spend over two hours a day in traffic. The plan's corridor maps draw on traffic counts collected by city monitoring cameras in 2024. Planners base their ridership projections on the national population of 92 million recorded in the 2010 census. Transport economists note that rail lines take a decade or more to build, so projections must look far ahead.",
+      "word_count": 74,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "The 2025 transport master plan targets the busiest corridors in Metro Manila, where many commuters spend over two hours a day in traffic.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "The plan's corridor maps draw on traffic counts collected by city monitoring cameras in 2024.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Planners base their ridership projections on the national population of 92 million recorded in the 2010 census.",
+          "is_flawed": true,
+          "flaw_reason": "The 2010 figure has been superseded by the 2015 and 2020 censuses (about 109 million), so the projections rest on outdated data."
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Transport economists note that rail lines take a decade or more to build, so projections must look far ahead.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "The plan is current and the claim fits the period it describes.",
+        "s2": "Data from the year before the plan is appropriately recent.",
+        "s3": "Two newer censuses exist, so a 2025 plan should not rely on 2010 data.",
+        "s4": "A general point about planning timelines that does not depend on a date."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "A 2025 plan should use the newest data available. Check how old each data source is."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One figure comes from a census that has since been repeated twice."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s3 relies on the 2010 census when 2015 and 2020 figures exist."
+        }
+      ]
+    },
+    "fac_node_03": {
+      "reading_passage": "Eggs are among the most affordable sources of high-quality protein in Philippine public markets. A 2022 review in a peer-reviewed nutrition journal found no consistent link between moderate egg intake and heart disease in healthy adults. Nutritionists add that how eggs are cooked, and what they are served with, matters as much as the eggs themselves. For safety, the article advises keeping dietary cholesterol below 300 milligrams a day, the limit it cites from the U.S. Dietary Guidelines.",
+      "word_count": 78,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Eggs are among the most affordable sources of high-quality protein in Philippine public markets.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "A 2022 review in a peer-reviewed nutrition journal found no consistent link between moderate egg intake and heart disease in healthy adults.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Nutritionists add that how eggs are cooked, and what they are served with, matters as much as the eggs themselves.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "For safety, the article advises keeping dietary cholesterol below 300 milligrams a day, the limit it cites from the U.S. Dietary Guidelines.",
+          "is_flawed": true,
+          "flaw_reason": "The numeric 300 mg limit was dropped from the U.S. Dietary Guidelines in the 2015-2020 edition; the article cites a superseded edition without dating it."
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A current, widely verifiable observation.",
+        "s2": "A recent review that reflects current research.",
+        "s3": "Current expert advice, consistent with the review.",
+        "s4": "The citation looks authoritative, but it quietly relies on an outdated edition of the guidelines."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "A source can be outdated even when no date is printed. Is every guideline here the current version?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence cites a numeric limit from official guidelines. Is that limit still in the latest edition?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s4 cites a cholesterol cap removed from the guidelines in 2015."
+        }
+      ]
+    },
+    "fac_node_04": {
+      "reading_passage": "Last month's typhoon flooded thousands of hectares of rice fields in Central Luzon just weeks before harvest. Farmers report that submerged plants lost most of their grain, cutting expected yields for the season. The region is also home to several hot-spring resorts that attract tourists during the cooler months. Agriculture officials are distributing flood-tolerant seed varieties so farmers can replant quickly.",
+      "word_count": 61,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Last month's typhoon flooded thousands of hectares of rice fields in Central Luzon just weeks before harvest.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Farmers report that submerged plants lost most of their grain, cutting expected yields for the season.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "The region is also home to several hot-spring resorts that attract tourists during the cooler months.",
+          "is_flawed": true,
+          "flaw_reason": "Tourism and resorts have nothing to do with the typhoon's effect on rice production."
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Agriculture officials are distributing flood-tolerant seed varieties so farmers can replant quickly.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "Directly relevant: it describes the damage to rice production.",
+        "s2": "Directly relevant: it explains the effect on the harvest.",
+        "s3": "This sentence is off-topic for an article about crop damage.",
+        "s4": "Relevant: it describes the response to the crop losses."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "What is this article about? Check each sentence against that topic."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence talks about the region but not about rice or the typhoon."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s3, about hot-spring resorts, is irrelevant to crop damage."
+        }
+      ]
+    },
+    "fac_node_05": {
+      "reading_passage": "Nationally, about one in four children under five is stunted, according to national nutrition surveys. The division launched a daily feeding program for underweight Grade 4 pupils in June 2023. By March 2024, attendance among participating pupils had risen from 88 to 94 percent, according to school records. Teachers also observed that participating pupils were more attentive during morning classes.",
+      "word_count": 60,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Nationally, about one in four children under five is stunted, according to national nutrition surveys.",
+          "is_flawed": true,
+          "flaw_reason": "The article evaluates a feeding program for Grade 4 pupils and its effect on attendance; a national figure about under-fives concerns a different age group and outcome."
+        },
+        {
+          "sentence_id": "s2",
+          "text": "The division launched a daily feeding program for underweight Grade 4 pupils in June 2023.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "By March 2024, attendance among participating pupils had risen from 88 to 94 percent, according to school records.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Teachers also observed that participating pupils were more attentive during morning classes.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "It sounds relevant because it concerns nutrition, but it does not bear on whether this program worked.",
+        "s2": "Relevant: it introduces the program being evaluated.",
+        "s3": "Relevant: it gives the outcome the article is about.",
+        "s4": "Relevant: an additional outcome for the same pupils."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "What exactly is being evaluated: which program, which pupils, which outcome?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One statistic is about nutrition but concerns a different age group and a different outcome."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s1 is a national under-five figure, outside the scope of this Grade 4 program."
+        }
+      ]
+    },
+    "fac_node_06": {
+      "reading_passage": "Between 2015 and 2020, volunteers replanted 40 hectares of mangroves along the bay's eastern shore. Mangroves can store up to four times more carbon per hectare than many tropical upland forests. Tide-gauge records show that floodwater in nearby villages receded faster during the 2023 storm season than during comparable storms before replanting. Village officials caution that new drainage canals built in 2021 may explain part of the improvement.",
+      "word_count": 68,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Between 2015 and 2020, volunteers replanted 40 hectares of mangroves along the bay's eastern shore.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Mangroves can store up to four times more carbon per hectare than many tropical upland forests.",
+          "is_flawed": true,
+          "flaw_reason": "The article asks whether the project reduced flooding; carbon storage is a true mangrove benefit but does not address that question."
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Tide-gauge records show that floodwater in nearby villages receded faster during the 2023 storm season than during comparable storms before replanting.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Village officials caution that new drainage canals built in 2021 may explain part of the improvement.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "Relevant: it describes the project being evaluated.",
+        "s2": "Accurate and on the general topic, but irrelevant to the flood-reduction claim being tested.",
+        "s3": "Relevant: it is direct evidence about flooding.",
+        "s4": "Relevant: it names a competing explanation for the flood data."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Pin down the article's exact question. Mangroves have many benefits; which one is being tested?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One accurate sentence is about mangroves in general but not about flooding."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s2, about carbon storage, does not bear on flood reduction."
+        }
+      ]
+    },
+    "fac_node_07": {
+      "reading_passage": "The provincial health office advises residents in flooded areas to boil drinking water for at least one minute. A viral post shared by an anonymous page claims that adding a pinch of salt makes floodwater safe to drink. Health workers are distributing chlorine tablets, with printed instructions on the correct dose for a household container. Doctors warn that leptospirosis cases usually rise one to two weeks after major flooding.",
+      "word_count": 69,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "The provincial health office advises residents in flooded areas to boil drinking water for at least one minute.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "A viral post shared by an anonymous page claims that adding a pinch of salt makes floodwater safe to drink.",
+          "is_flawed": true,
+          "flaw_reason": "The claim comes from an anonymous social-media page with no identifiable author or expertise."
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Health workers are distributing chlorine tablets, with printed instructions on the correct dose for a household container.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Doctors warn that leptospirosis cases usually rise one to two weeks after major flooding.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "An official public-health source giving standard guidance.",
+        "s2": "An anonymous viral post is not a qualified source for health advice.",
+        "s3": "Attributed to health workers acting in an official capacity.",
+        "s4": "Medical professionals speaking within their expertise."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "For each claim, ask: who said it, and are they qualified to say it?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One claim has no identifiable author at all."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s2 comes from an anonymous viral page."
+        }
+      ]
+    },
+    "fac_node_08": {
+      "reading_passage": "PHIVOLCS has identified the West Valley Fault as capable of generating a magnitude 7.2 earthquake. A structural engineer who inspected the school in 2024 found cracks in two support columns of the main building. A well-known cardiologist told reporters that the building would \"definitely survive\" a strong quake. The division has scheduled a retrofit of the columns before the next school year.",
+      "word_count": 62,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "PHIVOLCS has identified the West Valley Fault as capable of generating a magnitude 7.2 earthquake.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "A structural engineer who inspected the school in 2024 found cracks in two support columns of the main building.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "A well-known cardiologist told reporters that the building would \"definitely survive\" a strong quake.",
+          "is_flawed": true,
+          "flaw_reason": "A cardiologist is a medical expert, not a structural engineer; the credential does not cover building safety."
+        },
+        {
+          "sentence_id": "s4",
+          "text": "The division has scheduled a retrofit of the columns before the next school year.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "The national seismology agency speaking within its expertise.",
+        "s2": "An engineer is qualified to assess building structure.",
+        "s3": "The speaker has real credentials, but in an unrelated field.",
+        "s4": "An administrative fact reported by the responsible office."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Being an expert is not enough: the expertise has to match the claim."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One speaker is highly qualified, but in a field that has nothing to do with buildings."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s3 quotes a cardiologist on structural safety."
+        }
+      ]
+    },
+    "fac_node_09": {
+      "reading_passage": "The Philippines introduced an excise tax on sugar-sweetened beverages in 2018 as part of the TRAIN law. A 2021 analysis in a peer-reviewed public-health journal reported that household purchases of sweetened drinks fell after the tax took effect. Health officials note that part of the tax revenue is earmarked for health programs. Dr. Elena Robles, an economics professor who has written widely on tax policy, predicts the tax will prevent thousands of diabetes cases each year.",
+      "word_count": 76,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "The Philippines introduced an excise tax on sugar-sweetened beverages in 2018 as part of the TRAIN law.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "A 2021 analysis in a peer-reviewed public-health journal reported that household purchases of sweetened drinks fell after the tax took effect.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Health officials note that part of the tax revenue is earmarked for health programs.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Dr. Elena Robles, an economics professor who has written widely on tax policy, predicts the tax will prevent thousands of diabetes cases each year.",
+          "is_flawed": true,
+          "flaw_reason": "Her doctorate is in economics; predicting disease outcomes requires epidemiological expertise, and no medical study is cited."
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A verifiable fact of law.",
+        "s2": "Peer-reviewed public-health research within its field.",
+        "s3": "Officials describing a policy they administer.",
+        "s4": "The title \"Dr.\" lends authority, but her qualification covers tax effects, not health outcomes."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Titles can mislead. Check whether each expert's field matches the specific claim."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One expert is qualified on the tax itself but makes a medical prediction."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s4: an economist predicting diabetes cases."
+        }
+      ]
+    },
+    "fac_node_10": {
+      "reading_passage": "Mount Apo, in Mindanao, is the highest mountain in the Philippines. Its summit stands about 2,954 meters above sea level. Climbers usually take two to three days to reach the summit and return. Because of its height, the summit is covered in permanent snow and glaciers throughout the year.",
+      "word_count": 49,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Mount Apo, in Mindanao, is the highest mountain in the Philippines.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Its summit stands about 2,954 meters above sea level.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Climbers usually take two to three days to reach the summit and return.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Because of its height, the summit is covered in permanent snow and glaciers throughout the year.",
+          "is_flawed": true,
+          "flaw_reason": "No Philippine mountain has permanent snow or glaciers; at under 3,000 meters in the tropics, Mount Apo is far too warm."
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "Accurate and easily verified.",
+        "s2": "Accurate to official survey figures.",
+        "s3": "Consistent with standard trekking itineraries.",
+        "s4": "This contradicts basic, verifiable geography."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Test each claim against what you know about tropical climates."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence describes conditions that do not exist anywhere in the Philippines."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s4: Mount Apo has no permanent snow or glaciers."
+        }
+      ]
+    },
+    "fac_node_11": {
+      "reading_passage": "A 2023 survey of 1,200 senior high school students in Cebu found that those who used phones after midnight slept about 90 minutes less on school nights. The survey also found that these students reported lower average grades. This proves that late-night phone use causes students to fail their subjects. The researchers recommend further studies that follow the same students over time.",
+      "word_count": 62,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "A 2023 survey of 1,200 senior high school students in Cebu found that those who used phones after midnight slept about 90 minutes less on school nights.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "The survey also found that these students reported lower average grades.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "This proves that late-night phone use causes students to fail their subjects.",
+          "is_flawed": true,
+          "flaw_reason": "A one-time survey shows a correlation, not causation, and \"lower average grades\" does not mean failing."
+        },
+        {
+          "sentence_id": "s4",
+          "text": "The researchers recommend further studies that follow the same students over time.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "An accurate report of what a survey measured.",
+        "s2": "An accurate report of a correlation the survey observed.",
+        "s3": "It overstates the evidence in two ways: it claims proof of cause and inflates the size of the effect.",
+        "s4": "An accurate, appropriately cautious statement."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Compare what the survey measured with what the article concludes. Does the conclusion go further than the data?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence turns a correlation into proof of cause and exaggerates the outcome."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s3 claims proof of causation from a survey."
+        }
+      ]
+    },
+    "fac_node_12": {
+      "reading_passage": "The city began weekly insecticide fogging in its five most affected barangays in July 2023. Officials announced that dengue cases fell by 70 percent after fogging, comparing the peak month of July with December. City records show 212 dengue cases in those barangays from January to June 2023, before fogging began. Entomologists note that fogging kills adult mosquitoes but not larvae breeding in stagnant water.",
+      "word_count": 65,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "The city began weekly insecticide fogging in its five most affected barangays in July 2023.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Officials announced that dengue cases fell by 70 percent after fogging, comparing the peak month of July with December.",
+          "is_flawed": true,
+          "flaw_reason": "Dengue peaks in the rainy months and falls naturally by December; comparing a seasonal peak with a seasonal low exaggerates the effect of fogging."
+        },
+        {
+          "sentence_id": "s3",
+          "text": "City records show 212 dengue cases in those barangays from January to June 2023, before fogging began.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Entomologists note that fogging kills adult mosquitoes but not larvae breeding in stagnant water.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A verifiable description of the intervention.",
+        "s2": "The percentage may be arithmetically correct, but the cherry-picked comparison window makes it misleading.",
+        "s3": "A plain report of baseline records.",
+        "s4": "Accurate expert description of the method's limits."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "A statistic can be calculated correctly and still mislead. Check which months are being compared."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Dengue follows the rainy season. Would cases fall between July and December even without fogging?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s2 compares a seasonal peak with a seasonal low."
+        }
+      ]
+    },
+    "fac_node_13": {
+      "reading_passage": "The proposed project would reclaim 300 hectares of the bay for a commercial and residential district. Only reckless, greedy developers would ever push such a disastrous scheme on the public. Environmental groups have raised concerns about the effect on fish catches and on flooding in nearby towns. The environment department is expected to rule on the project's compliance certificate later this year.",
+      "word_count": 62,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "The proposed project would reclaim 300 hectares of the bay for a commercial and residential district.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Only reckless, greedy developers would ever push such a disastrous scheme on the public.",
+          "is_flawed": true,
+          "flaw_reason": "This uses insulting, loaded language to persuade instead of presenting evidence."
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Environmental groups have raised concerns about the effect on fish catches and on flooding in nearby towns.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "The environment department is expected to rule on the project's compliance certificate later this year.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A neutral description of the proposal.",
+        "s2": "Its purpose is to provoke, not to inform.",
+        "s3": "Reports a criticism neutrally and attributes it.",
+        "s4": "A neutral procedural update."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Look at word choice. Which sentence tries to make you angry instead of informing you?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the sentence that attacks people rather than reporting facts."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s2 uses insulting, loaded language."
+        }
+      ]
+    },
+    "fac_node_14": {
+      "reading_passage": "Lagundi is one of the herbal medicines the Department of Health has promoted for relief of mild coughs. Clinical studies conducted in the Philippines have supported its use for mild cough symptoms. Many pharmacists say that VitaLeaf, the brand that sponsored this article, offers the most reliable lagundi capsules on the market. Doctors advise seeing a physician if a cough lasts more than two weeks or comes with high fever.",
+      "word_count": 70,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "Lagundi is one of the herbal medicines the Department of Health has promoted for relief of mild coughs.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Clinical studies conducted in the Philippines have supported its use for mild cough symptoms.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "Many pharmacists say that VitaLeaf, the brand that sponsored this article, offers the most reliable lagundi capsules on the market.",
+          "is_flawed": true,
+          "flaw_reason": "The article's sponsor promotes its own product and presents the endorsement as pharmacists' opinion."
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Doctors advise seeing a physician if a cough lasts more than two weeks or comes with high fever.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "An informative, verifiable statement.",
+        "s2": "Informative and attributed to research.",
+        "s3": "Its purpose is to sell a product while appearing to inform.",
+        "s4": "Neutral health guidance with no commercial angle."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Ask why each sentence is in the article: to inform you, or to sell you something?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Check who paid for the article, and whether any sentence benefits them."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s3 promotes the sponsor's own brand."
+        }
+      ]
+    },
+    "fac_node_15": {
+      "reading_passage": "A study of 500 Grade 12 students compared scores on a university entrance exam across different preparation methods. Students who attended review classes scored, on average, 12 points higher than those who studied independently. The study was published by the research arm of ReviewPro Academy, a chain of review centers. These findings establish structured review as the evidence-based choice for every serious applicant.",
+      "word_count": 63,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "A study of 500 Grade 12 students compared scores on a university entrance exam across different preparation methods.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Students who attended review classes scored, on average, 12 points higher than those who studied independently.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "The study was published by the research arm of ReviewPro Academy, a chain of review centers.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "These findings establish structured review as the evidence-based choice for every serious applicant.",
+          "is_flawed": true,
+          "flaw_reason": "Scientific-sounding language turns one correlational result into a universal recommendation that serves the publisher's business; students who enroll may differ from those who do not."
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "A neutral description of the study design.",
+        "s2": "A plain report of the study's result.",
+        "s3": "A factual disclosure of who produced the study.",
+        "s4": "It presents marketing as a research conclusion."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Academic vocabulary can disguise persuasion. Who benefits from the article's conclusion?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One sentence draws a sweeping recommendation from a single result produced by an interested party."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s4 dresses a sales message as an evidence-based conclusion."
+        }
+      ]
+    },
+    "fac_node_16": {
+      "reading_passage": "According to a 2003 government guideline, passwords should be changed every 90 days and mix symbols, numbers and capital letters. Cybersecurity agencies recommend turning on two-factor authentication for email and banking accounts. A password manager can create a different long password for every account. Be wary of messages that ask you to click a link to 'verify' your account.",
+      "word_count": 59,
+      "article_sentences": [
+        {
+          "sentence_id": "s1",
+          "text": "According to a 2003 government guideline, passwords should be changed every 90 days and mix symbols, numbers and capital letters.",
+          "is_flawed": true,
+          "flaw_reason": "Current guidance (NIST SP 800-63B, 2017 onward) advises against forced periodic password changes; the 2003 guideline has been superseded."
+        },
+        {
+          "sentence_id": "s2",
+          "text": "Cybersecurity agencies recommend turning on two-factor authentication for email and banking accounts.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s3",
+          "text": "A password manager can create a different long password for every account.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        },
+        {
+          "sentence_id": "s4",
+          "text": "Be wary of messages that ask you to click a link to 'verify' your account.",
+          "is_flawed": false,
+          "flaw_reason": ""
+        }
+      ],
+      "sentence_explanations": {
+        "s1": "The source is official but was replaced by newer guidance.",
+        "s2": "Current, widely endorsed advice.",
+        "s3": "Current best practice.",
+        "s4": "Current, standard anti-phishing advice."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Security advice changes quickly. Check the age of every source."
+        },
+        {
+          "tier": 2,
+          "hint_text": "One rule comes from a guideline that was officially replaced years ago."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Sentence s1 relies on superseded 2003 password guidance."
+        }
+      ]
+    },
+    "log_node_01": {
+      "reading_passage": "In early April 1991, villagers near Mount Pinatubo reported steam explosions from a volcano that had been quiet for 500 years. Over the following weeks, scientists recorded thousands of small earthquakes and urged the evacuation of nearby towns. When the climactic eruption came on 15 June, those warnings had already moved tens of thousands of people to safety.",
+      "word_count": 58,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "When the climactic eruption came on 15 June, those warnings had already moved tens of thousands of people to safety.",
+          "order": 3
+        },
+        {
+          "block_id": "b2",
+          "text": "In early April 1991, villagers near Mount Pinatubo reported steam explosions from a volcano that had been quiet for 500 years.",
+          "order": 1
+        },
+        {
+          "block_id": "b3",
+          "text": "Over the following weeks, scientists recorded thousands of small earthquakes and urged the evacuation of nearby towns.",
+          "order": 2
+        }
+      ],
+      "correct_sequence": [
+        "b2",
+        "b3",
+        "b1"
+      ],
+      "structural_explanations": {
+        "b1__b2": "The 15 June eruption is the climax; the first signs of unrest in early April cannot come after it.",
+        "b3__b2": "\"Over the following weeks\" needs an earlier event to follow, so it cannot sit before the April explosions.",
+        "b2__b1": "Skipping the weeks of earthquakes leaves \"those warnings\" with nothing to refer to."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Which card describes the very first sign that something was changing at the volcano?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "The phrase \"Over the following weeks\" has to follow an earlier event. Which event does it follow?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"When the climactic eruption came on 15 June...\""
+        }
+      ]
+    },
+    "log_node_02": {
+      "reading_passage": "Carved by Ifugao communities over centuries, the Banaue rice terraces were inscribed on the UNESCO World Heritage List in 1995. Within six years, however, abandoned paddies and failing irrigation placed the site on the List of World Heritage in Danger. That listing prompted a joint government and community program to repair collapsed walls and revive traditional farming. By 2012, the recovery was judged sufficient, and the terraces were removed from the danger list.",
+      "word_count": 73,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Within six years, however, abandoned paddies and failing irrigation placed the site on the List of World Heritage in Danger.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "By 2012, the recovery was judged sufficient, and the terraces were removed from the danger list.",
+          "order": 4
+        },
+        {
+          "block_id": "b3",
+          "text": "Carved by Ifugao communities over centuries, the Banaue rice terraces were inscribed on the UNESCO World Heritage List in 1995.",
+          "order": 1
+        },
+        {
+          "block_id": "b4",
+          "text": "That listing prompted a joint government and community program to repair collapsed walls and revive traditional farming.",
+          "order": 3
+        }
+      ],
+      "correct_sequence": [
+        "b3",
+        "b1",
+        "b4",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b4__b1": "\"That listing\" refers to the danger list, which has not been mentioned yet if this card comes first.",
+        "b3__b4": "The repair program responds to the terraces being endangered, so the danger listing must come between.",
+        "b2__b4": "\"By 2012\" closes the story: the recovery cannot be judged before the program that produced it.",
+        "b1__b3": "\"Within six years\" counts from the 1995 inscription, so the inscription must come first."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "One card introduces the terraces and their status for the first time. Which one could open the account?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look at \"That listing\". Which earlier card names a list it could be pointing back to?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The account opens with \"Carved by Ifugao communities over centuries...\""
+        }
+      ]
+    },
+    "log_node_03": {
+      "reading_passage": "For two and a half centuries, the Manila-Acapulco galleons carried Chinese silk and porcelain east in exchange for Mexican silver. This exchange made Manila a hub of the first global trade network, yet it also tied the colony to a single route. Such dependence proved costly once Mexico's war of independence disrupted the flow of silver in the early nineteenth century. The last galleon sailed in 1815, and within two decades Spain had opened Manila to foreign merchants. Freed from the galleon monopoly, provincial exports such as sugar, abaca and tobacco soon replaced silver as the economic engine.",
+      "word_count": 98,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "The last galleon sailed in 1815, and within two decades Spain had opened Manila to foreign merchants.",
+          "order": 4
+        },
+        {
+          "block_id": "b2",
+          "text": "This exchange made Manila a hub of the first global trade network, yet it also tied the colony to a single route.",
+          "order": 2
+        },
+        {
+          "block_id": "b3",
+          "text": "Freed from the galleon monopoly, provincial exports such as sugar, abaca and tobacco soon replaced silver as the economic engine.",
+          "order": 5
+        },
+        {
+          "block_id": "b4",
+          "text": "For two and a half centuries, the Manila-Acapulco galleons carried Chinese silk and porcelain east in exchange for Mexican silver.",
+          "order": 1
+        },
+        {
+          "block_id": "b5",
+          "text": "Such dependence proved costly once Mexico's war of independence disrupted the flow of silver in the early nineteenth century.",
+          "order": 3
+        }
+      ],
+      "correct_sequence": [
+        "b4",
+        "b2",
+        "b5",
+        "b1",
+        "b3"
+      ],
+      "structural_explanations": {
+        "b2__b4": "\"This exchange\" points back to the silk-for-silver trade, which must be described first.",
+        "b4__b5": "\"Such dependence\" needs the claim that Manila was tied to one route, which this link skips.",
+        "b5__b3": "The economy cannot be \"freed from the galleon monopoly\" before the galleon trade has ended.",
+        "b3__b1": "Opening Manila to foreign merchants is what freed the provinces, so it must come before the export boom."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "This chain has almost no transition words. Which card can stand on its own without pointing back to anything?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Trace the reference words: \"This exchange\", then \"Such dependence\". Each one renames an idea from the card just before it."
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"Freed from the galleon monopoly...\""
+        }
+      ]
+    },
+    "log_node_04": {
+      "reading_passage": "A biodiversity hotspot is a region that is both exceptionally rich in endemic species and seriously threatened by human activity. To qualify, a region must hold at least 1,500 endemic vascular plants and have lost at least 70 percent of its original habitat. The Philippines meets both criteria, which is why conservationists rank it among the most urgent hotspots on Earth.",
+      "word_count": 61,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "To qualify, a region must hold at least 1,500 endemic vascular plants and have lost at least 70 percent of its original habitat.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "The Philippines meets both criteria, which is why conservationists rank it among the most urgent hotspots on Earth.",
+          "order": 3
+        },
+        {
+          "block_id": "b3",
+          "text": "A biodiversity hotspot is a region that is both exceptionally rich in endemic species and seriously threatened by human activity.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b3",
+        "b1",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b1__b3": "\"To qualify\" sets criteria for a term that must already be defined.",
+        "b2__b1": "\"Both criteria\" refers to the two thresholds, so the thresholds have to be stated first.",
+        "b3__b2": "Applying \"both criteria\" to the Philippines skips the card that actually states the criteria."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "A definition text usually moves from the term, to its precise conditions, to an example. Which card names the term?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"To qualify\" introduces conditions. What must the reader already know before conditions make sense?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain opens with \"A biodiversity hotspot is a region...\""
+        }
+      ]
+    },
+    "log_node_05": {
+      "reading_passage": "Ocean acidification is the steady fall in seawater pH caused by the ocean absorbing carbon dioxide from the atmosphere. Once dissolved, the gas reacts with water to form carbonic acid, which releases hydrogen ions and lowers the pH. Those extra ions also bind with carbonate, the very mineral that corals and shellfish need to build their skeletons. The term therefore names not only a chemical shift but also a biological threat to reef-building organisms.",
+      "word_count": 74,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Those extra ions also bind with carbonate, the very mineral that corals and shellfish need to build their skeletons.",
+          "order": 3
+        },
+        {
+          "block_id": "b2",
+          "text": "Ocean acidification is the steady fall in seawater pH caused by the ocean absorbing carbon dioxide from the atmosphere.",
+          "order": 1
+        },
+        {
+          "block_id": "b3",
+          "text": "The term therefore names not only a chemical shift but also a biological threat to reef-building organisms.",
+          "order": 4
+        },
+        {
+          "block_id": "b4",
+          "text": "Once dissolved, the gas reacts with water to form carbonic acid, which releases hydrogen ions and lowers the pH.",
+          "order": 2
+        }
+      ],
+      "correct_sequence": [
+        "b2",
+        "b4",
+        "b1",
+        "b3"
+      ],
+      "structural_explanations": {
+        "b4__b2": "\"The gas\" has no antecedent until carbon dioxide has been named in the definition.",
+        "b2__b1": "\"Those extra ions\" refers to hydrogen ions, which are introduced only in the chemistry card.",
+        "b3__b1": "\"The term therefore...\" sums up the whole definition, so it must close the passage."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Which card states what the term means, before any process is explained?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Follow the pronouns: \"the gas\" and then \"Those extra ions\". Which earlier card introduces each of them?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The passage closes with \"The term therefore names...\""
+        }
+      ]
+    },
+    "log_node_06": {
+      "reading_passage": "Ecologists use the term keystone species for an organism whose influence on its community far exceeds what its abundance predicts. The label is borrowed from architecture, where the wedge-shaped keystone at the top of an arch holds every other stone in place. Remove such a species and the community, like the arch, can collapse into a simpler and less diverse state. Sea otters show how such a collapse is prevented: by eating sea urchins, they stop urchins from stripping kelp forests. Otters are far less numerous than the urchins they eat, which shows that abundance alone does not make a species a keystone.",
+      "word_count": 103,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Remove such a species and the community, like the arch, can collapse into a simpler and less diverse state.",
+          "order": 3
+        },
+        {
+          "block_id": "b2",
+          "text": "Otters are far less numerous than the urchins they eat, which shows that abundance alone does not make a species a keystone.",
+          "order": 5
+        },
+        {
+          "block_id": "b3",
+          "text": "The label is borrowed from architecture, where the wedge-shaped keystone at the top of an arch holds every other stone in place.",
+          "order": 2
+        },
+        {
+          "block_id": "b4",
+          "text": "Sea otters show how such a collapse is prevented: by eating sea urchins, they stop urchins from stripping kelp forests.",
+          "order": 4
+        },
+        {
+          "block_id": "b5",
+          "text": "Ecologists use the term keystone species for an organism whose influence on its community far exceeds what its abundance predicts.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b5",
+        "b3",
+        "b1",
+        "b4",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b3__b5": "\"The label\" must refer to a term that has already been introduced.",
+        "b5__b1": "\"Like the arch\" depends on the architecture comparison, which this link skips.",
+        "b1__b2": "The abundance point is drawn from the otters, who have not appeared yet.",
+        "b4__b1": "\"Such a collapse\" must follow the card that first describes the collapse."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Advanced definitions build in layers: term, origin, extension, example, conclusion. Which card coins the term?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Trace \"The label\", then \"like the arch\", then \"such a collapse\". Each one leans on the card before it."
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"Otters are far less numerous...\""
+        }
+      ]
+    },
+    "log_node_07": {
+      "reading_passage": "Weather and climate are often used interchangeably, but scientists distinguish them mainly by time scale. Weather describes atmospheric conditions over hours or days, such as the heavy rain a typhoon brings to Luzon this week. Climate, in contrast, is the average pattern of those conditions measured over thirty years or more.",
+      "word_count": 51,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Weather describes atmospheric conditions over hours or days, such as the heavy rain a typhoon brings to Luzon this week.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "Weather and climate are often used interchangeably, but scientists distinguish them mainly by time scale.",
+          "order": 1
+        },
+        {
+          "block_id": "b3",
+          "text": "Climate, in contrast, is the average pattern of those conditions measured over thirty years or more.",
+          "order": 3
+        }
+      ],
+      "correct_sequence": [
+        "b2",
+        "b1",
+        "b3"
+      ],
+      "structural_explanations": {
+        "b3__b1": "\"In contrast\" sets climate against something already described, so weather must come first.",
+        "b1__b2": "The general claim that the two terms are distinguished by time scale introduces both definitions.",
+        "b2__b3": "\"Those conditions\" refers to the weather conditions, which this link skips."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Which card introduces both terms before either one is defined?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"In contrast\" signals a second item being compared with a first. Which term is the first?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain opens with \"Weather and climate are often used interchangeably...\""
+        }
+      ]
+    },
+    "log_node_08": {
+      "reading_passage": "Mangrove forests and seagrass meadows are both coastal ecosystems that lock away large amounts of carbon in waterlogged sediment. Mangroves, rooted in the intertidal zone, also shield shorelines by breaking the force of storm surges with their dense trunks. Seagrasses grow fully submerged, so their protective role is subtler: they trap sediment and calm waves before they reach shore. Because each defends the coast differently, restoration projects increasingly plant the two together.",
+      "word_count": 72,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Mangroves, rooted in the intertidal zone, also shield shorelines by breaking the force of storm surges with their dense trunks.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "Because each defends the coast differently, restoration projects increasingly plant the two together.",
+          "order": 4
+        },
+        {
+          "block_id": "b3",
+          "text": "Seagrasses grow fully submerged, so their protective role is subtler: they trap sediment and calm waves before they reach shore.",
+          "order": 3
+        },
+        {
+          "block_id": "b4",
+          "text": "Mangrove forests and seagrass meadows are both coastal ecosystems that lock away large amounts of carbon in waterlogged sediment.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b4",
+        "b1",
+        "b3",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b3__b1": "\"Subtler\" compares seagrass protection with a protective role already described: the mangroves'.",
+        "b1__b4": "The shared baseline (both store carbon) introduces the pair before either is examined alone.",
+        "b2__b3": "\"Each defends the coast differently\" sums up both defenses, so it must follow both."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Comparison texts often start from what two things share. Which card states a shared trait?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"Subtler\" is a comparative. Subtler than what? Find the card it is being compared with."
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"Because each defends the coast differently...\""
+        }
+      ]
+    },
+    "log_node_09": {
+      "reading_passage": "The Philippines draws on two very different renewable sources: solar farms on the plains and geothermal plants on volcanic slopes. Solar capacity can be installed within months and at falling cost, but its output vanishes at night and dips under monsoon cloud. Geothermal steam, by comparison, flows day and night, which lets such plants supply the steady baseload a grid depends on. That reliability comes at a price: drilling is expensive, exploration can fail, and suitable sites are limited to volcanic zones. Planners therefore treat the two less as rivals than as complements, pairing cheap daytime solar with constant geothermal supply.",
+      "word_count": 101,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Planners therefore treat the two less as rivals than as complements, pairing cheap daytime solar with constant geothermal supply.",
+          "order": 5
+        },
+        {
+          "block_id": "b2",
+          "text": "Geothermal steam, by comparison, flows day and night, which lets such plants supply the steady baseload a grid depends on.",
+          "order": 3
+        },
+        {
+          "block_id": "b3",
+          "text": "The Philippines draws on two very different renewable sources: solar farms on the plains and geothermal plants on volcanic slopes.",
+          "order": 1
+        },
+        {
+          "block_id": "b4",
+          "text": "That reliability comes at a price: drilling is expensive, exploration can fail, and suitable sites are limited to volcanic zones.",
+          "order": 4
+        },
+        {
+          "block_id": "b5",
+          "text": "Solar capacity can be installed within months and at falling cost, but its output vanishes at night and dips under monsoon cloud.",
+          "order": 2
+        }
+      ],
+      "correct_sequence": [
+        "b3",
+        "b5",
+        "b2",
+        "b4",
+        "b1"
+      ],
+      "structural_explanations": {
+        "b2__b5": "\"By comparison\" measures geothermal against a source already described, so solar comes first.",
+        "b5__b4": "\"That reliability\" refers to geothermal's round-the-clock output, which this link skips.",
+        "b4__b2": "The cost of reliability can only be discussed after the reliability itself is established.",
+        "b1__b3": "The planners' conclusion weighs both sources, so it must come last."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "A multi-criteria comparison weighs each side in turn. Which card frames the two subjects being compared?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"That reliability\" points back to one specific strength. Which card describes it?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain opens with \"The Philippines draws on two very different renewable sources...\""
+        }
+      ]
+    },
+    "log_node_10": {
+      "reading_passage": "Cities replace vegetation with concrete and asphalt, surfaces that absorb sunlight by day and release the heat slowly at night. As a result, downtown districts can stay several degrees warmer than the surrounding countryside long after sunset. This extra heat raises demand for air conditioning, which in turn increases electricity use and emissions.",
+      "word_count": 53,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "As a result, downtown districts can stay several degrees warmer than the surrounding countryside long after sunset.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "This extra heat raises demand for air conditioning, which in turn increases electricity use and emissions.",
+          "order": 3
+        },
+        {
+          "block_id": "b3",
+          "text": "Cities replace vegetation with concrete and asphalt, surfaces that absorb sunlight by day and release the heat slowly at night.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b3",
+        "b1",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b1__b3": "\"As a result\" needs a cause before it: the heat-absorbing surfaces.",
+        "b2__b1": "\"This extra heat\" refers to the warmer downtown districts, so that effect comes first.",
+        "b3__b2": "Linking surfaces directly to \"this extra heat\" skips the card that establishes the temperature difference."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "In a cause-and-effect chain, which card describes the root cause?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"As a result\" signals an effect. What does it result from?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"This extra heat raises demand for air conditioning...\""
+        }
+      ]
+    },
+    "log_node_11": {
+      "reading_passage": "When sea-surface temperatures stay unusually high for several weeks, reef-building corals become severely stressed. Under that stress, they expel the symbiotic algae living in their tissues, which supply most of their food and color. Deprived of this energy source, the corals turn white and, if the water does not cool, begin to starve. Widespread die-offs then weaken the reef structure that shelters fish, threatening the livelihood of coastal fishers.",
+      "word_count": 69,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Deprived of this energy source, the corals turn white and, if the water does not cool, begin to starve.",
+          "order": 3
+        },
+        {
+          "block_id": "b2",
+          "text": "Under that stress, they expel the symbiotic algae living in their tissues, which supply most of their food and color.",
+          "order": 2
+        },
+        {
+          "block_id": "b3",
+          "text": "Widespread die-offs then weaken the reef structure that shelters fish, threatening the livelihood of coastal fishers.",
+          "order": 4
+        },
+        {
+          "block_id": "b4",
+          "text": "When sea-surface temperatures stay unusually high for several weeks, reef-building corals become severely stressed.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b4",
+        "b2",
+        "b1",
+        "b3"
+      ],
+      "structural_explanations": {
+        "b2__b4": "\"That stress\" needs the card that explains what stresses the corals.",
+        "b4__b1": "\"This energy source\" refers to the algae, which have not been mentioned yet.",
+        "b3__b1": "Die-offs follow starvation; they cannot come before the corals lose their food supply."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Which card names the condition that sets the whole chain in motion?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Track \"that stress\" and \"this energy source\". Each points back to the card just before it."
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain opens with \"When sea-surface temperatures stay unusually high...\""
+        }
+      ]
+    },
+    "log_node_12": {
+      "reading_passage": "For decades, factories and households in northern Metro Manila pumped groundwater faster than rainfall could recharge the aquifers. As the water was withdrawn, the clay layers it had supported compacted, and the ground above began to sink. This subsidence left low-lying districts such as Malabon and Navotas closer to sea level with every passing year. Ordinary high tides now spill into streets that once stayed dry, and typhoon floodwaters drain far more slowly than before. Pumping limits were eventually imposed, but compacted clay does not rebound, so the lost elevation is effectively permanent.",
+      "word_count": 93,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "This subsidence left low-lying districts such as Malabon and Navotas closer to sea level with every passing year.",
+          "order": 3
+        },
+        {
+          "block_id": "b2",
+          "text": "For decades, factories and households in northern Metro Manila pumped groundwater faster than rainfall could recharge the aquifers.",
+          "order": 1
+        },
+        {
+          "block_id": "b3",
+          "text": "Pumping limits were eventually imposed, but compacted clay does not rebound, so the lost elevation is effectively permanent.",
+          "order": 5
+        },
+        {
+          "block_id": "b4",
+          "text": "Ordinary high tides now spill into streets that once stayed dry, and typhoon floodwaters drain far more slowly than before.",
+          "order": 4
+        },
+        {
+          "block_id": "b5",
+          "text": "As the water was withdrawn, the clay layers it had supported compacted, and the ground above began to sink.",
+          "order": 2
+        }
+      ],
+      "correct_sequence": [
+        "b2",
+        "b5",
+        "b1",
+        "b4",
+        "b3"
+      ],
+      "structural_explanations": {
+        "b5__b2": "\"The water was withdrawn\" presupposes the pumping, so the pumping card comes first.",
+        "b2__b1": "\"This subsidence\" names the sinking described in the clay card, which this link skips.",
+        "b4__b1": "Tidal flooding is a consequence of districts sinking toward sea level, so it follows that card.",
+        "b3__b4": "The note that the damage is permanent closes the chain after its consequences are shown."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "In a cascade, each effect becomes the next cause. Which card describes the human action that starts it?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"This subsidence\" renames something physical. Which card describes the ground actually sinking?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The chain closes with \"Pumping limits were eventually imposed...\""
+        }
+      ]
+    },
+    "log_node_13": {
+      "reading_passage": "Producers of sukang tuba begin before sunrise, slicing the flower stalk of a coconut palm to collect its sweet sap. Left in clay jars, the fresh sap is fermented by wild yeasts into a mildly alcoholic drink within about a day. Over the following weeks, acetic acid bacteria convert that alcohol into vinegar, giving the suka its sharp taste.",
+      "word_count": 59,
+      "paragraph_blocks": [
+        {
+          "block_id": "b1",
+          "text": "Left in clay jars, the fresh sap is fermented by wild yeasts into a mildly alcoholic drink within about a day.",
+          "order": 2
+        },
+        {
+          "block_id": "b2",
+          "text": "Over the following weeks, acetic acid bacteria convert that alcohol into vinegar, giving the suka its sharp taste.",
+          "order": 3
+        },
+        {
+          "block_id": "b3",
+          "text": "Producers of sukang tuba begin before sunrise, slicing the flower stalk of a coconut palm to collect its sweet sap.",
+          "order": 1
+        }
+      ],
+      "correct_sequence": [
+        "b3",
+        "b1",
+        "b2"
+      ],
+      "structural_explanations": {
+        "b1__b3": "The sap cannot be left in jars before it has been collected.",
+        "b2__b1": "\"That alcohol\" refers to the drink the yeasts produce, so fermentation comes first.",
+        "b3__b2": "Turning \"that alcohol\" into vinegar skips the step where the alcohol is made."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Which step must happen before anything can be fermented?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"Over the following weeks\" marks a later stage. Which shorter stage must it follow?"
+        },
+        {
+          "tier": 3,
+          "hint_text": "The process opens with \"Producers of sukang tuba begin before sunrise...\""
+        }
+      ]
+    },
+    "snp_node_01": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Mangrove forests protect coastal villages by absorbing much of the energy of storm surges.",
+          "sentence_b": "they serve as nurseries for young fish that later sustain local fisheries."
+        }
+      ],
+      "transition_tile_dock": [
+        "However",
+        "For example",
+        "Moreover",
+        "Therefore"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Moreover"
+      },
+      "tile_error_explanations": {
+        "pair_01__However": "However signals a contrast, but both sentences describe benefits of mangroves.",
+        "pair_01__For example": "Serving as fish nurseries is not an example of absorbing storm surges; it is a separate benefit.",
+        "pair_01__Therefore": "Fish nurseries are not caused by storm protection, so Therefore invents a cause-and-effect link."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Do the two sentences pull in opposite directions, or does the second one add another point of the same kind?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look for a tile that stacks a second, separate benefit on top of the first."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Moreover adds a new benefit (fish nurseries) to the first (storm protection)."
+        }
+      ]
+    },
+    "snp_node_02": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Marine biologists first mapped the reef's surviving coral colonies using underwater drones.",
+          "sentence_b": "they transplanted nursery-grown fragments into the gaps the survey had revealed."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "The transplanted fragments grew faster than wild corals of the same species.",
+          "sentence_b": "they cost less to produce than fragments imported from other regions."
+        }
+      ],
+      "transition_tile_dock": [
+        "For instance",
+        "Subsequently",
+        "In contrast",
+        "Furthermore",
+        "Meanwhile"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Subsequently",
+        "pair_02": "Furthermore"
+      },
+      "tile_error_explanations": {
+        "pair_01__Meanwhile": "Meanwhile means \"at the same time\", but the transplant depends on gaps the survey had already revealed.",
+        "pair_01__Furthermore": "Furthermore adds a parallel point, yet sentence B is the next step in a sequence that \"first\" began.",
+        "pair_01__In contrast": "Nothing is being contrasted; the second step continues the same restoration work.",
+        "pair_01__For instance": "Transplanting fragments is not an example of mapping colonies.",
+        "pair_02__Subsequently": "Cost is not a later event in time; it is a second advantage of the same fragments.",
+        "pair_02__Meanwhile": "Meanwhile links two simultaneous events, but sentence B states a lasting property, not an event.",
+        "pair_02__In contrast": "Both sentences praise the fragments, so there is no contrast.",
+        "pair_02__For instance": "Lower cost is not an example of faster growth; it is a separate advantage."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Pair 1 contains the word \"first\". Is sentence B a later step, or just another point?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One pair needs a time-sequence tile; the other needs a tile that adds a second advantage."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: Subsequently. Pair 2: Furthermore."
+        }
+      ]
+    },
+    "snp_node_03": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Microplastics in coastal waters can absorb persistent pollutants such as pesticides and industrial chemicals.",
+          "sentence_b": "their rough surfaces host bacterial films that may carry pathogens far from where the particles entered the sea."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "Sachet packaging lets low-income households buy shampoo in single portions they can afford day to day.",
+          "sentence_b": "tingi retail of cooking oil and sugar lets families match each purchase to a single day's wage."
+        }
+      ],
+      "transition_tile_dock": [
+        "Likewise",
+        "In other words",
+        "Consequently",
+        "Moreover",
+        "Nevertheless",
+        "For instance"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Moreover",
+        "pair_02": "Likewise"
+      },
+      "tile_error_explanations": {
+        "pair_01__Likewise": "Likewise introduces a parallel case about a different subject, but both sentences are about the same particles.",
+        "pair_01__In other words": "Sentence B does not restate absorbing pollutants; it adds a second, different hazard.",
+        "pair_01__For instance": "Carrying pathogens is not an example of absorbing chemicals; it is a further hazard.",
+        "pair_01__Consequently": "Bacterial films are not caused by pollutant absorption, so no cause-and-effect link exists.",
+        "pair_01__Nevertheless": "Nevertheless concedes a point against sentence A, but B strengthens A's warning.",
+        "pair_02__Moreover": "Moreover would stack another point onto the sachet argument, but B moves to a different practice that works the same way.",
+        "pair_02__In other words": "Tingi retail of oil and sugar is a new case, not a rewording of the sachet sentence.",
+        "pair_02__For instance": "Tingi retail is not an instance of sachet packaging; it is a parallel practice.",
+        "pair_02__Consequently": "Sachet shampoo does not cause tingi retail of food; the two arose side by side.",
+        "pair_02__Nevertheless": "Nothing in sentence B pushes back against sentence A."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Ask of each pair: is sentence B about the same subject, a different subject that behaves the same way, or the same idea reworded?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Separate \"adding another point about the same thing\" from \"a parallel case about something else\"."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: Moreover (a second hazard of the same particles). Pair 2: Likewise (a parallel practice)."
+        }
+      ]
+    },
+    "snp_node_04": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Coal-fired plants can generate electricity at a steady rate regardless of the weather.",
+          "sentence_b": "they release large amounts of carbon dioxide and fine particles that harm nearby communities."
+        }
+      ],
+      "transition_tile_dock": [
+        "Moreover",
+        "However",
+        "Therefore",
+        "For example"
+      ],
+      "correct_tile_map": {
+        "pair_01": "However"
+      },
+      "tile_error_explanations": {
+        "pair_01__Moreover": "Moreover adds a point in the same direction, but sentence A is an advantage and B is a drawback.",
+        "pair_01__Therefore": "Pollution is not a result of steady output, so Therefore invents a causal link.",
+        "pair_01__For example": "Releasing pollutants is not an example of generating steady electricity."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Is sentence A an advantage or a drawback? What about sentence B?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "When a strength is followed by a weakness, the gap needs a contrast tile."
+        },
+        {
+          "tier": 3,
+          "hint_text": "However turns from the strength (steady output) to the drawback (pollution)."
+        }
+      ]
+    },
+    "snp_node_05": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Tropical rainforests recycle nutrients so quickly that their soils are often thin and poor.",
+          "sentence_b": "temperate grasslands build deep, fertile soils as dead roots decay slowly over centuries."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "The 2019 study surveyed only 400 households in a single province.",
+          "sentence_b": "its findings on household water access have been echoed by later national surveys."
+        }
+      ],
+      "transition_tile_dock": [
+        "Therefore",
+        "Nonetheless",
+        "For instance",
+        "In contrast",
+        "Moreover"
+      ],
+      "correct_tile_map": {
+        "pair_01": "In contrast",
+        "pair_02": "Nonetheless"
+      },
+      "tile_error_explanations": {
+        "pair_01__Nonetheless": "Nonetheless concedes a limitation and then asserts something despite it; here two different ecosystems are simply set side by side.",
+        "pair_01__Therefore": "Rainforest nutrient cycling does not cause grassland soils to be fertile.",
+        "pair_01__Moreover": "Moreover adds to the same subject, but sentence B shifts to a different ecosystem with the opposite trait.",
+        "pair_01__For instance": "Grasslands are not an example of rainforests.",
+        "pair_02__In contrast": "In contrast would set two different subjects against each other, but both sentences are about the same study.",
+        "pair_02__Therefore": "A small sample does not cause the findings to be confirmed; B holds despite A, not because of it.",
+        "pair_02__Moreover": "Moreover would add a second weakness, but sentence B defends the study.",
+        "pair_02__For instance": "Later confirmation is not an example of a small sample."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "In one pair, sentence B describes a different thing; in the other, it defends the same thing despite a weakness."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Compare two separate subjects with \"In contrast\". Admit a weakness and still affirm the point with a concession tile."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: In contrast. Pair 2: Nonetheless."
+        }
+      ]
+    },
+    "snp_node_06": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "The new rice tariff was not expected to hurt local farmers.",
+          "sentence_b": "officials predicted it would raise farmgate prices by shielding growers from cheaper imports."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "When interest rates rise, households tend to save more and borrow less.",
+          "sentence_b": "falling rates encourage borrowing and draw money out of savings accounts."
+        }
+      ],
+      "transition_tile_dock": [
+        "Similarly",
+        "Conversely",
+        "However",
+        "On the contrary",
+        "Consequently",
+        "Nonetheless"
+      ],
+      "correct_tile_map": {
+        "pair_01": "On the contrary",
+        "pair_02": "Conversely"
+      },
+      "tile_error_explanations": {
+        "pair_01__However": "However would set B against A, but B agrees with A and pushes it further: not hurt, and actually helped.",
+        "pair_01__Nonetheless": "There is no concession to overcome; sentence B is consistent with sentence A.",
+        "pair_01__Conversely": "Conversely reverses a relationship between two variables, but B corrects a negative expectation with a stronger positive one.",
+        "pair_01__Similarly": "B is not a parallel case; it intensifies the same claim.",
+        "pair_01__Consequently": "A lack of expected harm does not cause higher prices; B explains the expectation rather than resulting from it.",
+        "pair_02__On the contrary": "On the contrary rejects a denied claim, but sentence A denies nothing; B runs the same mechanism in reverse.",
+        "pair_02__However": "However suggests B undercuts A, yet B is fully consistent with it: the same relationship in the opposite direction.",
+        "pair_02__Nonetheless": "Nothing is conceded; both sentences describe one consistent pattern.",
+        "pair_02__Similarly": "The outcomes are opposite, not similar.",
+        "pair_02__Consequently": "Rising rates do not cause rates to fall."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Read each sentence A closely: one denies something, the other states a rule. How should B respond to each?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"On the contrary\" follows a negative statement and asserts the stronger opposite; \"Conversely\" reverses a cause-and-effect rule."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: On the contrary. Pair 2: Conversely."
+        }
+      ]
+    },
+    "snp_node_07": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "A strong El Nino delayed the onset of the rainy season across much of Mindanao.",
+          "sentence_b": "many rice farmers postponed planting and harvested less grain that year."
+        }
+      ],
+      "transition_tile_dock": [
+        "For example",
+        "As a result",
+        "Moreover",
+        "However"
+      ],
+      "correct_tile_map": {
+        "pair_01": "As a result"
+      },
+      "tile_error_explanations": {
+        "pair_01__For example": "Postponed planting is not an example of a delayed rainy season; it is what the delay caused.",
+        "pair_01__Moreover": "Moreover adds an unrelated point, but sentence B follows directly from sentence A.",
+        "pair_01__However": "Nothing in sentence B contradicts sentence A."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Did sentence A make sentence B happen?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look for the tile that introduces a consequence."
+        },
+        {
+          "tier": 3,
+          "hint_text": "As a result: the delayed rains caused the late planting and smaller harvest."
+        }
+      ]
+    },
+    "snp_node_08": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "The city banned single-use plastic bags in its public markets in 2019.",
+          "sentence_b": "vendors' purchases of reusable woven bayong bags rose sharply within the year."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "The province spent heavily on new irrigation canals during the dry season.",
+          "sentence_b": "rice yields barely changed, because the canals were not connected to farms in time for planting."
+        }
+      ],
+      "transition_tile_dock": [
+        "Meanwhile",
+        "Even so",
+        "For instance",
+        "Consequently",
+        "Moreover"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Consequently",
+        "pair_02": "Even so"
+      },
+      "tile_error_explanations": {
+        "pair_01__Meanwhile": "Meanwhile only says the two happened at the same time, but the bag ban is what drove the switch to bayong.",
+        "pair_01__Even so": "Even so signals an unexpected outcome, but rising bayong sales are exactly what the ban would produce.",
+        "pair_01__Moreover": "Moreover adds a separate fact, hiding the causal link between the ban and the sales.",
+        "pair_01__For instance": "Bayong purchases are not an example of the ban; they are its effect.",
+        "pair_02__Consequently": "Consequently would make flat yields the expected result of new canals, but the spending was meant to raise them.",
+        "pair_02__Meanwhile": "Meanwhile hides the point: B is a disappointing outcome of A, not just a simultaneous event.",
+        "pair_02__Moreover": "Moreover would add another success, but B reports a failure.",
+        "pair_02__For instance": "Flat yields are not an example of canal spending."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "In each pair, is sentence B the outcome sentence A would lead you to expect, or a surprise?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Use \"Consequently\" for an expected effect, and \"Even so\" when the effect fails to appear despite the cause."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: Consequently. Pair 2: Even so."
+        }
+      ]
+    },
+    "snp_node_09": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Ash and sulfur from the 1991 Pinatubo eruption reflected sunlight back into space for more than a year.",
+          "sentence_b": "average global temperatures fell by roughly half a degree Celsius in 1992."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "Coastal towns must keep their mangrove buffers intact.",
+          "sentence_b": "storm surges like Typhoon Haiyan's will push seawater even farther inland."
+        }
+      ],
+      "transition_tile_dock": [
+        "Nevertheless",
+        "Consequently",
+        "In other words",
+        "Otherwise",
+        "Similarly",
+        "Meanwhile"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Consequently",
+        "pair_02": "Otherwise"
+      },
+      "tile_error_explanations": {
+        "pair_01__Otherwise": "Otherwise describes what happens if A does NOT occur, but the cooling happened because A did occur.",
+        "pair_01__Meanwhile": "Meanwhile treats the cooling as a coincidence, but reflected sunlight is what produced it.",
+        "pair_01__In other words": "A temperature drop is not a rewording of reflected sunlight; it is a measurable effect.",
+        "pair_01__Similarly": "B is not a parallel case; it is the result of A.",
+        "pair_01__Nevertheless": "Cooling is the expected effect of blocked sunlight, not an outcome despite it.",
+        "pair_02__Consequently": "Consequently would claim that keeping mangroves causes worse surges, the reverse of the argument.",
+        "pair_02__Nevertheless": "Nevertheless would mean surges worsen even if mangroves are kept, contradicting the point of A.",
+        "pair_02__In other words": "B is not a restatement of A; it states the consequence of failing to act on A.",
+        "pair_02__Similarly": "B describes what happens if A is ignored, not a parallel case.",
+        "pair_02__Meanwhile": "The worse surge is conditional on losing the mangroves, not a simultaneous event."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "One pair reports what actually followed an event; the other warns what will follow if advice is ignored."
+        },
+        {
+          "tier": 2,
+          "hint_text": "An effect that did happen takes a result tile. A consequence of NOT doing something takes a conditional tile."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: Consequently. Pair 2: Otherwise."
+        }
+      ]
+    },
+    "snp_node_10": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Students who slept at least eight hours scored higher on memory tests, and those who napped after studying recalled more vocabulary the next day.",
+          "sentence_b": "the evidence points to sleep as an essential part of learning rather than a break from it."
+        }
+      ],
+      "transition_tile_dock": [
+        "Meanwhile",
+        "Overall",
+        "However",
+        "For example"
+      ],
+      "correct_tile_map": {
+        "pair_01": "Overall"
+      },
+      "tile_error_explanations": {
+        "pair_01__For example": "Sentence B is a general conclusion, not a specific example of the findings.",
+        "pair_01__However": "B agrees with the findings in A, so there is no contrast.",
+        "pair_01__Meanwhile": "B does not describe a simultaneous event; it sums up the evidence."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Does sentence B add a new fact, or draw a general conclusion from the facts in sentence A?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look for a tile that sums up several findings into one judgment."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Overall introduces the conclusion drawn from both findings."
+        }
+      ]
+    },
+    "snp_node_11": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Jeepney modernization promises cleaner engines and safer vehicles, yet each new unit costs several times what most operators earn in a year.",
+          "sentence_b": "the policy's goals are sound, but its financing has not caught up with them."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "The cooperative spent three years negotiating with lenders, revising its route plan twice, and training drivers for the new vehicles.",
+          "sentence_b": "it became one of the first in the region to run a fully modernized fleet."
+        }
+      ],
+      "transition_tile_dock": [
+        "In short",
+        "However",
+        "For instance",
+        "Ultimately",
+        "Moreover"
+      ],
+      "correct_tile_map": {
+        "pair_01": "In short",
+        "pair_02": "Ultimately"
+      },
+      "tile_error_explanations": {
+        "pair_01__Ultimately": "Ultimately marks the final outcome of a process, but B condenses the point of A rather than reporting an outcome.",
+        "pair_01__However": "B does not oppose A; it restates A's two halves in brief.",
+        "pair_01__Moreover": "B adds no new information; it summarizes.",
+        "pair_01__For instance": "B is a summary, not a specific example.",
+        "pair_02__In short": "In short would restate the three years of effort, but B reports where that effort finally led.",
+        "pair_02__However": "The fleet is the payoff of the effort, not a contradiction of it.",
+        "pair_02__Moreover": "B is the end point of the process, not another step alongside it.",
+        "pair_02__For instance": "Running a modern fleet is not an example of negotiating or training."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "In one pair, B compresses what A said; in the other, B tells you where a long process ended."
+        },
+        {
+          "tier": 2,
+          "hint_text": "A brief restatement takes \"In short\"; a final result after a series of steps takes \"Ultimately\"."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: In short. Pair 2: Ultimately."
+        }
+      ]
+    },
+    "snp_node_12": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "Rice tariffication has lowered retail prices for consumers, but it has also cut the income of many small farmers who cannot compete with imports.",
+          "sentence_b": "the policy has helped more households than it has hurt, provided its revenue is actually used to support farmers."
+        },
+        {
+          "pair_id": "pair_02",
+          "sentence_a": "The study's sample was small, its participants were all volunteers, and its follow-up lasted only six weeks.",
+          "sentence_b": "the study was too limited to tell us much."
+        }
+      ],
+      "transition_tile_dock": [
+        "Ultimately",
+        "Nevertheless",
+        "In short",
+        "Similarly",
+        "On balance",
+        "For instance"
+      ],
+      "correct_tile_map": {
+        "pair_01": "On balance",
+        "pair_02": "In short"
+      },
+      "tile_error_explanations": {
+        "pair_01__In short": "B does not merely restate A; it weighs A's benefit against its cost and reaches a judgment.",
+        "pair_01__Ultimately": "Ultimately marks a final outcome in time, but B is an evaluation, not an event.",
+        "pair_01__Nevertheless": "Nevertheless would side with one half of A only; B weighs both halves.",
+        "pair_01__Similarly": "B is not a parallel case.",
+        "pair_01__For instance": "B is not an example of A.",
+        "pair_02__On balance": "On balance weighs strengths against weaknesses, but A lists only weaknesses; there is nothing to balance.",
+        "pair_02__Ultimately": "B is not the end of a process; it condenses the three weaknesses into one verdict.",
+        "pair_02__Nevertheless": "Nevertheless would defend the study despite its flaws, which B does not do.",
+        "pair_02__Similarly": "B is not a parallel case.",
+        "pair_02__For instance": "B is a summary, not an example."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Check whether sentence A contains two sides or only one. Can you weigh something that has only one side?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "\"On balance\" weighs pros against cons; \"In short\" condenses a list into one verdict."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Pair 1: On balance. Pair 2: In short."
+        }
+      ]
+    },
+    "snp_node_13": {
+      "sentence_pairs": [
+        {
+          "pair_id": "pair_01",
+          "sentence_a": "As the first step of its water program, the barangay installed rainwater tanks on the roofs of its elementary schools.",
+          "sentence_b": "it trained teachers to test and treat the stored water before pupils drink it."
+        }
+      ],
+      "transition_tile_dock": [
+        "However",
+        "In addition",
+        "As a result",
+        "For example"
+      ],
+      "correct_tile_map": {
+        "pair_01": "In addition"
+      },
+      "tile_error_explanations": {
+        "pair_01__However": "Training teachers does not contradict installing tanks; both are parts of the same program.",
+        "pair_01__As a result": "Installing tanks does not by itself cause teacher training; the training is a separate, added measure.",
+        "pair_01__For example": "Training teachers is not an example of installing tanks."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Is sentence B a second measure in the same program, or the effect of the first?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look for a tile that adds another step to the program."
+        },
+        {
+          "tier": 3,
+          "hint_text": "In addition adds the second measure (teacher training) to the first (rainwater tanks)."
+        }
+      ]
+    },
+    "tap_node_01": {
+      "reading_passage": "The archivist was meticulous in restoring the 1898 manuscripts. Working with careful, precise strokes, she checked every repaired letter twice against the original.",
+      "word_count": 23,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "meticulous",
+          "position_index": 3,
+          "correct_clue_ids": [
+            "careful",
+            "precise"
+          ],
+          "definition": "Showing great attention to detail; very careful and exact.",
+          "contextual_usage": "Describes the archivist's exacting approach to repairing fragile historical documents.",
+          "translation": "masinsinan"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__archivist": "Archivist names the person, not the quality being described.",
+        "w1__manuscripts": "Manuscripts are what she restored; they say nothing about how she worked.",
+        "w1__twice": "Checking twice is evidence of her care, but the synonyms describing her strokes are the direct clues."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Read the sentence after the locked word. How is her work described?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find two adjectives that describe her strokes."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"careful\" and \"precise\"."
+        }
+      ]
+    },
+    "tap_node_02": {
+      "reading_passage": "During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, leftovers became the next day's meal, and the economical habits they learned outlasted the crisis by many years.",
+      "word_count": 32,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "frugal",
+          "position_index": 9,
+          "correct_clue_ids": [
+            "budgeted",
+            "economical"
+          ],
+          "definition": "Careful and sparing in spending money or using resources.",
+          "contextual_usage": "Describes how the family's spending changed during a period of hardship.",
+          "translation": "matipid"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__drought": "The drought is the cause of the change, not a description of the family's habits.",
+        "w1__crisis": "Crisis names the situation, not the behavior the locked word describes.",
+        "w1__outlasted": "Outlasted tells how long the habits lasted, not what they were."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The clues are spread across the second sentence. What did the family do with money and food?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "One clue is a verb about planning spending; another is an adjective that renames the family's habits."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"budgeted\" and \"economical\"."
+        }
+      ]
+    },
+    "tap_node_03": {
+      "reading_passage": "By the late 2010s, mobile phones had become ubiquitous in Philippine cities. Their use was so pervasive that even sari-sari stores, which once dealt only in cash, began accepting e-wallet payments on devices that now seemed to be everywhere.",
+      "word_count": 39,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "ubiquitous",
+          "position_index": 8,
+          "correct_clue_ids": [
+            "pervasive",
+            "everywhere"
+          ],
+          "definition": "Present, appearing, or found everywhere.",
+          "contextual_usage": "Describes how widespread mobile phones had become in urban life.",
+          "translation": "laganap"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__cities": "Cities tells where phones were found, not how widespread they were.",
+        "w1__cash": "Cash is part of the contrast with the past, not a clue to the meaning.",
+        "w1__stores": "Sari-sari stores are an example of who adopted phones, but the direct clues describe how far the use had spread."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The meaning is restated twice later in the passage, once near the start of the second sentence and once at the very end."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Look for an adjective describing the phones' use and an adverb describing where the devices seemed to be."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"pervasive\" and \"everywhere\"."
+        }
+      ]
+    },
+    "tap_node_04": {
+      "reading_passage": "The Pampanga River empties into Manila Bay through a broad estuary. In this zone, the river's fresh water mixes with salt water from the bay, creating brackish conditions where milkfish fry thrive.",
+      "word_count": 32,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "estuary",
+          "position_index": 10,
+          "correct_clue_ids": [
+            "mixes",
+            "brackish"
+          ],
+          "definition": "The wide part of a river where it meets the sea and fresh water mixes with salt water.",
+          "contextual_usage": "Names the zone where the Pampanga River meets Manila Bay.",
+          "translation": "wawa ng ilog"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__river": "River names only one side of the meeting; the definition is about two waters combining.",
+        "w1__milkfish": "Milkfish fry live in the zone, but they do not define it.",
+        "w1__broad": "Broad describes the size of the zone, not what it is."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The sentence after the locked word begins \"In this zone\" and then explains what the zone is."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the verb that tells what happens to the two kinds of water, and the adjective for the result."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"mixes\" and \"brackish\"."
+        }
+      ]
+    },
+    "tap_node_05": {
+      "reading_passage": "Clownfish and sea anemones live in a close symbiosis. The anemone's stinging tentacles shelter the clownfish from predators, while the fish cleans its host and drives off polyp-eating butterflyfish, so each partner benefits from the long-term relationship.",
+      "word_count": 37,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "symbiosis",
+          "position_index": 8,
+          "correct_clue_ids": [
+            "partner",
+            "benefits",
+            "relationship"
+          ],
+          "definition": "A close, long-term relationship between two different species in which each benefits.",
+          "contextual_usage": "Names the mutually helpful arrangement between clownfish and anemones.",
+          "translation": "pagtutulungan"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__predators": "Predators are the threat the anemone guards against, not part of the definition.",
+        "w1__tentacles": "Tentacles describe how the anemone protects the fish, not what the relationship is.",
+        "w1__butterflyfish": "Butterflyfish are driven away by the clownfish; they are outside the relationship."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The definition is built at the end of the second sentence, after all the examples of who does what."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the words naming who is involved, what each gets, and what kind of bond it is."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"partner\", \"benefits\" and \"relationship\"."
+        }
+      ]
+    },
+    "tap_node_06": {
+      "reading_passage": "Teacher attrition has become a quiet crisis in some rural school divisions. Each year a portion of the faculty resigns, retires early or transfers to city schools, and because few replacements apply, the teaching force gradually shrinks.",
+      "word_count": 37,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "attrition",
+          "position_index": 1,
+          "correct_clue_ids": [
+            "resigns",
+            "gradually",
+            "shrinks"
+          ],
+          "definition": "A gradual reduction in the number of people in a workforce through resignation, retirement or transfer.",
+          "contextual_usage": "Names the slow loss of teachers from rural divisions.",
+          "translation": "unti-unting pagliit"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__crisis": "Crisis tells how serious the problem is, not what the problem is.",
+        "w1__replacements": "Few replacements explain why the loss is not reversed, but they do not describe the loss itself.",
+        "w1__rural": "Rural tells where it happens, not what it means."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "No single word defines the term; the second sentence builds the definition from causes and an outcome."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find a way teachers leave, and then the words describing what happens to the teaching force over time."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"resigns\", \"gradually\" and \"shrinks\"."
+        }
+      ]
+    },
+    "tap_node_07": {
+      "reading_passage": "Unlike his verbose predecessor, whose speeches often ran for over an hour, the new mayor was brief, rarely speaking for more than five minutes.",
+      "word_count": 24,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "verbose",
+          "position_index": 2,
+          "correct_clue_ids": [
+            "Unlike",
+            "brief"
+          ],
+          "definition": "Using more words than needed; long-winded.",
+          "contextual_usage": "Describes the former mayor's habit of giving very long speeches.",
+          "translation": "maligoy"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__predecessor": "Predecessor tells who the word describes, not what it means.",
+        "w1__mayor": "The new mayor is the person being contrasted with, not the meaning.",
+        "w1__speeches": "Speeches tells what was long, but the antonym clue gives the meaning."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "This sentence compares two mayors. Which word signals that they are opposites?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the contrast signal and the word describing the new mayor. The locked word means the opposite."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"Unlike\" and \"brief\"."
+        }
+      ]
+    },
+    "tap_node_08": {
+      "reading_passage": "Most visitors to Calaguas are transient, staying only a weekend before catching the boat back to the mainland. The fishing families who live there, however, are permanent residents whose roots on the island go back generations.",
+      "word_count": 36,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "transient",
+          "position_index": 5,
+          "correct_clue_ids": [
+            "weekend",
+            "however",
+            "permanent"
+          ],
+          "definition": "Staying or lasting only a short time.",
+          "contextual_usage": "Describes the short stays of most visitors to the island.",
+          "translation": "pansamantala"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__visitors": "Visitors names who the word describes, not their quality.",
+        "w1__generations": "Generations describes the residents' long history, the opposite side of the contrast.",
+        "w1__boat": "The boat is how visitors leave, not a clue to how long they stay."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The passage contrasts two groups. What is true of one group that is not true of the other?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the length of the visitors' stay, the contrast signal, and the word describing the residents."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"weekend\", \"however\" and \"permanent\"."
+        }
+      ]
+    },
+    "tap_node_09": {
+      "reading_passage": "Most of the cooperative's members embraced the new composting scheme within a month. A recalcitrant few, however, kept burning their rice straw in the open, ignoring repeated reminders and even a fine.",
+      "word_count": 32,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "recalcitrant",
+          "position_index": 14,
+          "correct_clue_ids": [
+            "embraced",
+            "however",
+            "ignoring"
+          ],
+          "definition": "Stubbornly uncooperative toward authority or guidance.",
+          "contextual_usage": "Describes the members who refused to follow the composting scheme.",
+          "translation": "suwail"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__members": "Members names the majority who cooperated, not the few the word describes.",
+        "w1__burning": "Burning straw is what they did, but the clues that define the word are about their refusal.",
+        "w1__straw": "Rice straw is the material, not the attitude."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The word is defined by contrast with the majority and by the minority's behavior."
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find what most members did, the contrast signal, and what the few did with the reminders."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"embraced\", \"however\" and \"ignoring\"."
+        }
+      ]
+    },
+    "tap_node_10": {
+      "reading_passage": "Few crops survive in the arid hills of the province during the dry season. Streams shrink to trickles, the soil cracks open, and farmers must haul water from distant wells.",
+      "word_count": 30,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "arid",
+          "position_index": 5,
+          "correct_clue_ids": [
+            "trickles",
+            "cracks"
+          ],
+          "definition": "Having little or no rain; very dry.",
+          "contextual_usage": "Describes the dry, water-poor hills during the dry season.",
+          "translation": "tuyot"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__crops": "Crops are what struggles to survive, not a description of the land.",
+        "w1__hills": "Hills names the place the word describes.",
+        "w1__farmers": "Farmers react to the conditions; they do not show what the conditions are."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The second sentence gives examples of what the land is like. What is happening to water and soil?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find what streams become and what the soil does."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"trickles\" and \"cracks\"."
+        }
+      ]
+    },
+    "tap_node_11": {
+      "reading_passage": "Bamboo is a remarkably versatile material. Builders use it for scaffolding and house frames, artisans weave it into baskets and furniture, and cooks steam rice inside its hollow stems.",
+      "word_count": 29,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "versatile",
+          "position_index": 4,
+          "correct_clue_ids": [
+            "scaffolding",
+            "baskets",
+            "steam"
+          ],
+          "definition": "Able to be used for many different purposes.",
+          "contextual_usage": "Describes bamboo as useful in construction, crafts and cooking.",
+          "translation": "maraming gamit"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__material": "Material tells what bamboo is, not what the word says about it.",
+        "w1__remarkably": "Remarkably only intensifies the word; it does not explain it.",
+        "w1__hollow": "Hollow describes the stem's shape, not the range of uses."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The meaning comes from adding up examples. How many different jobs does bamboo do?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Pick one use from each group: builders, artisans and cooks."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"scaffolding\", \"baskets\" and \"steam\"."
+        }
+      ]
+    },
+    "tap_node_12": {
+      "reading_passage": "When reporters asked whether the agency would release the audit, the spokesperson's reply was equivocal. She said the document was 'under review,' that its release 'could be considered,' and that no final decision had been made, leaving each outlet to print a different interpretation.",
+      "word_count": 44,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "equivocal",
+          "position_index": 14,
+          "correct_clue_ids": [
+            "considered",
+            "different",
+            "interpretation"
+          ],
+          "definition": "Open to more than one interpretation; deliberately vague or noncommittal.",
+          "contextual_usage": "Describes the spokesperson's unclear answer about releasing the audit.",
+          "translation": "malabo"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__audit": "The audit is the subject of the question, not a clue to the reply.",
+        "w1__reporters": "Reporters asked the question; they do not describe the answer.",
+        "w1__decision": "The missing decision is part of the vague reply, but the strongest clues show its effect on readers."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "Infer the meaning from the effect of her words. Did the reporters come away with one story or several?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the hedge in her quotes and the words describing what each outlet printed."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"considered\", \"different\" and \"interpretation\"."
+        }
+      ]
+    },
+    "tap_node_13": {
+      "reading_passage": "By the time volunteers arrived, the old municipal library was dilapidated. Its roof sagged, its shelves were crumbling, and the neglected building leaked whenever it rained.",
+      "word_count": 26,
+      "locked_words": [
+        {
+          "word_id": "w1",
+          "word": "dilapidated",
+          "position_index": 10,
+          "correct_clue_ids": [
+            "crumbling",
+            "neglected"
+          ],
+          "definition": "In a state of disrepair or ruin because of age or neglect.",
+          "contextual_usage": "Describes the run-down condition of the old library building.",
+          "translation": "sira-sira"
+        }
+      ],
+      "clue_error_explanations": {
+        "w1__volunteers": "Volunteers came to help; they do not describe the building.",
+        "w1__library": "Library names the building, not its condition.",
+        "w1__rained": "Rain is when the leaks happened, not a description of the building."
+      },
+      "scaffold_hints": [
+        {
+          "tier": 1,
+          "hint_text": "The second sentence describes the building piece by piece. What condition is it in?"
+        },
+        {
+          "tier": 2,
+          "hint_text": "Find the adjective for the shelves and the adjective for the building as a whole."
+        },
+        {
+          "tier": 3,
+          "hint_text": "Tap \"crumbling\" and \"neglected\"."
+        }
+      ]
+    }
+  }
+}

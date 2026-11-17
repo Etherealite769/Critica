@@ -16,7 +16,7 @@ from .validators import (
     check_novelty_against_history,
     check_intra_session_diversity,
 )
-from .fallback_pool import get_fallback_batch
+from .fallback_pool import get_fallback_batch, node_family
 
 # Module document imports
 from api.modules.logic_thread.mongo_models import LogicThreadNodeDocument
@@ -271,7 +271,12 @@ class SessionService:
         if len(valid_exercises) < EXERCISES_PER_SESSION:
             is_fallback = True
             missing_count = EXERCISES_PER_SESSION - len(valid_exercises)
-            fallback_items = get_fallback_batch(module, diff, count=missing_count * 3, exclude_hashes=past_hashes)
+            # The pool orders its own tier unseen-first and prefers the node's focus family, so ask only for
+            # what is missing: a larger request would pad with other tiers and break tier scaling.
+            fallback_items = get_fallback_batch(
+                module, diff, count=missing_count, exclude_hashes=past_hashes,
+                family=node_family(module, node_id, node_meta.get('craap_criterion')),
+            )
             # Filter unseen fallbacks
             unseen_fallbacks = [
                 fb for fb in fallback_items
