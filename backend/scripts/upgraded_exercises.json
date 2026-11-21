@@ -2173,7 +2173,8 @@
           "position_index": 10,
           "correct_clue_ids": [
             "mixes",
-            "brackish"
+            "brackish",
+            "fresh"
           ],
           "definition": "The wide part of a river where it meets the sea and fresh water mixes with salt water.",
           "contextual_usage": "Names the zone where the Pampanga River meets Manila Bay.",
@@ -2286,7 +2287,8 @@
           "position_index": 2,
           "correct_clue_ids": [
             "Unlike",
-            "brief"
+            "brief",
+            "hour"
           ],
           "definition": "Using more words than needed; long-winded.",
           "contextual_usage": "Describes the former mayor's habit of giving very long speeches.",
@@ -2324,7 +2326,8 @@
           "correct_clue_ids": [
             "weekend",
             "however",
-            "permanent"
+            "permanent",
+            "staying"
           ],
           "definition": "Staying or lasting only a short time.",
           "contextual_usage": "Describes the short stays of most visitors to the island.",
@@ -2398,6 +2401,7 @@
           "word": "arid",
           "position_index": 5,
           "correct_clue_ids": [
+            "dry",
             "trickles",
             "cracks"
           ],
@@ -2512,7 +2516,8 @@
           "position_index": 10,
           "correct_clue_ids": [
             "crumbling",
-            "neglected"
+            "neglected",
+            "sagged"
           ],
           "definition": "In a state of disrepair or ruin because of age or neglect.",
           "contextual_usage": "Describes the run-down condition of the old library building.",

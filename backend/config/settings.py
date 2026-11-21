@@ -36,6 +36,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fahptlbc+_5y8o_2^da#895p1v
 # Production-safe default: DEBUG is off unless explicitly enabled (local .env sets DEBUG=True)
 DEBUG = os.getenv('DEBUG', 'False').strip().lower() in ('true', '1', 'yes')
 
+import re
 from corsheaders.defaults import default_headers
 from urllib.parse import urlparse
 
@@ -44,8 +45,12 @@ def _origin(url):
     """
     scheme://host[:port] of a URL. Browsers send Origin without a path or trailing slash,
     so 'https://critica-sigma.vercel.app/' in an env var would never match (corsheaders E014).
+    Also sanitizes markdown links e.g. [https://url](https://url) or quotes.
     """
-    parsed = urlparse(url.strip())
+    raw = (url or '').strip()
+    m = re.search(r'https?://[^\s\)\]\>\'"]+', raw)
+    clean = m.group(0) if m else raw
+    parsed = urlparse(clean)
     return f'{parsed.scheme}://{parsed.netloc}' if parsed.scheme and parsed.netloc else ''
 
 
@@ -330,7 +335,9 @@ SERVER_EMAIL = EMAIL_HOST_USER
 # Public frontend URL, used for the verification and password-reset links in emails.
 # Must be set on the deployed backend (e.g. https://critica.vercel.app), otherwise the
 # links point at localhost. A bare host gets https:// so links are always absolute.
-FRONTEND_URL = (os.getenv('FRONTEND_URL') or 'http://localhost:3000').strip().rstrip('/')
+_raw_frontend = (os.getenv('FRONTEND_URL') or 'http://localhost:3000').strip()
+_frontend_match = re.search(r'https?://[^\s\)\]\>\'"]+', _raw_frontend)
+FRONTEND_URL = _frontend_match.group(0).rstrip('/') if _frontend_match else _raw_frontend.rstrip('/')
 if '://' not in FRONTEND_URL:
     FRONTEND_URL = f'https://{FRONTEND_URL}'
 

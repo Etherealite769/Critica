@@ -494,7 +494,7 @@ export default function LogicThreadPage() {
             body: JSON.stringify({ source_id: '', target_id: '', inactivity_seconds: 61 }),
           })
       return { text: res.hint || res.explanation || HINT_FALLBACK }
-    }, HINT_FALLBACK)
+    }, HINT_FALLBACK).then(out => { if (out === 'ok') setShowHint(true) })
   }, [nodeId, node, sessionId, sessionExercises, questionIndex, caseHints])
 
   // DIG DEEPER: the only action that spends one of the case's 3 hints

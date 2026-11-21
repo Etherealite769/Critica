@@ -18,7 +18,7 @@ from .validators import (
     check_novelty_against_history,
     check_intra_session_diversity,
 )
-from .fallback_pool import get_fallback_batch, node_family
+from .fallback_pool import get_fallback_batch, node_family, FALLBACK_BANK, _prepare
 from .case_hints import case_hint
 
 # Module document imports
@@ -223,12 +223,6 @@ class SessionService:
                 is_completed=False,
             ).order_by('-created_at').first()
 
-            client_check = GeminiClient()
-            if existing and getattr(existing, 'is_fallback', False) and client_check.is_available():
-                existing.is_completed = True
-                existing.save()
-                existing = None
-
             if existing and not existing.is_expired() and len(existing.exercises) >= EXERCISES_PER_SESSION:
                 node_meta = cls.load_node_metadata(module, node_id)
                 return cls._serialize_session_response(existing, node_meta)
@@ -245,49 +239,64 @@ class SessionService:
         node_meta = cls.load_node_metadata(module, node_id)
         past_topics, past_hashes, past_passages = cls.get_student_history(student_id, module, node_id)
 
-        # 3. Call Gemini AI for dynamic generation with anti-repetition constraints
+        valid_exercises: List[Dict[str, Any]] = []
+
+        # 2b. Anchor Case 1 with the node's curated canonical default exercise on first take or when not in history
+        canonical_case = next((c for c in FALLBACK_BANK.get(module, []) if c.get('exercise_id') == f"fb_{node_id}"), None)
+        if canonical_case:
+            canonical_hash = calculate_question_hash(module, canonical_case)
+            if canonical_hash not in past_hashes:
+                valid_exercises.append(_prepare(module, canonical_case))
+                past_hashes.add(canonical_hash)
+                if canonical_case.get('reading_passage'):
+                    past_passages.append(canonical_case.get('reading_passage'))
+
+        # 3. Call Gemini AI for dynamic generation with anti-repetition constraints for the remaining cases
         client = GeminiClient()
         system_inst = build_system_instruction()
-        prompt = build_generation_prompt(
-            module=module,
-            node_info=node_meta,
-            previous_topics=past_topics,
-            previous_passages=past_passages,
-            count=EXERCISES_PER_SESSION,
-        )
-
-        generated_raw = client.generate_structured_session(
-            module=module,
-            system_instruction=system_inst,
-            user_prompt=prompt,
-        )
-
-        valid_exercises: List[Dict[str, Any]] = []
+        needed_count = max(0, EXERCISES_PER_SESSION - len(valid_exercises))
         model_used = ''
         latency_ms = 0
 
-        if generated_raw:
-            model_used = generated_raw.get('_model_used', '')
-            latency_ms = generated_raw.get('_latency_ms', 0)
+        if needed_count > 0 and client.is_available():
+            prompt = build_generation_prompt(
+                module=module,
+                node_info=node_meta,
+                previous_topics=past_topics + [ex.get('topic_title', '') for ex in valid_exercises],
+                previous_passages=past_passages,
+                count=needed_count,
+            )
 
-            if isinstance(generated_raw.get('exercises'), list):
-                for ex in generated_raw['exercises']:
-                    # Module syntactic/structural validation
-                    is_valid, reason = validate_module_exercise(module, ex)
-                    if not is_valid:
-                        logger.warning(f"Discarding invalid generated exercise ({reason})")
-                        continue
+            generated_raw = client.generate_structured_session(
+                module=module,
+                system_instruction=system_inst,
+                user_prompt=prompt,
+            )
 
-                    # Historical novelty validation (hash & Jaccard semantic distance)
-                    is_novel, reason = check_novelty_against_history(module, ex, past_hashes, past_passages)
-                    if not is_novel:
-                        logger.info(f"Discarding repetitive exercise: {reason}")
-                        continue
+            if generated_raw:
+                model_used = generated_raw.get('_model_used', '')
+                latency_ms = generated_raw.get('_latency_ms', 0)
 
-                    valid_exercises.append(ex)
-                    past_hashes.add(calculate_question_hash(module, ex))
-                    if ex.get('reading_passage'):
-                        past_passages.append(ex.get('reading_passage'))
+                if isinstance(generated_raw.get('exercises'), list):
+                    for ex in generated_raw['exercises']:
+                        if len(valid_exercises) >= EXERCISES_PER_SESSION:
+                            break
+                        # Module syntactic/structural validation
+                        is_valid, reason = validate_module_exercise(module, ex)
+                        if not is_valid:
+                            logger.warning(f"Discarding invalid generated exercise ({reason})")
+                            continue
+
+                        # Historical novelty validation (hash & Jaccard semantic distance)
+                        is_novel, reason = check_novelty_against_history(module, ex, past_hashes, past_passages)
+                        if not is_novel:
+                            logger.info(f"Discarding repetitive exercise: {reason}")
+                            continue
+
+                        valid_exercises.append(ex)
+                        past_hashes.add(calculate_question_hash(module, ex))
+                        if ex.get('reading_passage'):
+                            past_passages.append(ex.get('reading_passage'))
 
         # 4. If fewer than required exercises, perform a fast retry pass for the remainder
         diff = node_meta['difficulty']

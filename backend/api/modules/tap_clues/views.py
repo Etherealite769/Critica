@@ -4,12 +4,61 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
+import re
+
 from api.progression.services import (
     ProgressionManagementService)
 from api.scaffold.scaffold_service import (
     ScaffoldEngineService)
 from .mongo_models import VocabularyNodeDocument
 from .services import ContentManagementService
+
+
+def _clean_str(s: str) -> str:
+    return re.sub(r'[^a-z0-9]', '', (s or '').lower())
+
+
+def _stem_str(s: str) -> str:
+    w = _clean_str(s)
+    if w.endswith('ing') and len(w) > 5: return w[:-3]
+    if w.endswith('ies') and len(w) > 4: return w[:-3] + 'y'
+    if w.endswith('es') and len(w) > 4: return w[:-2]
+    if w.endswith('ed') and len(w) > 4: return w[:-2]
+    if w.endswith('ly') and len(w) > 4: return w[:-2]
+    if w.endswith('s') and len(w) > 3: return w[:-1]
+    return w
+
+
+def _clue_matches(clue: str, tapped: str) -> bool:
+    if not clue or not tapped:
+        return False
+    c_clean = _clean_str(clue)
+    w_clean = _clean_str(tapped)
+    if not c_clean or not w_clean:
+        return False
+    if c_clean == w_clean:
+        return True
+    c_tokens = [_clean_str(t) for t in re.split(r'[\s\-_/]+', clue.lower()) if _clean_str(t)]
+    w_tokens = [_clean_str(t) for t in re.split(r'[\s\-_/]+', tapped.lower()) if _clean_str(t)]
+    if w_clean in c_tokens or c_clean in w_tokens:
+        return True
+    if any(t in w_tokens for t in c_tokens):
+        return True
+    c_stem = _stem_str(c_clean)
+    w_stem = _stem_str(w_clean)
+    if len(c_stem) >= 3 and len(w_stem) >= 3:
+        if c_stem == w_stem:
+            return True
+        if any(_stem_str(t) == w_stem for t in c_tokens):
+            return True
+        if any(_stem_str(t) == c_stem for t in w_tokens):
+            return True
+    if min(len(c_clean), len(w_clean)) >= 3:
+        if c_clean in w_clean or w_clean in c_clean:
+            return True
+        if any(len(ct) >= 3 and (ct in w_clean or w_clean in ct) for ct in c_tokens):
+            return True
+    return False
 
 
 class NodeLoadView(APIView):
@@ -69,8 +118,8 @@ class EvaluateClueView(APIView):
 
         # Check match against any correct clue phrase or component word
         matched_target = None
-        for orig, clean in zip(correct_clues_raw, correct_clues_clean):
-            if clean_clue == clean or clean_clue in clean.split() or clean in clean_clue:
+        for orig in correct_clues_raw:
+            if _clue_matches(orig, clue_word):
                 matched_target = orig
                 break
 
@@ -95,12 +144,7 @@ class EvaluateClueView(APIView):
         # Check if all clues are found
         remaining = [
             c for c in correct_clues_raw
-            if not any(
-                f.strip().lower().strip('.,!?;:"\'') == c.strip().lower().strip('.,!?;:"\'')
-                or f.strip().lower().strip('.,!?;:"\'') in c.strip().lower().split()
-                or c.strip().lower().strip('.,!?;:"\'') in f.strip().lower()
-                for f in updated_found
-            )
+            if not any(_clue_matches(c, f) for f in updated_found)
         ]
 
         target_count = len(correct_clues_raw)

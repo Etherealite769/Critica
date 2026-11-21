@@ -151,6 +151,18 @@ class ProgressionManagementService:
                 profile.unlocked_nodes.append(
                     node_id)
                 changed = True
+
+        # Ensure all historically completed nodes are tracked in lifetime mastered_nodes
+        mastered = getattr(profile, 'mastered_nodes', None)
+        if mastered is None:
+            profile.mastered_nodes = list(profile.completed_nodes)
+            changed = True
+        else:
+            for cid in profile.completed_nodes:
+                if cid not in profile.mastered_nodes:
+                    profile.mastered_nodes.append(cid)
+                    changed = True
+
         if changed:
             profile.save()
 
@@ -252,10 +264,8 @@ class ProgressionManagementService:
             .get_or_create_profile(
                 student_id, username)
         # Re-mastering a previously completed node awards replay XP (25 XP) per TC-PROG-004
-        mastered = getattr(profile, 'mastered_nodes', None)
-        if mastered is None:
-            mastered = list(profile.completed_nodes)
-        is_first_completion = node_id not in mastered
+        mastered = list(getattr(profile, 'mastered_nodes', []) or [])
+        is_first_completion = (node_id not in mastered) and (node_id not in profile.completed_nodes)
         profile.complete_node(node_id)
         streak_result = profile.increment_streak()
 
@@ -286,9 +296,12 @@ class ProgressionManagementService:
     def reset_node(student_id, node_id):
         profile = ProgressionManagementService\
             .get_or_create_profile(student_id)
+        # Ensure node is preserved in lifetime mastered_nodes for replay XP calculation (TC-PROG-004)
+        if node_id not in profile.mastered_nodes:
+            profile.mastered_nodes.append(node_id)
         if node_id in profile.completed_nodes:
             profile.completed_nodes.remove(node_id)
-            profile.save()
+        profile.save()
 
         # Purge any ongoing or completed AI generated session for this node
         try:
