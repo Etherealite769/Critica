@@ -17,8 +17,9 @@ from .validators import (
     calculate_question_hash,
     check_novelty_against_history,
     check_intra_session_diversity,
+    enforce_tap_clue_count,
 )
-from .fallback_pool import get_fallback_batch, node_family, FALLBACK_BANK, _prepare
+from .fallback_pool import get_fallback_batch, node_family, fallback_bank, _prepare
 from .case_hints import case_hint
 
 # Module document imports
@@ -165,6 +166,39 @@ class SessionService:
         return data
 
     @staticmethod
+    def _enforce_tap_tiers(exercises: List[Dict[str, Any]], diff: int) -> Tuple[List[Dict[str, Any]], bool]:
+        """
+        Every Tap Clues case gets exactly its tier's clue count (Basics 2, Intermediate 3, Advanced 4). A case that
+        does not match (a stale copy of a bank case, an off-tier AI case) is replaced by the current bank version of
+        the same case when there is one, otherwise by an unused bank case of the same tier. Returns the cases and
+        whether anything changed.
+        """
+        bank = {c.get('exercise_id'): c for c in fallback_bank().get('tap_clues', [])}
+        used = {ex.get('exercise_id') for ex in exercises}
+        out, changed = [], False
+        for ex in exercises:
+            ok, reason = enforce_tap_clue_count(ex, diff)
+            if ok:
+                out.append(ex)
+                continue
+            current = bank.get(ex.get('exercise_id'))
+            if not (current and current.get('difficulty') == diff):
+                current = next((c for c in bank.values()
+                                if c.get('difficulty') == diff and c.get('exercise_id') not in used), None)
+            replacement = _prepare('tap_clues', current) if current else None
+            if replacement is not None and enforce_tap_clue_count(replacement, diff)[0]:
+                logger.warning(f"Tap Clues case {ex.get('exercise_id')} off-tier ({reason}); "
+                               f"replaced with {replacement.get('exercise_id')}")
+                used.add(replacement.get('exercise_id'))
+                out.append(replacement)
+            else:
+                logger.error(f"Tap Clues case {ex.get('exercise_id')} off-tier and no tier-{diff} replacement")
+                enforce_tap_clue_count(ex, None)   # last resort: require only the clues that exist, never soft-lock
+                out.append(ex)
+            changed = True
+        return out, changed
+
+    @staticmethod
     def get_student_history(student_id: str, module: str, node_id: str) -> Tuple[List[str], Set[str], List[str]]:
         """
         Returns all past topic summaries, SHA256 hashes, and passage excerpts
@@ -224,6 +258,12 @@ class SessionService:
             ).order_by('-created_at').first()
 
             if existing and not existing.is_expired() and len(existing.exercises) >= EXERCISES_PER_SESSION:
+                if module == 'tap_clues':
+                    # A session saved before a content fix may hold stale or off-tier cases: repair it in place
+                    fixed, changed = cls._enforce_tap_tiers(list(existing.exercises), _get_node_difficulty(node_id))
+                    if changed:
+                        existing.exercises = fixed
+                        existing.save()
                 node_meta = cls.load_node_metadata(module, node_id)
                 return cls._serialize_session_response(existing, node_meta)
         else:
@@ -242,7 +282,7 @@ class SessionService:
         valid_exercises: List[Dict[str, Any]] = []
 
         # 2b. Anchor Case 1 with the node's curated canonical default exercise on first take or when not in history
-        canonical_case = next((c for c in FALLBACK_BANK.get(module, []) if c.get('exercise_id') == f"fb_{node_id}"), None)
+        canonical_case = next((c for c in fallback_bank().get(module, []) if c.get('exercise_id') == f"fb_{node_id}"), None)
         if canonical_case:
             canonical_hash = calculate_question_hash(module, canonical_case)
             if canonical_hash not in past_hashes:
@@ -282,7 +322,7 @@ class SessionService:
                         if len(valid_exercises) >= EXERCISES_PER_SESSION:
                             break
                         # Module syntactic/structural validation
-                        is_valid, reason = validate_module_exercise(module, ex)
+                        is_valid, reason = validate_module_exercise(module, ex, node_meta['difficulty'])
                         if not is_valid:
                             logger.warning(f"Discarding invalid generated exercise ({reason})")
                             continue
@@ -318,7 +358,7 @@ class SessionService:
                 for ex in retry_raw['exercises']:
                     if len(valid_exercises) >= EXERCISES_PER_SESSION:
                         break
-                    is_valid, _ = validate_module_exercise(module, ex)
+                    is_valid, _ = validate_module_exercise(module, ex, node_meta['difficulty'])
                     is_novel, _ = check_novelty_against_history(module, ex, past_hashes, past_passages)
                     if is_valid and is_novel:
                         valid_exercises.append(ex)
@@ -348,6 +388,11 @@ class SessionService:
 
         # 6. Verify intra-session diversity
         check_intra_session_diversity(valid_exercises)
+
+        # 6a. Tap Clues: every case carries exactly its tier's clue count (2 / 3 / 4), so the screen's
+        #     CLUES FOUND x/N and its unlock threshold always agree with the clues actually in the passage
+        if module == 'tap_clues':
+            valid_exercises, _ = cls._enforce_tap_tiers(valid_exercises, diff)
 
         # 6b. Guarantee anti-pattern shuffling on all valid exercises
         for ex in valid_exercises:

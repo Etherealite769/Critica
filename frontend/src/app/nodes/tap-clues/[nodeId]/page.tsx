@@ -342,6 +342,31 @@ function clueMatches(clue: string, tapped: string): boolean {
   return false
 }
 
+/**
+ * Clue progress for one locked word. The CLUES FOUND counter, the unlock threshold and re-locking on deselect all
+ * use it, so they can never disagree.
+ * - required: the tier's clue count (target_clues_count: Basics 2, Intermediate 3, Advanced 4), never more than
+ *   the clues that actually exist, so a cadet who finds every clue can always submit.
+ * - found: distinct clues matched, one tap per clue (two taps on the same clue, or one tap that loosely matches
+ *   two clues, never count twice).
+ */
+function clueProgress(meta: LockedWordMeta | undefined, tapped: string[]) {
+  const clues = Array.from(new Set(
+    (meta?.correct_clue_ids || meta?.context_clues || []).map(c => c.toLowerCase().trim()).filter(Boolean)))
+  if (clues.length === 0) {
+    // Legacy nodes send only the count; their server decides which taps are clues
+    const required = Math.max(1, meta?.target_clues_count || 2)
+    return { required, found: Math.min(tapped.length, required), complete: tapped.length >= required }
+  }
+  const required = Math.min(Math.max(1, meta?.target_clues_count || clues.length), clues.length)
+  const matched = new Set<number>()
+  for (const t of tapped) {
+    const i = clues.findIndex((c, k) => !matched.has(k) && clueMatches(c, t))
+    if (i >= 0) matched.add(i)
+  }
+  return { required, found: Math.min(matched.size, required), complete: matched.size >= required }
+}
+
 // ── Main component ─────────────────────────────────
 export default function TapCluesPage() {
   const router = useRouter()
@@ -634,8 +659,7 @@ export default function TapCluesPage() {
     setFoundClues(prev => ({ ...prev, [activeWordId]: updated }))
     // Deselecting below the required clue count re-locks the word (and SUBMIT with it)
     const meta = tapNode?.locked_words.find(lw => lw.word_id === activeWordId)
-    const required = meta?.target_clues_count || (meta?.correct_clue_ids || meta?.context_clues || []).length || current.length
-    if (updated.length < required) setUnlockedWords(prev => prev.filter(id => id !== activeWordId))
+    if (!clueProgress(meta, updated).complete) setUnlockedWords(prev => prev.filter(id => id !== activeWordId))
   }
 
   const handleWordTap = async (word: string, token: PassageToken) => {
@@ -681,8 +705,7 @@ export default function TapCluesPage() {
             body: JSON.stringify({ is_correct: true, word_id: targetWordId, clue_word: cleanWord }),
           }).catch(() => {})
           const updatedFound = Array.from(new Set([...currentFound, cleanWord]))
-          const requiredCount = Math.min(targetLockedWord?.target_clues_count || 2, Math.max(1, correctClues.length))
-          const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => clueMatches(c, f))))
+          const allFound = clueProgress(targetLockedWord, updatedFound).complete
 
           setFoundClues(prev => ({ ...prev, [targetWordId]: updatedFound }))
 
@@ -1208,10 +1231,7 @@ export default function TapCluesPage() {
   const allUnlocked    = unlockedWords.length === tapNode!.locked_words.length
   const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
   const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
-  const requiredCluesCount = activeWordMeta?.target_clues_count
-    || activeWordMeta?.correct_clue_ids?.length
-    || activeWordMeta?.context_clues?.length
-    || 2
+  const activeProgress = clueProgress(activeWordMeta, activeClues)
   const level          = tapNode!.difficulty ?? nodeDifficulty(nodeId)
   const attemptsLeft   = Math.max(0, MAX_ATTEMPTS - wrongs)   // wrongs resets to 0 on every new case
   const activeUnlocked = activeWordMeta ? unlockedWords.includes(activeWordMeta.word_id) : false
@@ -1405,7 +1425,7 @@ export default function TapCluesPage() {
                 {activeWordMeta?.word ?? '— select a word —'}
               </div>
               <div className={styles.targetMeta}>
-                CLUES FOUND {Math.min(activeClues.length, requiredCluesCount)}/{requiredCluesCount}
+                CLUES FOUND {activeProgress.found}/{activeProgress.required}
                 {activeUnlocked && activeWordMeta && (
                   <button type="button" className={styles.linkBtn}
                     onClick={() => setDefPanel({

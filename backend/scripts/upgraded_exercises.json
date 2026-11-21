@@ -2090,8 +2090,8 @@
       ]
     },
     "tap_node_02": {
-      "reading_passage": "During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, leftovers became the next day's meal, and the economical habits they learned outlasted the crisis by many years.",
-      "word_count": 32,
+      "reading_passage": "During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, leftovers were saved for the next day's meal, and the economical habits they learned outlasted the crisis by many years.",
+      "word_count": 34,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2099,6 +2099,7 @@
           "position_index": 9,
           "correct_clue_ids": [
             "budgeted",
+            "saved",
             "economical"
           ],
           "definition": "Careful and sparing in spending money or using resources.",
@@ -2118,24 +2119,26 @@
         },
         {
           "tier": 2,
-          "hint_text": "One clue is a verb about planning spending; another is an adjective that renames the family's habits."
+          "hint_text": "One clue is a verb about planning spending, one says what happened to leftovers, and one is an adjective that renames the family's habits."
         },
         {
           "tier": 3,
-          "hint_text": "Tap \"budgeted\" and \"economical\"."
+          "hint_text": "Tap \"budgeted\", \"saved\" and \"economical\"."
         }
       ]
     },
     "tap_node_03": {
-      "reading_passage": "By the late 2010s, mobile phones had become ubiquitous in Philippine cities. Their use was so pervasive that even sari-sari stores, which once dealt only in cash, began accepting e-wallet payments on devices that now seemed to be everywhere.",
-      "word_count": 39,
+      "reading_passage": "By the late 2010s, mobile phones had become ubiquitous in Philippine cities. Their use was so widespread and pervasive that even sari-sari stores, which once dealt only in cash, began accepting e-wallet payments on devices that had become commonplace and now seemed to be everywhere.",
+      "word_count": 45,
       "locked_words": [
         {
           "word_id": "w1",
           "word": "ubiquitous",
           "position_index": 8,
           "correct_clue_ids": [
+            "widespread",
             "pervasive",
+            "commonplace",
             "everywhere"
           ],
           "definition": "Present, appearing, or found everywhere.",
@@ -2155,17 +2158,17 @@
         },
         {
           "tier": 2,
-          "hint_text": "Look for an adjective describing the phones' use and an adverb describing where the devices seemed to be."
+          "hint_text": "Look for two adjectives describing the phones' use, one for how ordinary the devices became, and an adverb for where they seemed to be."
         },
         {
           "tier": 3,
-          "hint_text": "Tap \"pervasive\" and \"everywhere\"."
+          "hint_text": "Tap \"widespread\", \"pervasive\", \"commonplace\" and \"everywhere\"."
         }
       ]
     },
     "tap_node_04": {
-      "reading_passage": "The Pampanga River empties into Manila Bay through a broad estuary. In this zone, the river's fresh water mixes with salt water from the bay, creating brackish conditions where milkfish fry thrive.",
-      "word_count": 32,
+      "reading_passage": "The Pampanga River empties into Manila Bay through a broad estuary. In this zone, the river's water mixes with water from the bay, creating brackish conditions where milkfish fry thrive.",
+      "word_count": 30,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2173,8 +2176,7 @@
           "position_index": 10,
           "correct_clue_ids": [
             "mixes",
-            "brackish",
-            "fresh"
+            "brackish"
           ],
           "definition": "The wide part of a river where it meets the sea and fresh water mixes with salt water.",
           "contextual_usage": "Names the zone where the Pampanga River meets Manila Bay.",
@@ -2249,6 +2251,7 @@
           "position_index": 1,
           "correct_clue_ids": [
             "resigns",
+            "retires",
             "gradually",
             "shrinks"
           ],
@@ -2269,17 +2272,17 @@
         },
         {
           "tier": 2,
-          "hint_text": "Find a way teachers leave, and then the words describing what happens to the teaching force over time."
+          "hint_text": "Find the two ways teachers leave, then the words describing what happens to the teaching force over time."
         },
         {
           "tier": 3,
-          "hint_text": "Tap \"resigns\", \"gradually\" and \"shrinks\"."
+          "hint_text": "Tap \"resigns\", \"retires\", \"gradually\" and \"shrinks\"."
         }
       ]
     },
     "tap_node_07": {
-      "reading_passage": "Unlike his verbose predecessor, whose speeches often ran for over an hour, the new mayor was brief, rarely speaking for more than five minutes.",
-      "word_count": 24,
+      "reading_passage": "Unlike his verbose predecessor, the new mayor was brief whenever he addressed the town council. He had served on the council for twelve years before winning the election.",
+      "word_count": 28,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2287,8 +2290,7 @@
           "position_index": 2,
           "correct_clue_ids": [
             "Unlike",
-            "brief",
-            "hour"
+            "brief"
           ],
           "definition": "Using more words than needed; long-winded.",
           "contextual_usage": "Describes the former mayor's habit of giving very long speeches.",
@@ -2298,7 +2300,7 @@
       "clue_error_explanations": {
         "w1__predecessor": "Predecessor tells who the word describes, not what it means.",
         "w1__mayor": "The new mayor is the person being contrasted with, not the meaning.",
-        "w1__speeches": "Speeches tells what was long, but the antonym clue gives the meaning."
+        "w1__council": "The council is where he spoke, not how he spoke."
       },
       "scaffold_hints": [
         {
@@ -2316,8 +2318,8 @@
       ]
     },
     "tap_node_08": {
-      "reading_passage": "Most visitors to Calaguas are transient, staying only a weekend before catching the boat back to the mainland. The fishing families who live there, however, are permanent residents whose roots on the island go back generations.",
-      "word_count": 36,
+      "reading_passage": "Most visitors to Calaguas are transient: a weekend on the beach is usually all they spend before catching the boat back to the mainland. The fishing families who live there, however, are permanent residents whose roots on the island go back generations.",
+      "word_count": 42,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2326,8 +2328,7 @@
           "correct_clue_ids": [
             "weekend",
             "however",
-            "permanent",
-            "staying"
+            "permanent"
           ],
           "definition": "Staying or lasting only a short time.",
           "contextual_usage": "Describes the short stays of most visitors to the island.",
@@ -2355,8 +2356,8 @@
       ]
     },
     "tap_node_09": {
-      "reading_passage": "Most of the cooperative's members embraced the new composting scheme within a month. A recalcitrant few, however, kept burning their rice straw in the open, ignoring repeated reminders and even a fine.",
-      "word_count": 32,
+      "reading_passage": "Most of the cooperative's members embraced the new composting scheme within a month. A recalcitrant few, however, kept burning their rice straw in the open, ignoring repeated reminders and defying even a fine.",
+      "word_count": 33,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2365,7 +2366,8 @@
           "correct_clue_ids": [
             "embraced",
             "however",
-            "ignoring"
+            "ignoring",
+            "defying"
           ],
           "definition": "Stubbornly uncooperative toward authority or guidance.",
           "contextual_usage": "Describes the members who refused to follow the composting scheme.",
@@ -2384,24 +2386,23 @@
         },
         {
           "tier": 2,
-          "hint_text": "Find what most members did, the contrast signal, and what the few did with the reminders."
+          "hint_text": "Find what most members did, the contrast signal, and the two things the few did with the reminders and the fine."
         },
         {
           "tier": 3,
-          "hint_text": "Tap \"embraced\", \"however\" and \"ignoring\"."
+          "hint_text": "Tap \"embraced\", \"however\", \"ignoring\" and \"defying\"."
         }
       ]
     },
     "tap_node_10": {
-      "reading_passage": "Few crops survive in the arid hills of the province during the dry season. Streams shrink to trickles, the soil cracks open, and farmers must haul water from distant wells.",
-      "word_count": 30,
+      "reading_passage": "Few crops survive in the arid hills of the province between March and May. Streams shrink to trickles, the soil cracks open, and many farmers leave for the city until June.",
+      "word_count": 31,
       "locked_words": [
         {
           "word_id": "w1",
           "word": "arid",
           "position_index": 5,
           "correct_clue_ids": [
-            "dry",
             "trickles",
             "cracks"
           ],
@@ -2469,8 +2470,8 @@
       ]
     },
     "tap_node_12": {
-      "reading_passage": "When reporters asked whether the agency would release the audit, the spokesperson's reply was equivocal. She said the document was 'under review,' that its release 'could be considered,' and that no final decision had been made, leaving each outlet to print a different interpretation.",
-      "word_count": 44,
+      "reading_passage": "When reporters asked whether the agency would release the audit, the spokesperson's reply was equivocal. She said the document was 'under review,' that its release 'could be considered,' and that no final decision had been made, leaving each outlet to print a different interpretation of her vague answer.",
+      "word_count": 48,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2479,7 +2480,8 @@
           "correct_clue_ids": [
             "considered",
             "different",
-            "interpretation"
+            "interpretation",
+            "vague"
           ],
           "definition": "Open to more than one interpretation; deliberately vague or noncommittal.",
           "contextual_usage": "Describes the spokesperson's unclear answer about releasing the audit.",
@@ -2498,17 +2500,17 @@
         },
         {
           "tier": 2,
-          "hint_text": "Find the hedge in her quotes and the words describing what each outlet printed."
+          "hint_text": "Find the hedge in her quotes, the words describing what each outlet printed, and the word for her answer."
         },
         {
           "tier": 3,
-          "hint_text": "Tap \"considered\", \"different\" and \"interpretation\"."
+          "hint_text": "Tap \"considered\", \"different\", \"interpretation\" and \"vague\"."
         }
       ]
     },
     "tap_node_13": {
-      "reading_passage": "By the time volunteers arrived, the old municipal library was dilapidated. Its roof sagged, its shelves were crumbling, and the neglected building leaked whenever it rained.",
-      "word_count": 26,
+      "reading_passage": "By the time volunteers arrived, the old municipal library was dilapidated. Its shelves were crumbling, and the neglected building had been closed to readers for a decade.",
+      "word_count": 27,
       "locked_words": [
         {
           "word_id": "w1",
@@ -2516,8 +2518,7 @@
           "position_index": 10,
           "correct_clue_ids": [
             "crumbling",
-            "neglected",
-            "sagged"
+            "neglected"
           ],
           "definition": "In a state of disrepair or ruin because of age or neglect.",
           "contextual_usage": "Describes the run-down condition of the old library building.",
@@ -2527,7 +2528,7 @@
       "clue_error_explanations": {
         "w1__volunteers": "Volunteers came to help; they do not describe the building.",
         "w1__library": "Library names the building, not its condition.",
-        "w1__rained": "Rain is when the leaks happened, not a description of the building."
+        "w1__decade": "A decade tells how long it was closed, not what condition it was in."
       },
       "scaffold_hints": [
         {
