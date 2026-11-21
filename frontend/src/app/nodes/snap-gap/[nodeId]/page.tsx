@@ -18,6 +18,8 @@ import { notifyProgressionUpdated } from '@/lib/realtime-sync'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { creditLost, solvedCaseResult, withLateSolves, mergeServerAttempts, LATE_SOLVE_REMARK } from '@/lib/attemptCredit'
+import CreditLostNotice from '@/components/shared/CreditLostNotice'
 import { useCaseHints } from '@/components/logic-thread/useCaseHints'
 import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
@@ -444,6 +446,8 @@ export default function SnapInGapPage() {
     try {
       const sessionData = await fetchNodeSession('snap_gap', start, forceFresh)
       setSessionId(sessionData.session_id)
+      if (forceFresh) attemptsMapRef.current = {}
+      mergeServerAttempts(attemptsMapRef.current, sessionData.case_attempts)
       syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
 
@@ -474,7 +478,7 @@ export default function SnapInGapPage() {
       setBoard({})
       setLocked([])
       setTileState('idle')
-      setWrongs(0)
+      setWrongs(attemptsMapRef.current[resumeIdx] || 0)
       setRevealing(null)
       setDisputed(false)
       setHintOverlay(false)
@@ -696,7 +700,7 @@ export default function SnapInGapPage() {
     if (sessionId) {
       apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
         method: 'POST',
-        body: JSON.stringify({ is_correct: false }),
+        body: JSON.stringify({ is_correct: false, exercise_index: questionIndex }),
       }).catch(() => {})
     }
     if (nextWrongs >= 3) {
@@ -831,7 +835,7 @@ export default function SnapInGapPage() {
       total: totalCasesCount,
       xpAwarded: null,
       nextNode: null,
-      missed: missedCases,
+      missed: withLateSolves(missedCases, updated),
     })
   }
 
@@ -868,18 +872,14 @@ export default function SnapInGapPage() {
 
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
-        body: JSON.stringify({ board_state: board, node_id: nodeId, module: 'snap_gap' }),
+        body: JSON.stringify({ board_state: board, node_id: nodeId, module: 'snap_gap', attempts: wrongs + 1 }),
       }).catch(() => {})
 
       if (isCorrect) {
         const currentHints = (hintTier || 0) + (hintOverlay ? 1 : 0)
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongs === 0,
-          hintsUsed: currentHints,
-          attempts: wrongs + 1,
-        }
+        // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+        const currentCaseRes: CaseResult = solvedCaseResult(questionIndex + 1, wrongs, currentHints)
+        if (currentCaseRes.solvedLate) say(LATE_SOLVE_REMARK)
         const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
         setSessionResults(updatedCases)
 
@@ -949,7 +949,7 @@ export default function SnapInGapPage() {
               total: totalCases,
               xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
               nextNode: cleared ? (finalRes.next_node ?? null) : null,
-              missed: missedCases,
+              missed: withLateSolves(missedCases, updatedCases),
             })
           } catch {
             setSubmitting(false)
@@ -975,13 +975,9 @@ export default function SnapInGapPage() {
       })
       if (res.status === 'mastered') {
         const currentHints = (hintTier || 0) + (hintOverlay ? 1 : 0)
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongs === 0,
-          hintsUsed: currentHints,
-          attempts: wrongs + 1,
-        }
+        // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+        const currentCaseRes: CaseResult = solvedCaseResult(questionIndex + 1, wrongs, currentHints)
+        if (currentCaseRes.solvedLate) say(LATE_SOLVE_REMARK)
         const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
         setSessionResults(updatedCases)
 
@@ -1062,7 +1058,7 @@ export default function SnapInGapPage() {
             total: totalCases,
             xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
             nextNode: newNextNode ?? null,
-            missed: missedCases,
+            missed: withLateSolves(missedCases, updatedCases),
           })
         }
       }
@@ -1311,6 +1307,8 @@ export default function SnapInGapPage() {
           </div>
 
           {/* ── Footer bar ── */}
+          {/* 3 attempts failed: still playable, but no credit */}
+          {creditLost(wrongs) && !revealing && <CreditLostNotice />}
           <div className={styles.submitBar}>
             <span className={styles.counter}>
               {locked.length} / {snapNode!.sentence_pairs.length} PAIRS BRIDGED

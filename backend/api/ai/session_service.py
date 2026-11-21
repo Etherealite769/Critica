@@ -34,6 +34,31 @@ SESSION_EXPIRY_HOURS = 2
 EXERCISES_PER_SESSION = 5
 MAX_HINTS_PER_QUESTION = 3
 
+# Attempt credit: practice is unlimited, but only the first CREDIT_ATTEMPTS attempts on a case can earn credit.
+# Once attempt 3 fails the case is latched as failed; a later solve advances the cadet but is graded incorrect.
+CREDIT_ATTEMPTS = 3
+
+
+def record_wrong_attempt(session_doc, exercise_index: int) -> int:
+    """
+    Counts one wrong submission on a case (atomically) and returns the new total. When it reaches
+    CREDIT_ATTEMPTS the case is latched as failed for grading, unless it was already solved.
+    """
+    coll = GeneratedSessionDocument._get_collection()
+    key = str(exercise_index)
+    doc = coll.find_one_and_update(
+        {'_id': session_doc.pk},
+        {'$inc': {f'case_attempts.{key}': 1}},
+        projection={'case_attempts': 1, 'case_results': 1},
+        return_document=ReturnDocument.AFTER,
+    )
+    wrongs = int(((doc or {}).get('case_attempts') or {}).get(key, 0))
+    prior = ((doc or {}).get('case_results') or {}).get(key) or {}
+    if wrongs >= CREDIT_ATTEMPTS and not prior.get('solved'):
+        coll.update_one({'_id': session_doc.pk}, {'$set': {f'case_results.{key}': {
+            'attempts': wrongs, 'solved': False, 'credited': False, 'failed_after_three_attempts': True}}})
+    return wrongs
+
 
 class HintLimitReached(Exception):
     """The student has already used every hint allowed on this case."""
@@ -509,8 +534,43 @@ class SessionService:
         else:
             return {'status': 'error', 'message': f'Unsupported module {module}'}
 
-        # Automatically advance current_index on correct answer
-        if is_correct:
+        # ── 3-attempt credit ────────────────────────────────────────────────
+        # `is_correct` above means the answer is right (solved). Credit is separate: a solve counts only within
+        # the first 3 attempts. The attempt number is the higher of the server's count and the client's report.
+        key = str(exercise_index)
+        try:
+            client_attempts = max(0, int(submission_payload.get('attempts') or 0))
+        except (TypeError, ValueError):
+            client_attempts = 0
+        solved = bool(is_correct)
+        if solved:
+            wrongs = int((session_doc.case_attempts or {}).get(key, 0))
+            attempts_used = max(wrongs + 1, client_attempts)
+        else:
+            wrongs = record_wrong_attempt(session_doc, exercise_index)
+            attempts_used = max(wrongs, client_attempts)
+            session_doc.reload()
+        prior = (session_doc.case_results or {}).get(key) or {}
+        latched = bool(prior.get('failed_after_three_attempts')) or wrongs >= CREDIT_ATTEMPTS \
+            or attempts_used > CREDIT_ATTEMPTS
+        credited = solved and not latched
+        if prior.get('solved'):
+            credited = credited and bool(prior.get('credited'))   # a recorded outcome only ever gets stricter
+        if solved or latched:
+            outcome = {'attempts': attempts_used, 'solved': solved or bool(prior.get('solved')),
+                       'credited': credited, 'failed_after_three_attempts': latched or bool(prior.get('failed_after_three_attempts'))}
+            GeneratedSessionDocument._get_collection().update_one(
+                {'_id': session_doc.pk}, {'$set': {f'case_results.{key}': outcome}})
+        res.update({
+            'solved': solved,
+            'credited': credited,
+            'is_correct': credited,              # graded result: false once 3 attempts have failed
+            'attempts': attempts_used,
+            'failed_after_three_attempts': latched,
+        })
+
+        # A solve advances the docket even without credit, so the cadet can move on
+        if solved:
             new_idx = max(session_doc.current_index, exercise_index + 1)
             if new_idx != session_doc.current_index:
                 session_doc.current_index = new_idx
@@ -651,6 +711,14 @@ class SessionService:
         if not session_doc:
             return {'status': 'error', 'message': 'Session not found'}
 
+        # A case marked failed (not solved within 3 attempts) means the node is not mastered on this run
+        failed = sorted(int(k) + 1 for k, r in (session_doc.case_results or {}).items()
+                        if isinstance(r, dict) and r.get('credited') is False)
+        if failed:
+            return {'status': 'error', 'reason': 'cases_failed', 'failed_cases': failed,
+                    'message': f"Not mastered: case(s) {', '.join(map(str, failed))} were not solved within "
+                               f"{CREDIT_ATTEMPTS} attempts."}
+
         session_doc.is_completed = True
         session_doc.save()
 
@@ -713,5 +781,8 @@ class SessionService:
             'max_hints_per_question': MAX_HINTS_PER_QUESTION,
             'case_hints': {k: int(v) for k, v in (getattr(session_doc, 'case_hints', None) or {}).items()},
             'case_hint_log': dict(getattr(session_doc, 'case_hint_log', None) or {}),
+            # Per-case attempts and graded outcomes, so a refresh keeps the 3-attempt latch
+            'case_attempts': {k: int(v) for k, v in (getattr(session_doc, 'case_attempts', None) or {}).items()},
+            'case_results': dict(getattr(session_doc, 'case_results', None) or {}),
             'model_used': getattr(session_doc, 'model_used', ''),
         }

@@ -13,6 +13,8 @@ export interface CaseResult {
   firstTry?: boolean
   hintsUsed?: number
   attempts?: number
+  /** Solved, but only after attempt 3: it counts as incorrect (see lib/attemptCredit). */
+  solvedLate?: boolean
 }
 
 export interface NodeEvaluationReportProps {
@@ -233,7 +235,9 @@ export default function NodeEvaluationReport({
               const iconColor = isPerfect ? '#4DDD94' : c.correct ? '#F3A712' : '#EF4444'
               const detailText = c.correct
                 ? `1/${triesTaken} ${triesTaken === 1 ? 'try' : 'tries'}`
-                : `0/${triesTaken} ${triesTaken === 1 ? 'try' : 'tries'}`
+                : c.solvedLate
+                  ? `solved on try ${triesTaken} · no credit`
+                  : `0/${triesTaken} ${triesTaken === 1 ? 'try' : 'tries'}`
 
               return (
                 <div

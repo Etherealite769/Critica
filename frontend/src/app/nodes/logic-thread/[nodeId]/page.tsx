@@ -19,6 +19,8 @@ import ResetCaseDialog from '@/components/shared/ResetCaseDialog'
 import LessonManual, { type NodeLesson } from '@/components/logic-thread/LessonManual'
 import LogicThreadTutorial, { hasSeenLogicThreadTutorial } from '@/components/logic-thread/LogicThreadTutorial'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { creditLost, withLateSolves, mergeServerAttempts, LATE_SOLVE_REMARK } from '@/lib/attemptCredit'
+import CreditLostNotice from '@/components/shared/CreditLostNotice'
 import { useCaseHints } from '@/components/logic-thread/useCaseHints'
 import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import { analyzeSequence } from '@/components/logic-thread/sequenceFeedback'
@@ -378,6 +380,8 @@ export default function LogicThreadPage() {
     try {
       const sessionData = await fetchNodeSession('logic_thread', start, forceFresh)
       setSessionId(sessionData.session_id)
+      if (forceFresh) attemptsMapRef.current = {}
+      mergeServerAttempts(attemptsMapRef.current, sessionData.case_attempts)
       syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
       
@@ -557,7 +561,7 @@ export default function LogicThreadPage() {
     : (sessionQueue.length || 1)
 
   /** Record how this case was decided and return the updated results list. */
-  const recordCase = (correct: boolean, customAttempts?: number): CaseResult[] => {
+  const recordCase = (correct: boolean, customAttempts?: number, solved = correct): CaseResult[] => {
     const attemptsTaken = customAttempts ?? (wrongCount + 1)
     const res: CaseResult = {
       caseNumber: questionIndex + 1,
@@ -565,6 +569,7 @@ export default function LogicThreadPage() {
       firstTry: correct && attemptsTaken === 1,
       hintsUsed: showHint ? 1 : 0,
       attempts: attemptsTaken,
+      solvedLate: solved && !correct,   // solved after attempt 3: it unlocks the next case but earns no credit
     }
     const updated = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), res]
     setSessionResults(updated)
@@ -658,7 +663,7 @@ export default function LogicThreadPage() {
       isCorrect = JSON.stringify(chain) === JSON.stringify(currentEx.correct_sequence)
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
-        body: JSON.stringify({ sequence: chain, node_id: nodeId, module: 'logic_thread' }),
+        body: JSON.stringify({ sequence: chain, node_id: nodeId, module: 'logic_thread', attempts: wrongCount + 1 }),
       }).catch(() => {})
     } else {
       // 2. Legacy fallback: the backend checks the sequence
@@ -701,10 +706,11 @@ export default function LogicThreadPage() {
     setPendingQueue([...pendingQueueRef.current])
 
     playRightAnswerSound()
-    say(pick(CORRECT_REMARKS))
+    say(creditLost(wrongCount) ? LATE_SOLVE_REMARK : pick(CORRECT_REMARKS))
     setSubmitState('correct')
 
-    const updated = recordCase(true, totalTries)
+    // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+    const updated = recordCase(!creditLost(wrongCount), totalTries, true)
 
     setTimeout(async () => {
       const completedIndices = new Set(updated.map(r => r.caseNumber - 1))
@@ -740,7 +746,7 @@ export default function LogicThreadPage() {
         total: totalCases,
         xpAwarded: xp,
         nextNode,
-        missed: missedCases,
+        missed: withLateSolves(missedCases, updated),
       })
     }, 1200)
   }
@@ -804,7 +810,7 @@ export default function LogicThreadPage() {
       total: totalCases,
       xpAwarded: xp,
       nextNode,
-      missed: missedCases,
+      missed: withLateSolves(missedCases, updated),
     })
   }
 
@@ -1076,6 +1082,8 @@ export default function LogicThreadPage() {
           </div>
 
           {/* ── Submit bar ── */}
+          {/* 3 attempts failed: still playable, but no credit */}
+          {creditLost(wrongCount) && submitState !== 'correct' && <CreditLostNotice />}
           <div className={styles.submitBar}>
             <span className={styles.counter}>
               {chain.length} / {blocks.length} CONNECTED

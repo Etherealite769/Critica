@@ -1,0 +1,20 @@
+/* Crimson case-file stamp: the case is still playable, but no longer earns credit */
+.notice {
+  /* its own centered row just above the submit bar, clear of Crit's bubble in the lower-left corner */
+  display: block;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 10px auto 0;
+  padding: 4px 10px;
+  text-align: center;
+  font-family: 'Courier Prime', 'Courier New', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+  color: #7a1f1f;
+  background: rgba(166, 58, 58, 0.08);
+  border: 1px dashed #a63a3a;
+  border-radius: 2px;
+}

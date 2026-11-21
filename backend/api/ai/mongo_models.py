@@ -41,6 +41,9 @@ class GeneratedSessionDocument(me.Document):
     hints_used    = me.IntField(default=0)          # every hint and explanation served this session (XP)
     case_hints    = me.DictField()                 # str(exercise_index) -> hints requested on that case (max 3)
     case_hint_log = me.DictField()                 # str(exercise_index) -> hint texts served, for re-reading
+    case_attempts = me.DictField()                 # str(exercise_index) -> wrong submissions on that case
+    case_results  = me.DictField()                 # str(exercise_index) -> {attempts, solved, credited,
+                                                   #   failed_after_three_attempts}: the graded outcome
     is_completed  = me.BooleanField(default=False)
     is_fallback   = me.BooleanField(default=False)
     model_used    = me.StringField(default='')
