@@ -89,7 +89,13 @@ def get_procedural_fallback_exercises(
 
     picks = ordered(tier)
     if len(picks) < count:
-        picks += ordered(others)
+        # Re-sample from the same tier so we NEVER cross difficulty tiers
+        additional = ordered(tier)
+        while len(picks) < count and additional:
+            for c in additional:
+                if len(picks) >= count:
+                    break
+                picks.append(copy.deepcopy(c))
     return picks[:count]
 
 

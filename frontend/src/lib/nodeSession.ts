@@ -32,20 +32,20 @@ export const DIFFICULTY_COLORS: Record<number, string> = {
 // ── AI Dynamic Question Session API Clients ────────────────────────────────
 
 export interface DynamicSessionData {
-  session_id:         string
-  node_id:            string
-  module:             string
-  title:              string
-  focus:              string
-  difficulty:         number
-  micro_lesson_text:  string
+  session_id: string
+  node_id: string
+  module: string
+  title: string
+  focus: string
+  difficulty: number
+  micro_lesson_text: string
   deep_dive_required: boolean
-  reading_passage:    string
-  total_exercises:    number
-  exercises:          any[]
-  current_index:      number
-  is_fallback?:       boolean
-  model_used?:        string
+  reading_passage: string
+  total_exercises: number
+  exercises: any[]
+  current_index: number
+  is_fallback?: boolean
+  model_used?: string
 }
 
 /**
@@ -134,7 +134,7 @@ export async function fetchLiveSocraticHint(
  */
 export async function completeSessionMastery(
   sessionId: string,
-): Promise<{ status: string; next_node?: string; streak?: number; unlocked_nodes?: string[]; [key: string]: any }> {
+): Promise<{ status: string; next_node?: string; streak?: number; unlocked_nodes?: string[];[key: string]: any }> {
   const res = await apiFetch(`/ai/session/${sessionId}/mastery/`, {
     method: 'POST',
   })
@@ -159,25 +159,25 @@ export async function completeSessionMastery(
 /** All node IDs per module, in order */
 const MODULE_NODES: Record<string, string[]> = {
   fact_scanner: [
-    'fac_node_01','fac_node_02','fac_node_03','fac_node_04','fac_node_05',
-    'fac_node_06','fac_node_07','fac_node_08','fac_node_09','fac_node_10',
-    'fac_node_11','fac_node_12','fac_node_13','fac_node_14','fac_node_15',
+    'fac_node_01', 'fac_node_02', 'fac_node_03', 'fac_node_04', 'fac_node_05',
+    'fac_node_06', 'fac_node_07', 'fac_node_08', 'fac_node_09', 'fac_node_10',
+    'fac_node_11', 'fac_node_12', 'fac_node_13', 'fac_node_14', 'fac_node_15',
     'fac_node_16',
   ],
   logic_thread: [
-    'log_node_01','log_node_02','log_node_03','log_node_04','log_node_05',
-    'log_node_06','log_node_07','log_node_08','log_node_09','log_node_10',
-    'log_node_11','log_node_12','log_node_13',
+    'log_node_01', 'log_node_02', 'log_node_03', 'log_node_04', 'log_node_05',
+    'log_node_06', 'log_node_07', 'log_node_08', 'log_node_09', 'log_node_10',
+    'log_node_11', 'log_node_12', 'log_node_13',
   ],
   snap_gap: [
-    'snp_node_01','snp_node_02','snp_node_03','snp_node_04','snp_node_05',
-    'snp_node_06','snp_node_07','snp_node_08','snp_node_09','snp_node_10',
-    'snp_node_11','snp_node_12','snp_node_13',
+    'snp_node_01', 'snp_node_02', 'snp_node_03', 'snp_node_04', 'snp_node_05',
+    'snp_node_06', 'snp_node_07', 'snp_node_08', 'snp_node_09', 'snp_node_10',
+    'snp_node_11', 'snp_node_12', 'snp_node_13',
   ],
   tap_clues: [
-    'tap_node_01','tap_node_02','tap_node_03','tap_node_04','tap_node_05',
-    'tap_node_06','tap_node_07','tap_node_08','tap_node_09','tap_node_10',
-    'tap_node_11','tap_node_12','tap_node_13',
+    'tap_node_01', 'tap_node_02', 'tap_node_03', 'tap_node_04', 'tap_node_05',
+    'tap_node_06', 'tap_node_07', 'tap_node_08', 'tap_node_09', 'tap_node_10',
+    'tap_node_11', 'tap_node_12', 'tap_node_13',
   ],
 }
 
@@ -192,7 +192,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export function buildSessionQueue(
-  module:      string,
+  module: string,
   startNodeId: string,
   unlockedIds: string[],
 ): string[] {
@@ -203,31 +203,9 @@ export function buildSessionQueue(
   const sameTier = shuffle(
     allNodes.filter(id => nodeDifficulty(id) === startD && id !== startNodeId)
   )
-  const lowerTiers = allNodes.filter(id => nodeDifficulty(id) < startD)
-
-  const lowerTiersByD: Record<number, string[]> = { 1: [], 2: [], 3: [] }
-  for (const id of lowerTiers) {
-    const d = nodeDifficulty(id)
-    if (lowerTiersByD[d]) {
-      lowerTiersByD[d].push(id)
-    }
-  }
-  
-  let sortedLower: string[] = []
-  for (let d = 1; d < startD; d++) {
-    sortedLower = sortedLower.concat(shuffle(lowerTiersByD[d] || []))
-  }
 
   const queue: string[] = [startNodeId]
   const seen = new Set([startNodeId])
-
-  for (const id of sortedLower) {
-    if (queue.length >= targetLength) break
-    if (!seen.has(id)) {
-      queue.push(id)
-      seen.add(id)
-    }
-  }
 
   for (const id of sameTier) {
     if (queue.length >= targetLength) break
@@ -237,21 +215,29 @@ export function buildSessionQueue(
     }
   }
 
-  const remaining = queue.slice(1)
-  remaining.sort((a, b) => nodeDifficulty(a) - nodeDifficulty(b))
+  // If still need more to reach targetLength, use remaining nodes without mixing tiers randomly
+  if (queue.length < targetLength) {
+    const remainingNodes = allNodes.filter(id => !seen.has(id))
+    remainingNodes.sort((a, b) => Math.abs(nodeDifficulty(a) - startD) - Math.abs(nodeDifficulty(b) - startD))
+    for (const id of remainingNodes) {
+      if (queue.length >= targetLength) break
+      queue.push(id)
+      seen.add(id)
+    }
+  }
 
-  return [startNodeId, ...remaining]
+  return queue
 }
 
 // ── localStorage persistence ───────────────────────────────────────────────
 
 export interface SessionProgress {
-  sessionQueue:  string[]
+  sessionQueue: string[]
   questionIndex: number
-  savedAt:       number   // epoch ms
-  next_node?:    string
-  streak?:       number
-  session_id?:   string
+  savedAt: number   // epoch ms
+  next_node?: string
+  streak?: number
+  session_id?: string
 }
 
 function storageKey(module: string, startNodeId: string): string {
@@ -259,9 +245,9 @@ function storageKey(module: string, startNodeId: string): string {
 }
 
 export function saveSession(
-  module:       string,
-  startNodeId:  string,
-  progress:     Omit<SessionProgress, 'savedAt'>,
+  module: string,
+  startNodeId: string,
+  progress: Omit<SessionProgress, 'savedAt'>,
 ): void {
   try {
     localStorage.setItem(
@@ -272,7 +258,7 @@ export function saveSession(
 }
 
 export function loadSession(
-  module:      string,
+  module: string,
   startNodeId: string,
 ): SessionProgress | null {
   try {
@@ -288,7 +274,7 @@ export function loadSession(
 }
 
 export function clearSession(
-  module:      string,
+  module: string,
   startNodeId: string,
 ): void {
   try {

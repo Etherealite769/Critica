@@ -84,13 +84,15 @@ MODULE_TIER_RULES = {
            "vs. summary) is implicit in their content rather than signalled by obvious opposite words.",
     },
     'tap_clues': {
-        1: "Tier-2 academic word (e.g. 'meticulous', 'arid', 'ambiguous'). The clue is explicit and of the node's "
-           "type (synonym, definition, antonym or example) but NOT a lazy appositive handout like 'X, or Y,' or "
-           "'X, meaning Y': the clue sits in a separate clause or sentence and has to be connected to the word.",
-        2: "Tier-2/Tier-3 word in denser prose. The meaning must be synthesised from 2 clues spread across "
-           "clauses or sentences; at least one plausible non-clue word (a topic word near the target) must be present "
-           "as a trap.",
-        3: "Tier-3 or less frequent Tier-2 word (e.g. 'recalcitrant', 'equivocal', 'ephemeral'). Clues are layered "
+        1: "Accessible Tier-2 academic word suitable for Grade 11 beginners (e.g. 'meticulous', 'arid', 'frugal', 'lethargic', "
+           "'novel', 'candid', 'scarce', 'abundant', 'perilous', 'diligent', 'fragile', 'somber'). NEVER use obscure, archaic, "
+           "or advanced GRE words (such as 'diaphanous', 'quiescent', 'efficacious', 'recalcitrant', 'equivocal', 'ephemeral', 'viscous') "
+           "for Basics! The clue is explicit and of the node's type (synonym, definition, antonym or example) but NOT an appositive "
+           "handout like 'X, or Y,' or 'X, meaning Y': the clue sits in a separate clause or sentence.",
+        2: "Standard Grade 11 Tier-2/Tier-3 word in denser prose (e.g. 'frugal', 'symbiosis', 'transient', 'versatile'). "
+           "The meaning must be synthesised from 2 clues spread across clauses or sentences; at least one plausible non-clue word "
+           "(a topic word near the target) must be present as a trap.",
+        3: "Advanced Tier-3 or less frequent Tier-2 word (e.g. 'recalcitrant', 'equivocal', 'ephemeral', 'attrition'). Clues are layered "
            "and partly implicit: an example plus a contrast, or a consequence the reader must interpret. No clue "
            "word may be a direct dictionary synonym placed beside the target.",
     },
@@ -307,7 +309,7 @@ For each of the {count} exercises:
 3. `locked_words`: A list containing 1 locked word object.
    - `word`: The target word, copied verbatim (same spelling and inflection) from the passage, as ONE word with no punctuation. It must appear EXACTLY ONCE in the passage.
    - `position_index`: 0-based index of the target in the passage split on whitespace (punctuation stays attached to its word). It is recomputed by the server, but be accurate.
-   - `correct_clue_ids`: {'1-2' if difficulty == 1 else '2-3'} single content words copied verbatim from the passage (no articles, pronouns or other function words; no word that contains or is contained in the target). Each must genuinely reveal the meaning.
+   - `correct_clue_ids`: A list of 2-4 content words or short phrases copied verbatim from the passage that support, define, exemplify, or contrast the locked word. Include all valid context clues present in the text so any legitimate supporting word tapped by the student is accepted.
    - `definition`: A concise, academic definition.
    - `contextual_usage`: How the word functions in this passage.
    - `translation`: Direct synonym.

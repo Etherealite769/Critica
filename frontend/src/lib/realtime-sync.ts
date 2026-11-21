@@ -41,6 +41,9 @@ const PROGRESSION_CHANNEL_NAME = 'critica_progression_sync_channel'
 const LEXICAL_EVENT_NAME = 'critica_lexical_event'
 const PROGRESSION_EVENT_NAME = 'critica_progression_event'
 
+const LEXICAL_STORAGE_KEY = 'critica_lexical_storage_sync'
+const PROGRESSION_STORAGE_KEY = 'critica_progression_storage_sync'
+
 // BroadcastChannels (if supported by browser)
 let lexicalChannel: BroadcastChannel | null = null
 let progressionChannel: BroadcastChannel | null = null
@@ -70,6 +73,11 @@ export function notifyLexicalUpdated(payload: LexicalSyncPayload): void {
       lexicalChannel.postMessage(enriched)
     } catch { /* ignore channel post error */ }
   }
+
+  // 3. Fallback to localStorage storage event for cross-tab sync
+  try {
+    localStorage.setItem(LEXICAL_STORAGE_KEY, JSON.stringify(enriched))
+  } catch { /* ignore quota/storage errors */ }
 }
 
 /**
@@ -92,13 +100,24 @@ export function subscribeToLexicalUpdates(callback: (payload: LexicalSyncPayload
     }
   }
 
+  const handleStorageEvent = (e: StorageEvent) => {
+    if (e.key === LEXICAL_STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue) as LexicalSyncPayload
+        callback(parsed)
+      } catch { /* ignore parse error */ }
+    }
+  }
+
   window.addEventListener(LEXICAL_EVENT_NAME, handleWindowCustomEvent)
+  window.addEventListener('storage', handleStorageEvent)
   if (lexicalChannel) {
     lexicalChannel.addEventListener('message', handleBroadcastMessage)
   }
 
   return () => {
     window.removeEventListener(LEXICAL_EVENT_NAME, handleWindowCustomEvent)
+    window.removeEventListener('storage', handleStorageEvent)
     if (lexicalChannel) {
       lexicalChannel.removeEventListener('message', handleBroadcastMessage)
     }
@@ -121,6 +140,11 @@ export function notifyProgressionUpdated(payload: ProgressionSyncPayload): void 
       progressionChannel.postMessage(enriched)
     } catch { /* ignore channel post error */ }
   }
+
+  // 3. Fallback to localStorage storage event for cross-tab sync
+  try {
+    localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(enriched))
+  } catch { /* ignore quota/storage errors */ }
 }
 
 /**
@@ -143,13 +167,24 @@ export function subscribeToProgressionUpdates(callback: (payload: ProgressionSyn
     }
   }
 
+  const handleStorageEvent = (e: StorageEvent) => {
+    if (e.key === PROGRESSION_STORAGE_KEY && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue) as ProgressionSyncPayload
+        callback(parsed)
+      } catch { /* ignore parse error */ }
+    }
+  }
+
   window.addEventListener(PROGRESSION_EVENT_NAME, handleWindowCustomEvent)
+  window.addEventListener('storage', handleStorageEvent)
   if (progressionChannel) {
     progressionChannel.addEventListener('message', handleBroadcastMessage)
   }
 
   return () => {
     window.removeEventListener(PROGRESSION_EVENT_NAME, handleWindowCustomEvent)
+    window.removeEventListener('storage', handleStorageEvent)
     if (progressionChannel) {
       progressionChannel.removeEventListener('message', handleBroadcastMessage)
     }

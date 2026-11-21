@@ -292,12 +292,54 @@ function tokenizePassage(passage: string, lockedWords: LockedWordMeta[]): Passag
   return tokens
 }
 
-/** A tapped word matches a clue: exact, a word of a multi-word clue, or a stem (4+ letters, so "a" never matches "detail"). */
+function normalizeWord(s: string): string {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim()
+}
+
+function getWordStem(w: string): string {
+  let s = normalizeWord(w)
+  if (s.endsWith('ing') && s.length > 5) s = s.slice(0, -3)
+  else if (s.endsWith('ies') && s.length > 4) s = s.slice(0, -3) + 'y'
+  else if (s.endsWith('es') && s.length > 4) s = s.slice(0, -2)
+  else if (s.endsWith('ed') && s.length > 4) s = s.slice(0, -2)
+  else if (s.endsWith('ly') && s.length > 4) s = s.slice(0, -2)
+  else if (s.endsWith('s') && s.length > 3) s = s.slice(0, -1)
+  return s
+}
+
+/** A tapped word matches a clue: exact, compound token, stem, or inclusion. */
 function clueMatches(clue: string, tapped: string): boolean {
-  const c = clue.toLowerCase().trim(), w = tapped.toLowerCase().trim()
-  if (!c || !w) return false
-  if (c === w || c.split(/\s+/).includes(w)) return true
-  return Math.min(c.length, w.length) >= 4 && (c.includes(w) || w.includes(c))
+  if (!clue || !tapped) return false
+  const cNorm = normalizeWord(clue)
+  const wNorm = normalizeWord(tapped)
+  if (!cNorm || !wNorm) return false
+
+  // 1. Direct normalized match
+  if (cNorm === wNorm) return true
+
+  // 2. Multi-word or compound clue: split by whitespace, hyphens, slashes
+  const cTokens = clue.toLowerCase().split(/[\s\-_/]+/).map(normalizeWord).filter(Boolean)
+  const wTokens = tapped.toLowerCase().split(/[\s\-_/]+/).map(normalizeWord).filter(Boolean)
+
+  if (cTokens.includes(wNorm) || wTokens.includes(cNorm)) return true
+  if (cTokens.some(ct => wTokens.includes(ct))) return true
+
+  // 3. Stem match
+  const cStem = getWordStem(cNorm)
+  const wStem = getWordStem(wNorm)
+  if (cStem.length >= 3 && wStem.length >= 3) {
+    if (cStem === wStem) return true
+    if (cTokens.some(ct => getWordStem(ct) === wStem)) return true
+    if (wTokens.some(wt => getWordStem(wt) === cStem)) return true
+  }
+
+  // 4. Substring / compound inclusion (min 3 chars)
+  if (Math.min(cNorm.length, wNorm.length) >= 3) {
+    if (cNorm.includes(wNorm) || wNorm.includes(cNorm)) return true
+    if (cTokens.some(ct => ct.length >= 3 && (ct.includes(wNorm) || wNorm.includes(ct)))) return true
+  }
+
+  return false
 }
 
 // ── Main component ─────────────────────────────────
@@ -473,7 +515,8 @@ export default function TapCluesPage() {
         setSessionQueue(saved.sessionQueue); setQuestionIndex(saved.questionIndex)
         if (saved.next_node) setSavedNextNode(saved.next_node)
         if (saved.streak !== undefined) setSavedStreak(saved.streak)
-        const activeId = saved.sessionQueue[saved.questionIndex] ?? start
+        const rawId = saved.sessionQueue[saved.questionIndex]
+        const activeId = (rawId && rawId.startsWith('tap_node_')) ? rawId : start
         apiFetch(`/nodes/tap-clues/${activeId}/`)
           .then((d: TapNodeData) => { setTapNode(d); setPhase('task') })
           .catch((e: any) => {
@@ -595,7 +638,7 @@ export default function TapCluesPage() {
     if (updated.length < required) setUnlockedWords(prev => prev.filter(id => id !== activeWordId))
   }
 
-  const handleWordTap = async (word: string, token: { text: string; isLocked: boolean; word_id?: string; idx: number }) => {
+  const handleWordTap = async (word: string, token: PassageToken) => {
     if (!tapNode || revealing) return
     setDisputed(false)
 
@@ -611,12 +654,12 @@ export default function TapCluesPage() {
     if (!activeWordId) setActiveWordId(targetWordId)
 
     if (!token.isLocked) {
-      const cleanWord = word.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
+      const cleanWord = normalizeWord(token.core || word)
       if (!cleanWord) return
       const currentFound = foundClues[targetWordId] ?? []
 
       // If clue already found, tapping it removes it
-      if (currentFound.some(c => clueMatches(c, cleanWord))) {
+      if (currentFound.some(c => clueMatches(c, cleanWord) || clueMatches(c, token.core))) {
         handleRemoveClue(cleanWord)
         return
       }
@@ -627,7 +670,7 @@ export default function TapCluesPage() {
         const targetLockedWord = currentEx.locked_words?.find((lw: any) => lw.word_id === targetWordId)
         const rawClues = targetLockedWord?.correct_clue_ids || targetLockedWord?.context_clues || []
         const correctClues = rawClues.map((c: string) => c.toLowerCase().trim())
-        const isClueCorrect = correctClues.some((c: string) => clueMatches(c, cleanWord))
+        const isClueCorrect = correctClues.some((c: string) => clueMatches(c, cleanWord) || clueMatches(c, token.core))
 
         if (isClueCorrect) {
           playRightAnswerSound()
@@ -638,7 +681,7 @@ export default function TapCluesPage() {
             body: JSON.stringify({ is_correct: true, word_id: targetWordId, clue_word: cleanWord }),
           }).catch(() => {})
           const updatedFound = Array.from(new Set([...currentFound, cleanWord]))
-          const requiredCount = targetLockedWord?.target_clues_count || correctClues.length || 2
+          const requiredCount = Math.min(targetLockedWord?.target_clues_count || 2, Math.max(1, correctClues.length))
           const allFound = updatedFound.length >= requiredCount || (correctClues.length > 0 && correctClues.every((c: string) => updatedFound.some((f: string) => clueMatches(c, f))))
 
           setFoundClues(prev => ({ ...prev, [targetWordId]: updatedFound }))
@@ -1161,7 +1204,7 @@ export default function TapCluesPage() {
   const tokens         = tokenizePassage(tapNode!.reading_passage, tapNode!.locked_words)
   // Every clue word this case accepts (so a listed clue is never treated as a plain function word)
   const caseClueWords  = new Set(tapNode!.locked_words.flatMap(lw =>
-    (lw.correct_clue_ids || lw.context_clues || []).flatMap(c => c.toLowerCase().split(/\s+/))))
+    (lw.correct_clue_ids || lw.context_clues || []).flatMap(c => c.toLowerCase().split(/[\s\-_]+/)).map(normalizeWord)))
   const allUnlocked    = unlockedWords.length === tapNode!.locked_words.length
   const activeWordMeta = tapNode!.locked_words.find(lw => lw.word_id === activeWordId)
   const activeClues    = activeWordId ? (foundClues[activeWordId] ?? []) : []
@@ -1293,7 +1336,7 @@ export default function TapCluesPage() {
                   const wordId     = token.word_id
                   const isUnlocked = wordId ? unlockedWords.includes(wordId) : false
                   const isActive   = wordId ? activeWordId === wordId : false
-                  const cleanWord  = token.core.replace(/[^a-zA-Z']/g, '').toLowerCase().trim()
+                  const cleanWord  = normalizeWord(token.core)
                   const isFoundClue = !token.isLocked && !!cleanWord && activeClues.some((c: string) => clueMatches(c, cleanWord))
                   // Function words and the locked target itself are not taps that cost an attempt
                   const isPlain = !token.isLocked && STOP_WORDS.has(cleanWord) && !caseClueWords.has(cleanWord) && !isFoundClue

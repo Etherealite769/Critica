@@ -400,7 +400,7 @@ export default function FactScannerPage() {
         : await apiFetch(`/nodes/fact-scanner/${factNode?.node_id ?? nodeId}/feedback/`,
             { method: 'POST', body: JSON.stringify({ sentence_id: '', inactivity_seconds: 61 }) })
       return { text: res.hint || res.explanation || HINT_FALLBACK }
-    }, HINT_FALLBACK)
+    }, HINT_FALLBACK).then(out => { if (out === 'ok') setHintsUsed(h => Math.max(1, h)) })
   }, [aiCase, nodeId, factNode, sessionId, questionIndex, caseHints])
 
   // ── Dig deeper: a live Socratic clue from the AI ───────────

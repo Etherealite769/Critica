@@ -598,7 +598,7 @@ export default function SnapInGapPage() {
             body: JSON.stringify({ pair_id: '', selected_tile: '', inactivity_seconds: 61 }),
           })
       return { text: res.hint || res.explanation || HINT_FALLBACK }
-    }, HINT_FALLBACK)
+    }, HINT_FALLBACK).then(out => { if (out === 'ok') setHintOverlay(true) })
   }, [nodeId, snapNode, sessionId, sessionExercises, questionIndex, caseHints])
 
   // ── case outcome helpers ──────────────────────────

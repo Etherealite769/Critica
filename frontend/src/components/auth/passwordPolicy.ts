@@ -13,10 +13,10 @@ export interface PasswordRule {
 }
 
 export const PASSWORD_RULES: PasswordRule[] = [
-  { id: 'len',     label: '8+ chars',              test: (pw) => pw.length >= 8 },
-  { id: 'upper',   label: 'Uppercase',             test: (pw) => /[A-Z]/.test(pw) },
-  { id: 'lower',   label: 'Lowercase',             test: (pw) => /[a-z]/.test(pw) },
-  { id: 'number',  label: 'Number',                test: (pw) => /\d/.test(pw) },
+  { id: 'len', label: '8+ chars', test: (pw) => pw.length >= 8 },
+  { id: 'upper', label: 'Uppercase', test: (pw) => /[A-Z]/.test(pw) },
+  { id: 'lower', label: 'Lowercase', test: (pw) => /[a-z]/.test(pw) },
+  { id: 'number', label: 'Number', test: (pw) => /\d/.test(pw) },
   { id: 'special', label: `Symbol (${PASSWORD_SPECIALS})`, test: (pw) => SPECIAL_RE.test(pw) },
 ];
 
