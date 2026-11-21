@@ -546,3 +546,138 @@ class HintLimitPerCaseTests(TestCase):
         res = self.client_for('someone_else').post(
             f"/api/ai/session/{session['session_id']}/live-hint/0/", {'submission_state': {}}, format='json')
         self.assertEqual(res.status_code, 403)
+
+
+
+class TapCluesTierCountTests(TestCase):
+    """Tap Clues carries exactly 2 / 3 / 4 clue words for Basics / Intermediate / Advanced, everywhere."""
+
+    NODES = {1: 'tap_node_01', 2: 'tap_node_02', 3: 'tap_node_03'}
+
+    def test_offline_bank_has_exact_tier_counts(self):
+        from .fallback_pool import FALLBACK_BANK
+        from .validators import TAP_CLUES_PER_TIER, tap_clue_words
+        for ex in FALLBACK_BANK['tap_clues']:
+            w = ex['locked_words'][0]
+            need = TAP_CLUES_PER_TIER[ex['difficulty']]
+            self.assertEqual(len(w['correct_clue_ids']), need, ex['exercise_id'])
+            self.assertEqual(w['context_clues'], w['correct_clue_ids'], ex['exercise_id'])
+            self.assertEqual(w['target_clues_count'], need, ex['exercise_id'])
+            # every clue is a clean, tappable, non-target passage word
+            self.assertEqual(tap_clue_words(ex['reading_passage'], w['word'], w['correct_clue_ids']),
+                             w['correct_clue_ids'], ex['exercise_id'])
+
+    def test_validator_enforces_the_tier_count(self):
+        from .validators import validate_module_exercise
+        passage = ('During the long drought, the family grew frugal. Every peso was budgeted, leftovers were saved, '
+                   'and their economical habits lasted for years.')
+
+        def case(clues):
+            return {'reading_passage': passage,
+                    'locked_words': [{'word_id': 'w1', 'word': 'frugal', 'correct_clue_ids': clues}]}
+
+        ok, why = validate_module_exercise('tap_clues', case(['budgeted', 'saved', 'economical']), 1)
+        self.assertFalse(ok)                                            # 3 clues for Basics: rejected, not trimmed
+        self.assertIn('needs exactly 2', why)
+        ex = case(['budgeted', 'saved'])                                # exactly Basics
+        self.assertTrue(validate_module_exercise('tap_clues', ex, 1)[0])
+        w = ex['locked_words'][0]
+        self.assertEqual((w['correct_clue_ids'], w['context_clues'], w['target_clues_count']),
+                         (['budgeted', 'saved'], ['budgeted', 'saved'], 2))
+        ex = case(['budgeted', 'saved', 'economical'])                  # exactly Intermediate
+        self.assertTrue(validate_module_exercise('tap_clues', ex, 2)[0])
+        self.assertEqual(ex['locked_words'][0]['target_clues_count'], 3)
+        ok, why = validate_module_exercise('tap_clues', case(['budgeted', 'saved', 'economical']), 3)
+        self.assertFalse(ok)                                            # Advanced needs 4
+        self.assertIn('needs exactly 4', why)
+        # phrases and function words never count as clues
+        ok, _ = validate_module_exercise('tap_clues', case(['budgeted', 'the family', 'was', 'saved']), 3)
+        self.assertFalse(ok)
+
+    def test_prompt_asks_for_the_exact_count(self):
+        for diff, node in self.NODES.items():
+            prompt = build_generation_prompt('tap_clues', {'node_id': node, 'difficulty': diff})
+            self.assertIn(f'EXACTLY {diff + 1} distinct context clues', prompt)
+            self.assertNotIn('Include all valid context clues', prompt)
+
+    def test_offline_sessions_serve_exact_counts_per_tier(self):
+        for diff, node in self.NODES.items():
+            session = SessionService.start_or_get_session(
+                student_id=f'tap_count_{diff}', module='tap_clues', node_id=node, force_fresh=True)
+            self.assertEqual(session['difficulty'], diff)
+            for ex in session['exercises']:
+                w = ex['locked_words'][0]
+                self.assertEqual(len(w['correct_clue_ids']), diff + 1, (node, ex['exercise_id']))
+                self.assertEqual(w['target_clues_count'], diff + 1, (node, ex['exercise_id']))
+
+    def _client(self, uid):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=_HintStubUser(uid))
+        return client
+
+    def test_session_endpoint_serves_exact_counts_per_tier(self):
+        """GET /api/ai/session/tap_clues/<node>/: tap_node_01 -> 2, tap_node_02 -> 3, tap_node_03 -> 4 on every case."""
+        from unittest import mock
+        from .fallback_pool import fallback_bank
+        bank = {c['exercise_id']: c for c in fallback_bank()['tap_clues']}
+        with mock.patch('api.ai.views.ProgressionManagementService.is_node_unlocked', return_value=True):
+            for diff, node in self.NODES.items():
+                res = self._client(f'tap_endpoint_{diff}').get(f'/api/ai/session/tap_clues/{node}/?fresh=true')
+                self.assertEqual(res.status_code, 200, res.data)
+                self.assertEqual(res.data['difficulty'], diff)
+                first = res.data['exercises'][0]
+                self.assertEqual(first['exercise_id'], f'fb_{node}')                     # the node's own case first
+                self.assertEqual(first['reading_passage'], bank[f'fb_{node}']['reading_passage'])
+                for ex in res.data['exercises']:
+                    w = ex['locked_words'][0]
+                    self.assertEqual((len(w['correct_clue_ids']), w['target_clues_count']), (diff + 1, diff + 1),
+                                     (node, ex['exercise_id']))
+
+    def test_resumed_session_repairs_a_stale_case(self):
+        """A session saved with an old 2-clue copy of tap_node_02's case is repaired to the current 3-clue case."""
+        from .mongo_models import GeneratedSessionDocument
+        uid = 'tap_stale'
+        session = SessionService.start_or_get_session(student_id=uid, module='tap_clues',
+                                                      node_id='tap_node_02', force_fresh=True)
+        doc = GeneratedSessionDocument.objects(session_id=session['session_id']).first()
+        stale = [dict(e) for e in doc.exercises]
+        old = dict(stale[0])
+        old['reading_passage'] = ("During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, "
+                                  "leftovers became the next day's meal, and the economical habits they learned outlasted "
+                                  "the crisis by many years.")
+        old['locked_words'] = [dict(old['locked_words'][0], correct_clue_ids=['budgeted', 'economical'],
+                                    context_clues=['budgeted', 'economical'], target_clues_count=2)]
+        stale[0] = old
+        doc.exercises = stale
+        doc.save()
+        resumed = SessionService.start_or_get_session(student_id=uid, module='tap_clues',
+                                                      node_id='tap_node_02', force_fresh=False)
+        self.assertEqual(resumed['session_id'], session['session_id'])
+        first = resumed['exercises'][0]
+        self.assertEqual(first['exercise_id'], 'fb_tap_node_02')
+        self.assertEqual(first['locked_words'][0]['correct_clue_ids'], ['budgeted', 'saved', 'economical'])
+        self.assertEqual(first['locked_words'][0]['target_clues_count'], 3)
+        stored = GeneratedSessionDocument.objects(session_id=session['session_id']).first()
+        self.assertEqual(len(stored.exercises[0]['locked_words'][0]['correct_clue_ids']), 3)   # saved, not just served
+
+    def test_bank_reloads_when_its_file_changes(self):
+        """A running server picks up an edited fallback_exercises.json without a restart."""
+        import json, os, shutil, tempfile, time
+        from unittest import mock
+        from . import fallback_pool
+        tmp = os.path.join(tempfile.mkdtemp(), 'bank.json')
+        shutil.copy(fallback_pool._DATA_FILE, tmp)
+        try:
+            with mock.patch.object(fallback_pool, '_DATA_FILE', tmp):
+                self.assertTrue(fallback_pool.fallback_bank()['tap_clues'])
+                data = json.load(open(tmp, encoding='utf-8'))
+                data['modules']['tap_clues'][0]['topic_title'] = 'Edited While Running'
+                json.dump(data, open(tmp, 'w', encoding='utf-8'))
+                later = time.time() + 5
+                os.utime(tmp, (later, later))
+                self.assertEqual(fallback_pool.fallback_bank()['tap_clues'][0]['topic_title'], 'Edited While Running')
+        finally:
+            fallback_pool._bank_mtime = None
+            fallback_pool.fallback_bank()                                              # back to the real file
+        self.assertNotEqual(fallback_pool.fallback_bank()['tap_clues'][0]['topic_title'], 'Edited While Running')

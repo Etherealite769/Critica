@@ -1952,7 +1952,7 @@
         "topic_title": "A Family in the Drought",
         "difficulty": 2,
         "family": "synonym",
-        "reading_passage": "During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, leftovers became the next day's meal, and the economical habits they learned outlasted the crisis by many years.",
+        "reading_passage": "During the long drought, the Dela Cruz family grew frugal. Every peso was budgeted, leftovers were saved for the next day's meal, and the economical habits they learned outlasted the crisis by many years.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -1960,6 +1960,7 @@
             "position_index": 9,
             "correct_clue_ids": [
               "budgeted",
+              "saved",
               "economical"
             ],
             "definition": "Careful and sparing in spending money or using resources.",
@@ -1967,9 +1968,10 @@
             "translation": "matipid",
             "context_clues": [
               "budgeted",
+              "saved",
               "economical"
             ],
-            "target_clues_count": 2
+            "target_clues_count": 3
           }
         ],
         "clue_error_explanations": {
@@ -1984,11 +1986,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "One clue is a verb about planning spending; another is an adjective that renames the family's habits."
+            "hint_text": "One clue is a verb about planning spending, one says what happened to leftovers, and one is an adjective that renames the family's habits."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"budgeted\" and \"economical\"."
+            "hint_text": "Tap \"budgeted\", \"saved\" and \"economical\"."
           }
         ]
       },
@@ -1997,24 +1999,28 @@
         "topic_title": "Phones in Every Pocket",
         "difficulty": 3,
         "family": "synonym",
-        "reading_passage": "By the late 2010s, mobile phones had become ubiquitous in Philippine cities. Their use was so pervasive that even sari-sari stores, which once dealt only in cash, began accepting e-wallet payments on devices that now seemed to be everywhere.",
+        "reading_passage": "By the late 2010s, mobile phones had become ubiquitous in Philippine cities. Their use was so widespread and pervasive that even sari-sari stores, which once dealt only in cash, began accepting e-wallet payments on devices that had become commonplace and now seemed to be everywhere.",
         "locked_words": [
           {
             "word_id": "w1",
             "word": "ubiquitous",
             "position_index": 8,
             "correct_clue_ids": [
+              "widespread",
               "pervasive",
+              "commonplace",
               "everywhere"
             ],
             "definition": "Present, appearing, or found everywhere.",
             "contextual_usage": "Describes how widespread mobile phones had become in urban life.",
             "translation": "laganap",
             "context_clues": [
+              "widespread",
               "pervasive",
+              "commonplace",
               "everywhere"
             ],
-            "target_clues_count": 2
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
@@ -2029,11 +2035,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Look for an adjective describing the phones' use and an adverb describing where the devices seemed to be."
+            "hint_text": "Look for two adjectives describing the phones' use, one for how ordinary the devices became, and an adverb for where they seemed to be."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"pervasive\" and \"everywhere\"."
+            "hint_text": "Tap \"widespread\", \"pervasive\", \"commonplace\" and \"everywhere\"."
           }
         ]
       },
@@ -2042,7 +2048,7 @@
         "topic_title": "Where the Pampanga Meets the Bay",
         "difficulty": 1,
         "family": "definition",
-        "reading_passage": "The Pampanga River empties into Manila Bay through a broad estuary. In this zone, the river's fresh water mixes with salt water from the bay, creating brackish conditions where milkfish fry thrive.",
+        "reading_passage": "The Pampanga River empties into Manila Bay through a broad estuary. In this zone, the river's water mixes with water from the bay, creating brackish conditions where milkfish fry thrive.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2050,8 +2056,7 @@
             "position_index": 10,
             "correct_clue_ids": [
               "mixes",
-              "brackish",
-              "fresh"
+              "brackish"
             ],
             "definition": "The wide part of a river where it meets the sea and fresh water mixes with salt water.",
             "contextual_usage": "Names the zone where the Pampanga River meets Manila Bay.",
@@ -2060,7 +2065,7 @@
               "mixes",
               "brackish"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 2
           }
         ],
         "clue_error_explanations": {
@@ -2143,6 +2148,7 @@
             "position_index": 1,
             "correct_clue_ids": [
               "resigns",
+              "retires",
               "gradually",
               "shrinks"
             ],
@@ -2151,10 +2157,11 @@
             "translation": "unti-unting pagliit",
             "context_clues": [
               "resigns",
+              "retires",
               "gradually",
               "shrinks"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
@@ -2169,11 +2176,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find a way teachers leave, and then the words describing what happens to the teaching force over time."
+            "hint_text": "Find the two ways teachers leave, then the words describing what happens to the teaching force over time."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"resigns\", \"gradually\" and \"shrinks\"."
+            "hint_text": "Tap \"resigns\", \"retires\", \"gradually\" and \"shrinks\"."
           }
         ]
       },
@@ -2182,7 +2189,7 @@
         "topic_title": "Two Mayors, Two Styles",
         "difficulty": 1,
         "family": "antonym",
-        "reading_passage": "Unlike his verbose predecessor, whose speeches often ran for over an hour, the new mayor was brief, rarely speaking for more than five minutes.",
+        "reading_passage": "Unlike his verbose predecessor, the new mayor was brief whenever he addressed the town council. He had served on the council for twelve years before winning the election.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2190,8 +2197,7 @@
             "position_index": 2,
             "correct_clue_ids": [
               "Unlike",
-              "brief",
-              "hour"
+              "brief"
             ],
             "definition": "Using more words than needed; long-winded.",
             "contextual_usage": "Describes the former mayor's habit of giving very long speeches.",
@@ -2200,13 +2206,13 @@
               "Unlike",
               "brief"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 2
           }
         ],
         "clue_error_explanations": {
           "w1__predecessor": "Predecessor tells who the word describes, not what it means.",
           "w1__mayor": "The new mayor is the person being contrasted with, not the meaning.",
-          "w1__speeches": "Speeches tells what was long, but the antonym clue gives the meaning."
+          "w1__council": "The council is where he spoke, not how he spoke."
         },
         "scaffold_hints": [
           {
@@ -2228,7 +2234,7 @@
         "topic_title": "Visitors and Residents of Calaguas",
         "difficulty": 2,
         "family": "antonym",
-        "reading_passage": "Most visitors to Calaguas are transient, staying only a weekend before catching the boat back to the mainland. The fishing families who live there, however, are permanent residents whose roots on the island go back generations.",
+        "reading_passage": "Most visitors to Calaguas are transient: a weekend on the beach is usually all they spend before catching the boat back to the mainland. The fishing families who live there, however, are permanent residents whose roots on the island go back generations.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2237,8 +2243,7 @@
             "correct_clue_ids": [
               "weekend",
               "however",
-              "permanent",
-              "staying"
+              "permanent"
             ],
             "definition": "Staying or lasting only a short time.",
             "contextual_usage": "Describes the short stays of most visitors to the island.",
@@ -2248,7 +2253,7 @@
               "however",
               "permanent"
             ],
-            "target_clues_count": 4
+            "target_clues_count": 3
           }
         ],
         "clue_error_explanations": {
@@ -2276,7 +2281,7 @@
         "topic_title": "The Straw-Burning Holdouts",
         "difficulty": 3,
         "family": "antonym",
-        "reading_passage": "Most of the cooperative's members embraced the new composting scheme within a month. A recalcitrant few, however, kept burning their rice straw in the open, ignoring repeated reminders and even a fine.",
+        "reading_passage": "Most of the cooperative's members embraced the new composting scheme within a month. A recalcitrant few, however, kept burning their rice straw in the open, ignoring repeated reminders and defying even a fine.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2285,7 +2290,8 @@
             "correct_clue_ids": [
               "embraced",
               "however",
-              "ignoring"
+              "ignoring",
+              "defying"
             ],
             "definition": "Stubbornly uncooperative toward authority or guidance.",
             "contextual_usage": "Describes the members who refused to follow the composting scheme.",
@@ -2293,9 +2299,10 @@
             "context_clues": [
               "embraced",
               "however",
-              "ignoring"
+              "ignoring",
+              "defying"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
@@ -2310,11 +2317,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find what most members did, the contrast signal, and what the few did with the reminders."
+            "hint_text": "Find what most members did, the contrast signal, and the two things the few did with the reminders and the fine."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"embraced\", \"however\" and \"ignoring\"."
+            "hint_text": "Tap \"embraced\", \"however\", \"ignoring\" and \"defying\"."
           }
         ]
       },
@@ -2323,14 +2330,13 @@
         "topic_title": "Upland Farms in the Dry Season",
         "difficulty": 1,
         "family": "example",
-        "reading_passage": "Few crops survive in the arid hills of the province during the dry season. Streams shrink to trickles, the soil cracks open, and farmers must haul water from distant wells.",
+        "reading_passage": "Few crops survive in the arid hills of the province between March and May. Streams shrink to trickles, the soil cracks open, and many farmers leave for the city until June.",
         "locked_words": [
           {
             "word_id": "w1",
             "word": "arid",
             "position_index": 5,
             "correct_clue_ids": [
-              "dry",
               "trickles",
               "cracks"
             ],
@@ -2341,7 +2347,7 @@
               "trickles",
               "cracks"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 2
           }
         ],
         "clue_error_explanations": {
@@ -2416,7 +2422,7 @@
         "topic_title": "A Noncommittal Reply",
         "difficulty": 3,
         "family": "example",
-        "reading_passage": "When reporters asked whether the agency would release the audit, the spokesperson's reply was equivocal. She said the document was 'under review,' that its release 'could be considered,' and that no final decision had been made, leaving each outlet to print a different interpretation.",
+        "reading_passage": "When reporters asked whether the agency would release the audit, the spokesperson's reply was equivocal. She said the document was 'under review,' that its release 'could be considered,' and that no final decision had been made, leaving each outlet to print a different interpretation of her vague answer.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2425,7 +2431,8 @@
             "correct_clue_ids": [
               "considered",
               "different",
-              "interpretation"
+              "interpretation",
+              "vague"
             ],
             "definition": "Open to more than one interpretation; deliberately vague or noncommittal.",
             "contextual_usage": "Describes the spokesperson's unclear answer about releasing the audit.",
@@ -2433,9 +2440,10 @@
             "context_clues": [
               "considered",
               "different",
-              "interpretation"
+              "interpretation",
+              "vague"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
@@ -2450,11 +2458,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find the hedge in her quotes and the words describing what each outlet printed."
+            "hint_text": "Find the hedge in her quotes, the words describing what each outlet printed, and the word for her answer."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"considered\", \"different\" and \"interpretation\"."
+            "hint_text": "Tap \"considered\", \"different\", \"interpretation\" and \"vague\"."
           }
         ]
       },
@@ -2463,7 +2471,7 @@
         "topic_title": "The Old Municipal Library",
         "difficulty": 1,
         "family": "synonym",
-        "reading_passage": "By the time volunteers arrived, the old municipal library was dilapidated. Its roof sagged, its shelves were crumbling, and the neglected building leaked whenever it rained.",
+        "reading_passage": "By the time volunteers arrived, the old municipal library was dilapidated. Its shelves were crumbling, and the neglected building had been closed to readers for a decade.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2471,8 +2479,7 @@
             "position_index": 10,
             "correct_clue_ids": [
               "crumbling",
-              "neglected",
-              "sagged"
+              "neglected"
             ],
             "definition": "In a state of disrepair or ruin because of age or neglect.",
             "contextual_usage": "Describes the run-down condition of the old library building.",
@@ -2481,13 +2488,13 @@
               "crumbling",
               "neglected"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 2
           }
         ],
         "clue_error_explanations": {
           "w1__volunteers": "Volunteers came to help; they do not describe the building.",
           "w1__library": "Library names the building, not its condition.",
-          "w1__rained": "Rain is when the leaks happened, not a description of the building."
+          "w1__decade": "A decade tells how long it was closed, not what condition it was in."
         },
         "scaffold_hints": [
           {
@@ -2554,7 +2561,7 @@
         "topic_title": "Salt in the Fishponds",
         "difficulty": 2,
         "family": "definition",
-        "reading_passage": "Along the coast of Bulacan, salinization is ruining once-productive fishponds and rice paddies. As the land subsides and seawater seeps in, salt builds up in the soil and water until crops wither and freshwater fish die.",
+        "reading_passage": "Along the coast of Bulacan, salinization is ruining once-productive fishponds and rice paddies. As the land subsides and seawater seeps in, salt accumulates in the soil until crops wither and freshwater fish die.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2562,16 +2569,18 @@
             "position_index": 5,
             "correct_clue_ids": [
               "seawater",
-              "salt"
+              "salt",
+              "accumulates"
             ],
             "definition": "The process by which salt accumulates in soil or water.",
             "contextual_usage": "Names the build-up of salt that is damaging coastal farms and ponds.",
             "translation": "pag-alat ng lupa",
             "context_clues": [
               "seawater",
-              "salt"
+              "salt",
+              "accumulates"
             ],
-            "target_clues_count": 2
+            "target_clues_count": 3
           }
         ],
         "clue_error_explanations": {
@@ -2586,11 +2595,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find the water that seeps in and the substance that accumulates."
+            "hint_text": "Find the water that seeps in, the substance that builds up, and the verb for how it builds up."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"seawater\" and \"salt\"."
+            "hint_text": "Tap \"seawater\", \"salt\" and \"accumulates\"."
           }
         ]
       },
@@ -2646,7 +2655,7 @@
         "topic_title": "The Vanishing Sandbar",
         "difficulty": 3,
         "family": "example",
-        "reading_passage": "The sandbar off the town's coast is ephemeral. It rises from the sea each April, hosts weekend picnics through the dry season, and is gone again by the first monsoon storms of June.",
+        "reading_passage": "The sandbar off the town's coast is ephemeral. It rises from the sea each April, lasts only through the dry season, and is gone by the first monsoon storms of June, leaving no trace behind.",
         "locked_words": [
           {
             "word_id": "w1",
@@ -2654,22 +2663,26 @@
             "position_index": 7,
             "correct_clue_ids": [
               "rises",
-              "gone"
+              "lasts",
+              "gone",
+              "trace"
             ],
             "definition": "Lasting for only a short time.",
             "contextual_usage": "Describes a sandbar that appears and disappears within a few months.",
             "translation": "panandalian",
             "context_clues": [
               "rises",
-              "gone"
+              "lasts",
+              "gone",
+              "trace"
             ],
-            "target_clues_count": 2
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
           "w1__sandbar": "Sandbar names the thing described, not its quality.",
-          "w1__picnics": "Picnics are what happens on it, not how long it lasts.",
-          "w1__storms": "Storms end its season, but the clues are its appearing and disappearing."
+          "w1__storms": "Storms end its season, but the clues are its appearing and disappearing.",
+          "w1__season": "The dry season is when the sandbar appears, not how long it lasts."
         },
         "scaffold_hints": [
           {
@@ -2678,11 +2691,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find the word for its appearance in April and the word for its state by June."
+            "hint_text": "Find the words for its appearance in April, how long it stays, its state by June, and what it leaves behind."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"rises\" and \"gone\"."
+            "hint_text": "Tap \"rises\", \"lasts\", \"gone\" and \"trace\"."
           }
         ]
       },
@@ -2691,13 +2704,14 @@
         "topic_title": "An Honest Account",
         "difficulty": 3,
         "family": "synonym",
-        "reading_passage": "Asked about the failed harvest, the cooperative's chair gave a candid account. She admitted that the group had planted too late, conceded that it had ignored the weather bureau's warnings, and offered no excuses.",
+        "reading_passage": "Asked about the failed harvest, the cooperative's chair gave a candid account. She openly admitted that the group had planted too late, conceded that it had ignored the weather bureau's warnings, and offered no excuses.",
         "locked_words": [
           {
             "word_id": "w1",
             "word": "candid",
             "position_index": 10,
             "correct_clue_ids": [
+              "openly",
               "admitted",
               "conceded",
               "excuses"
@@ -2706,11 +2720,12 @@
             "contextual_usage": "Describes the chair's frank explanation of the failed harvest.",
             "translation": "prangka",
             "context_clues": [
+              "openly",
               "admitted",
               "conceded",
               "excuses"
             ],
-            "target_clues_count": 3
+            "target_clues_count": 4
           }
         ],
         "clue_error_explanations": {
@@ -2725,11 +2740,11 @@
           },
           {
             "tier": 2,
-            "hint_text": "Find two verbs about owning up to mistakes, and what she did not offer."
+            "hint_text": "Find how she spoke, two verbs about owning up to mistakes, and what she did not offer."
           },
           {
             "tier": 3,
-            "hint_text": "Tap \"admitted\", \"conceded\" and \"excuses\"."
+            "hint_text": "Tap \"openly\", \"admitted\", \"conceded\" and \"excuses\"."
           }
         ]
       }

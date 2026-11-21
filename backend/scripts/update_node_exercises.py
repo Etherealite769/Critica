@@ -13,6 +13,7 @@ Usage (from backend/):
   python scripts/update_node_exercises.py --dry-run                 # validate + report; writes nothing
   python scripts/update_node_exercises.py --dry-run --show tap_node_09 snp_node_05
   python scripts/update_node_exercises.py                           # validate, back up, then update
+  python scripts/update_node_exercises.py --only vocabulary_nodes   # write one collection only (still backs up all)
 
 Nothing is written if any node fails validation.
 """
@@ -163,7 +164,7 @@ def validate_tap(p, tier):
         errs.append(f'expected 1 locked word, found {len(words)}')
     if p.get('word_count') != len(passage.split()):
         errs.append(f"word_count {p.get('word_count')} != {len(passage.split())}")
-    lo, hi = (1, 2) if tier == 'Basics' else (2, 3)
+    need = {'Basics': 2, 'Intermediate': 3, 'Advanced': 4}[tier]   # exact Tap Clues clue count per tier
     for w in words:
         target = (w.get('word') or '').lower()
         hits = cores.count(target)
@@ -175,8 +176,8 @@ def validate_tap(p, tier):
         if re.search(r'\b' + re.escape(target) + r',?\s+(or|meaning)\b', passage, re.I):
             errs.append(f'appositive handout ("{target}, or/meaning ...") is not allowed')
         clues = w.get('correct_clue_ids') or []
-        if not lo <= len(clues) <= hi:
-            errs.append(f'{tier} expects {lo}-{hi} clue words, found {len(clues)}')
+        if len(clues) != need:
+            errs.append(f'{tier} expects exactly {need} clue words, found {len(clues)}')
         for c in clues:
             cl = c.lower()
             if ' ' in cl or cl not in cores:
@@ -267,6 +268,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--dry-run', action='store_true', help='validate and report; write nothing')
     parser.add_argument('--show', nargs='*', default=None, help='node_ids to print in full (default: 4 samples)')
+    parser.add_argument('--only', choices=sorted(EXERCISE_FIELDS), default=None,
+                        help='write only this collection (every node is still validated and backed up)')
     args = parser.parse_args()
 
     with open(DATA_FILE, encoding='utf-8') as f:
@@ -338,8 +341,10 @@ def main():
     updated = 0
     for node_id, payload in sorted(upgraded.items()):
         collection = COLLECTIONS[node_id.split('_', 1)[0]]
+        if args.only and collection != args.only:
+            continue
         updated += db[collection].update_one({'node_id': node_id}, {'$set': payload}).modified_count
-    print(f'Updated exercise content on {updated} node(s).')
+    print(f'Updated exercise content on {updated} node(s){" in " + args.only if args.only else ""}.')
 
 
 if __name__ == '__main__':

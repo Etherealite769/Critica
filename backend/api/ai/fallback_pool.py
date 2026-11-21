@@ -21,8 +21,27 @@ from .validators import calculate_question_hash
 
 _DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fallback_exercises.json')
 
-with open(_DATA_FILE, encoding='utf-8') as _f:
-    FALLBACK_BANK: Dict[str, List[Dict[str, Any]]] = json.load(_f)['modules']
+# The bank, kept current with fallback_exercises.json. Django's dev server only restarts on .py changes, so a bank
+# read once at import would keep serving stale cases after the JSON is edited; fallback_bank() reloads it whenever
+# the file changes, updating this same dict in place so existing references stay valid.
+FALLBACK_BANK: Dict[str, List[Dict[str, Any]]] = {}
+_bank_mtime: Optional[float] = None
+
+
+def fallback_bank() -> Dict[str, List[Dict[str, Any]]]:
+    """The current offline bank (re-read if fallback_exercises.json changed since the last read)."""
+    global _bank_mtime
+    mtime = os.path.getmtime(_DATA_FILE)
+    if mtime != _bank_mtime:
+        with open(_DATA_FILE, encoding='utf-8') as f:
+            modules = json.load(f)['modules']
+        FALLBACK_BANK.clear()
+        FALLBACK_BANK.update(modules)
+        _bank_mtime = mtime
+    return FALLBACK_BANK
+
+
+fallback_bank()
 
 # Node number -> focus family. Each module repeats its four topics in blocks of three nodes
 # (Basics, Intermediate, Advanced); node 13 revisits topic 1. Fact Scanner uses the node's CRAAP criterion.
@@ -73,7 +92,7 @@ def get_procedural_fallback_exercises(
     Up to `count` distinct cases for the module and tier, ordered: unseen + matching family, unseen, seen + matching
     family, seen. Other tiers are used only if this tier has fewer than `count` cases in total.
     """
-    bank = FALLBACK_BANK.get(module, [])
+    bank = fallback_bank().get(module, [])
     if not bank:
         return []
     exclude_hashes = set(exclude_hashes or ())

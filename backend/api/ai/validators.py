@@ -184,7 +184,65 @@ def locate_word_index(passage: str, word: str) -> Optional[int]:
     return None
 
 
-def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
+# Tap Clues: exact number of context-clue words per difficulty tier (Basics, Intermediate, Advanced)
+TAP_CLUES_PER_TIER = {1: 2, 2: 3, 3: 4}
+
+# Function words the Tap Clues screen makes untappable (frontend STOP_WORDS); never valid clues
+TAP_STOP_WORDS = {
+    'a', 'an', 'the', 'and', 'or', 'but', 'nor', 'of', 'to', 'in', 'on', 'at', 'by', 'for', 'with', 'from', 'as',
+    'is', 'was', 'were', 'are', 'be', 'been', 'am', 'it', 'its', 'this', 'that', 'these', 'those',
+    'he', 'she', 'they', 'we', 'you', 'i', 'his', 'her', 'their', 'our', 'your', 'my',
+}
+
+
+def tap_clue_words(passage: str, target: str, clues: List[str]) -> List[str]:
+    """
+    The clues that are clean, tappable passage words: one word each, present as a token, not a function word,
+    neither containing nor contained in the target, and distinct (case-insensitive). Order is kept.
+    """
+    cores = {c.lower() for c in passage_word_cores(passage)}
+    tgt = (target or '').strip().lower()
+    out, seen = [], set()
+    for clue in clues or []:
+        c = (clue or '').strip()
+        lc = c.lower()
+        if not c or ' ' in c or lc in seen or lc not in cores or lc in TAP_STOP_WORDS:
+            continue
+        if tgt and (lc in tgt or tgt in lc):
+            continue
+        seen.add(lc)
+        out.append(c)
+    return out
+
+
+def enforce_tap_clue_count(ex: Dict[str, Any], difficulty: Optional[int]) -> Tuple[bool, str]:
+    """
+    Checks that every locked word carries exactly the tier's clue count (Basics 2, Intermediate 3, Advanced 4), and
+    that each of those clues is a clean, tappable passage word. Nothing is trimmed or padded: a case whose clue list
+    does not match its tier is rejected, so the caller can retry or replace it. On success correct_clue_ids,
+    context_clues and target_clues_count are set to agree. With no tier, the case keeps its own valid clues.
+    """
+    need = TAP_CLUES_PER_TIER.get(difficulty)
+    for w in ex.get('locked_words', []) or []:
+        raw = [c for c in (w.get('correct_clue_ids') or w.get('context_clues') or []) if (c or '').strip()]
+        distinct = list(dict.fromkeys(c.strip().lower() for c in raw))
+        valid = tap_clue_words(ex.get('reading_passage', ''), w.get('word', ''), raw)
+        if need is not None:
+            if len(distinct) != need:
+                return False, (f"Locked word '{w.get('word')}' lists {len(distinct)} clue(s); "
+                               f"tier {difficulty} needs exactly {need}.")
+            if len(valid) != need:
+                return False, (f"Locked word '{w.get('word')}' has {len(valid)} valid single-word passage clue(s) "
+                               f"of {need}; tier {difficulty} needs exactly {need}.")
+        elif not valid:
+            return False, f"No valid clue words for locked word '{w.get('word')}'."
+        w['correct_clue_ids'] = list(valid)
+        w['context_clues'] = list(valid)
+        w['target_clues_count'] = len(valid)
+    return True, ""
+
+
+def validate_tap_clues_exercise(ex: Dict[str, Any], difficulty: Optional[int] = None) -> Tuple[bool, str]:
     passage = ex.get('reading_passage', '')
     norm_passage = normalize_text(passage)
     words = ex.get('locked_words', [])
@@ -220,7 +278,8 @@ def validate_tap_clues_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
             if not re.search(r'\b' + re.escape(norm_clue) + r'\b', norm_passage):
                 return False, f"Clue word '{clue}' for '{w.get('word')}' is not present as standalone token in passage."
 
-    return True, ""
+    # Exactly the tier's number of clean single-word clues; the clue list, context_clues and the count agree
+    return enforce_tap_clue_count(ex, difficulty)
 
 
 def validate_fact_scanner_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
@@ -245,13 +304,13 @@ def validate_fact_scanner_exercise(ex: Dict[str, Any]) -> Tuple[bool, str]:
     return True, ""
 
 
-def validate_module_exercise(module: str, ex: Dict[str, Any]) -> Tuple[bool, str]:
+def validate_module_exercise(module: str, ex: Dict[str, Any], difficulty: Optional[int] = None) -> Tuple[bool, str]:
     if module == 'logic_thread':
         return validate_logic_thread_exercise(ex)
     elif module == 'snap_gap':
         return validate_snap_gap_exercise(ex)
     elif module == 'tap_clues':
-        return validate_tap_clues_exercise(ex)
+        return validate_tap_clues_exercise(ex, difficulty)
     elif module == 'fact_scanner':
         return validate_fact_scanner_exercise(ex)
     return True, ""
