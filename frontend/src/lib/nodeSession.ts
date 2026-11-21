@@ -46,6 +46,10 @@ export interface DynamicSessionData {
   current_index: number
   is_fallback?: boolean
   model_used?: string
+  /** Per-case wrong-attempt counts kept by the server (exercise index -> wrong submissions). */
+  case_attempts?: Record<string, number>
+  /** Per-case grading kept by the server: credited only when solved within the first 3 attempts. */
+  case_results?: Record<string, { attempts: number; solved: boolean; credited: boolean; failed_after_three_attempts: boolean }>
 }
 
 /**

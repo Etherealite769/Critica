@@ -9,7 +9,7 @@ from rest_framework import status
 from api.progression.services import ProgressionManagementService
 from api.scaffold.scaffold_service import (
     ScaffoldEngineService, EVENT_CASE, EVENT_STEP, EVENT_HINT)
-from .session_service import SessionService, HintLimitReached, MAX_HINTS_PER_QUESTION
+from .session_service import SessionService, HintLimitReached, MAX_HINTS_PER_QUESTION, record_wrong_attempt
 from .gemini_client import GeminiClient
 from .mongo_models import GeneratedSessionDocument
 
@@ -217,7 +217,16 @@ class SessionLogAttemptView(APIView):
             clue_word_id=request.data.get('clue_word', ''),
         )
 
-        return Response({'status': 'logged'})
+        # A wrong step (Snap Gap tile, Tap Clues clue, Fact Scanner scan) is one attempt on its case
+        payload = {'status': 'logged'}
+        if not is_correct and request.data.get('exercise_index') is not None:
+            try:
+                idx = int(request.data.get('exercise_index'))
+            except (TypeError, ValueError):
+                idx = -1
+            if 0 <= idx < len(session_doc.exercises):
+                payload['attempts'] = record_wrong_attempt(session_doc, idx)
+        return Response(payload)
 
 
 class SessionLiveHintView(APIView):

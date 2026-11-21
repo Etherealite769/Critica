@@ -18,6 +18,8 @@ import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { creditLost, solvedCaseResult, withLateSolves, mergeServerAttempts, LATE_SOLVE_REMARK } from '@/lib/attemptCredit'
+import CreditLostNotice from '@/components/shared/CreditLostNotice'
 import { useCaseHints } from '@/components/logic-thread/useCaseHints'
 import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
@@ -260,6 +262,7 @@ export default function FactScannerPage() {
           article_sentences: ex.article_sentences || prev.article_sentences,
         }) : prev)
         resetCase()
+        setWrongs(attemptsMapRef.current[targetIndex] || 0)
         setPhase('task')
         return
       }
@@ -285,6 +288,8 @@ export default function FactScannerPage() {
     try {
       const sessionData = await fetchNodeSession('fact_scanner', start, forceFresh)
       setSessionId(sessionData.session_id)
+      if (forceFresh) attemptsMapRef.current = {}
+      mergeServerAttempts(attemptsMapRef.current, sessionData.case_attempts)
       syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
 
@@ -312,6 +317,7 @@ export default function FactScannerPage() {
       setSessionQueue(queue)
       setQuestionIndex(resumeIdx)
       resetCase()
+      setWrongs(attemptsMapRef.current[resumeIdx] || 0)
       if (forceFresh || resumeIdx === 0) {
         setSessionResults([])
         setMissedCases([])
@@ -530,7 +536,7 @@ export default function FactScannerPage() {
     if (sessionId && sentenceId !== null) {
       apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
         method: 'POST',
-        body: JSON.stringify({ is_correct: false, word_id: sentenceId, clue_word: '' }),
+        body: JSON.stringify({ is_correct: false, word_id: sentenceId, clue_word: '', exercise_index: questionIndex }),
       }).catch(() => {})
     }
     if (nextWrongs >= 3) {
@@ -606,12 +612,14 @@ export default function FactScannerPage() {
     setAttemptsMap({ ...attemptsMapRef.current })
     pendingQueueRef.current = pendingQueueRef.current.filter(idx => idx !== questionIndex)
     setPendingQueue([...pendingQueueRef.current])
-    const res: CaseResult = { caseNumber, correct: true, firstTry: wrongs === 0, hintsUsed, attempts: totalTries }
+    // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+    const res: CaseResult = solvedCaseResult(caseNumber, wrongs, hintsUsed)
+    if (res.solvedLate) say(LATE_SOLVE_REMARK)
     const updated = [...sessionResults.filter(r => r.caseNumber !== caseNumber), res]
     setSessionResults(updated)
     if (questionIndex + 1 < totalCases) playRightAnswerSound()
     const finishedAt = Date.now()
-    await advanceCase(updated, finishedAt, missedCases)
+    await advanceCase(updated, finishedAt, withLateSolves(missedCases, updated))
   }
 
   // ── Submit report ─────────────────────────────────────────
@@ -626,7 +634,7 @@ export default function FactScannerPage() {
 
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
-        body: JSON.stringify({ quarantined_ids: quarantined, node_id: nodeId, module: 'fact_scanner' }),
+        body: JSON.stringify({ quarantined_ids: quarantined, node_id: nodeId, module: 'fact_scanner', attempts: wrongs + 1 }),
       }).catch(() => {})
 
       try {
@@ -761,7 +769,7 @@ export default function FactScannerPage() {
       total: totalCasesCount,
       xpAwarded: null,
       nextNode: null,
-      missed: missedCases,
+      missed: withLateSolves(missedCases, updated),
     })
   }
 
@@ -1078,6 +1086,8 @@ export default function FactScannerPage() {
           </div>
 
           {/* ── Footer bar ── */}
+          {/* 3 attempts failed: still playable, but no credit */}
+          {creditLost(wrongs) && !revealing && <CreditLostNotice />}
           <div className={styles.submitBar}>
             <span className={styles.counter}>
               {quarantined.length} {flawTotal !== null ? `/ ${flawTotal} ` : ''}STATEMENT{quarantined.length === 1 && flawTotal === null ? '' : 'S'} QUARANTINED

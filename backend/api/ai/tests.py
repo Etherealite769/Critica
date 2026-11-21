@@ -681,3 +681,112 @@ class TapCluesTierCountTests(TestCase):
             fallback_pool._bank_mtime = None
             fallback_pool.fallback_bank()                                              # back to the real file
         self.assertNotEqual(fallback_pool.fallback_bank()['tap_clues'][0]['topic_title'], 'Edited While Running')
+
+
+
+class AttemptCreditTests(TestCase):
+    """Unlimited practice, but only attempts 1-3 earn credit; a failed attempt 3 latches the case as incorrect."""
+
+    NODES = {'logic_thread': 'log_node_10', 'snap_gap': 'snp_node_01',
+             'tap_clues': 'tap_node_01', 'fact_scanner': 'fac_node_01'}
+
+    def client_for(self, uid):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        client.force_authenticate(user=_HintStubUser(uid))
+        return client
+
+    def start(self, uid, module):
+        return SessionService.start_or_get_session(student_id=uid, module=module,
+                                                   node_id=self.NODES[module], force_fresh=True)
+
+    @staticmethod
+    def right_answer(module, ex):
+        if module == 'logic_thread':
+            return {'sequence': ex['correct_sequence']}
+        if module == 'snap_gap':
+            return {'board_state': dict(ex['correct_tile_map'])}
+        if module == 'tap_clues':
+            return {'unlocked_word_ids': [w['word_id'] for w in ex['locked_words']]}
+        return {'quarantined_ids': [s['sentence_id'] for s in ex['article_sentences'] if s['is_flawed']]}
+
+    def miss(self, client, sid, module, ex, idx=0):
+        """One wrong attempt, through the route each screen uses."""
+        if module == 'logic_thread':   # Logic Thread submits every attempt to /evaluate/
+            res = client.post(f'/api/ai/session/{sid}/evaluate/{idx}/',
+                              {'sequence': list(reversed(ex['correct_sequence']))}, format='json')
+            self.assertFalse(res.data['solved'])
+        else:                          # the others log wrong steps, then evaluate once solved
+            res = client.post(f'/api/ai/session/{sid}/log-attempt/',
+                              {'is_correct': False, 'word_id': 'x', 'clue_word': 'y', 'exercise_index': idx}, format='json')
+            self.assertEqual(res.status_code, 200)
+
+    def test_solving_on_attempt_four_advances_but_is_graded_incorrect(self):
+        from api.scaffold.mongo_models import TelemetryLogDocument
+        from .mongo_models import GeneratedSessionDocument
+        for module in self.NODES:
+            uid = f'credit_late_{module}'
+            session = self.start(uid, module)
+            client, sid, ex = self.client_for(uid), session['session_id'], session['exercises'][0]
+            for _ in range(3):
+                self.miss(client, sid, module, ex)
+            res = client.post(f'/api/ai/session/{sid}/evaluate/0/', {**self.right_answer(module, ex), 'attempts': 4},
+                              format='json')
+            self.assertEqual(res.status_code, 200, (module, res.data))
+            self.assertEqual((res.data['result'], res.data['solved']), ('correct', True), module)   # it advances...
+            self.assertEqual(res.data['current_index'], 1, module)
+            self.assertFalse(res.data['is_correct'], module)                                       # ...graded wrong
+            self.assertFalse(res.data['credited'], module)
+            self.assertTrue(res.data['failed_after_three_attempts'], module)
+            self.assertEqual(res.data['attempts'], 4, module)
+            last_case = TelemetryLogDocument.objects(student_id=uid, event_type='case').order_by('-id').first()
+            self.assertFalse(last_case.is_correct, module)                                         # telemetry: wrong
+            stored = GeneratedSessionDocument.objects(session_id=sid).first()
+            self.assertEqual(stored.case_results['0']['credited'], False, module)
+            self.assertEqual(stored.case_results['0']['solved'], True, module)
+            # the latch never flips back, even if a "first try" correct answer is sent again
+            again = client.post(f'/api/ai/session/{sid}/evaluate/0/', {**self.right_answer(module, ex), 'attempts': 1},
+                                format='json')
+            self.assertFalse(again.data['is_correct'], module)
+            # the node is not mastered on this run
+            mastery = client.post(f'/api/ai/session/{sid}/mastery/', {'hints_used': 0}, format='json')
+            self.assertEqual(mastery.status_code, 400, module)
+            self.assertEqual(mastery.data['failed_cases'], [1], module)
+
+    def test_solving_within_three_attempts_counts_as_correct(self):
+        for module in self.NODES:
+            uid = f'credit_ok_{module}'
+            session = self.start(uid, module)
+            client, sid = self.client_for(uid), session['session_id']
+            for idx, ex in enumerate(session['exercises']):
+                for _ in range(idx % 3):   # cases solved on attempt 1, 2, 3, 1, 2
+                    self.miss(client, sid, module, ex, idx)
+                res = client.post(f'/api/ai/session/{sid}/evaluate/{idx}/',
+                                  {**self.right_answer(module, ex), 'attempts': idx % 3 + 1}, format='json')
+                self.assertTrue(res.data['is_correct'], (module, idx, res.data))
+                self.assertEqual(res.data['attempts'], idx % 3 + 1, (module, idx))
+            mastery = client.post(f'/api/ai/session/{sid}/mastery/', {'hints_used': 0}, format='json')
+            self.assertEqual(mastery.status_code, 200, (module, mastery.data))
+
+    def test_client_reported_late_attempt_is_never_credited(self):
+        uid = 'credit_client'
+        session = self.start(uid, 'tap_clues')
+        client, sid, ex = self.client_for(uid), session['session_id'], session['exercises'][0]
+        res = client.post(f'/api/ai/session/{sid}/evaluate/0/', {**self.right_answer('tap_clues', ex), 'attempts': 5},
+                          format='json')
+        self.assertTrue(res.data['solved'])
+        self.assertFalse(res.data['is_correct'])
+
+    def test_attempts_survive_a_reload(self):
+        uid = 'credit_reload'
+        session = self.start(uid, 'snap_gap')
+        client, sid, ex = self.client_for(uid), session['session_id'], session['exercises'][0]
+        for _ in range(3):
+            self.miss(client, sid, 'snap_gap', ex)
+        reloaded = SessionService.start_or_get_session(student_id=uid, module='snap_gap',
+                                                       node_id=self.NODES['snap_gap'], force_fresh=False)
+        self.assertEqual(reloaded['session_id'], sid)
+        self.assertEqual(reloaded['case_attempts'], {'0': 3})
+        self.assertEqual(reloaded['case_results']['0']['failed_after_three_attempts'], True)
+        fresh = self.start(uid, 'snap_gap')   # Retry docket / Fresh Case: a clean slate
+        self.assertEqual((fresh['case_attempts'], fresh['case_results']), ({}, {}))

@@ -18,6 +18,8 @@ import CaseLessonScreen from '@/components/shared/CaseLessonScreen'
 import { playRightAnswerSound, playWrongSound, playVictorySound } from '@/lib/sound-effects'
 import { MODULE_TITLES } from '@/lib/modules'
 import CritRemark, { type Remark, type RemarkKind } from '@/components/logic-thread/CritRemark'
+import { creditLost, solvedCaseResult, withLateSolves, mergeServerAttempts, LATE_SOLVE_REMARK } from '@/lib/attemptCredit'
+import CreditLostNotice from '@/components/shared/CreditLostNotice'
 import { useCaseHints } from '@/components/logic-thread/useCaseHints'
 import HintCounter, { hintTabLabel, hintTabTitle } from '@/components/logic-thread/HintCounter'
 import CaseDebriefModal, { type DocketDebrief, type MissedCase } from '@/components/logic-thread/CaseDebriefModal'
@@ -487,6 +489,8 @@ export default function TapCluesPage() {
     try {
       const sessionData = await fetchNodeSession('tap_clues', start, forceFresh)
       setSessionId(sessionData.session_id)
+      if (forceFresh) attemptsMapRef.current = {}
+      mergeServerAttempts(attemptsMapRef.current, sessionData.case_attempts)
       syncCaseHints(sessionData)
       setSessionExercises(sessionData.exercises || [])
 
@@ -516,7 +520,7 @@ export default function TapCluesPage() {
       setActiveWordId(null)
       setFoundClues({})
       setDefPanel(null)
-      setWrongs(0)
+      setWrongs(attemptsMapRef.current[resumeIdx] || 0)
       setDisputed(false); setRevealing(null); setCardPos({})
       setHintOverlay(false)
       if (forceFresh || resumeIdx === 0) {
@@ -770,17 +774,13 @@ export default function TapCluesPage() {
 
       apiFetch(`/ai/session/${sessionId}/evaluate/${questionIndex}/`, {
         method: 'POST',
-        body: JSON.stringify({ unlocked_word_ids: unlockedWords, node_id: nodeId, module: 'tap_clues' }),
+        body: JSON.stringify({ unlocked_word_ids: unlockedWords, node_id: nodeId, module: 'tap_clues', attempts: wrongs + 1 }),
       }).catch(() => {})
 
       if (isMastered) {
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongs === 0,
-          hintsUsed: hintOverlay ? 1 : 0,
-          attempts: wrongs + 1,
-        }
+        // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+        const currentCaseRes: CaseResult = solvedCaseResult(questionIndex + 1, wrongs, hintOverlay ? 1 : 0)
+        if (currentCaseRes.solvedLate) say(LATE_SOLVE_REMARK)
         const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
         setSessionResults(updatedCases)
 
@@ -861,7 +861,7 @@ export default function TapCluesPage() {
               total: totalCases,
               xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
               nextNode: cleared ? (finalRes.next_node ?? null) : null,
-              missed: missedCases,
+              missed: withLateSolves(missedCases, updatedCases),
             })
           } catch {
             setSubmitting(false)
@@ -883,13 +883,9 @@ export default function TapCluesPage() {
         body: JSON.stringify({ unlocked_word_ids: unlockedWords, save_progression: false }),
       })
       if (res.status === 'mastered') {
-        const currentCaseRes: CaseResult = {
-          caseNumber: questionIndex + 1,
-          correct: true,
-          firstTry: wrongs === 0,
-          hintsUsed: hintOverlay ? 1 : 0,
-          attempts: wrongs + 1,
-        }
+        // Only attempts 1-3 earn credit; a later solve still advances but stays marked incorrect
+        const currentCaseRes: CaseResult = solvedCaseResult(questionIndex + 1, wrongs, hintOverlay ? 1 : 0)
+        if (currentCaseRes.solvedLate) say(LATE_SOLVE_REMARK)
         const updatedCases = [...sessionResults.filter(r => r.caseNumber !== questionIndex + 1), currentCaseRes]
         setSessionResults(updatedCases)
 
@@ -957,7 +953,7 @@ export default function TapCluesPage() {
             total: totalCases,
             xpAwarded: cleared && typeof finalRes.xp_awarded === 'number' ? finalRes.xp_awarded : null,
             nextNode: cleared ? (savedNextNode || finalRes.next_node || null) : null,
-            missed: missedCases,
+            missed: withLateSolves(missedCases, updatedCases),
           })
         }
       } else {
@@ -1049,7 +1045,7 @@ export default function TapCluesPage() {
     if (sessionId) {
       apiFetch(`/ai/session/${sessionId}/log-attempt/`, {
         method: 'POST',
-        body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue }),
+        body: JSON.stringify({ is_correct: false, word_id: wordId, clue_word: clue, exercise_index: questionIndex }),
       }).catch(() => {})
     }
     if (nextWrongs >= 3) {
@@ -1161,7 +1157,7 @@ export default function TapCluesPage() {
       total: totalCasesCount,
       xpAwarded: null,
       nextNode: null,
-      missed: missedCases,
+      missed: withLateSolves(missedCases, updated),
     })
   }
 
@@ -1478,6 +1474,8 @@ export default function TapCluesPage() {
           </div>
 
           {/* ── Footer bar ── */}
+          {/* 3 attempts failed: still playable, but no credit */}
+          {creditLost(wrongs) && !revealing && <CreditLostNotice />}
           <div className={styles.submitBar}>
             <span className={styles.counter}>
               {unlockedWords.length} / {tapNode!.locked_words.length} WORDS UNLOCKED
