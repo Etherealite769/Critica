@@ -177,11 +177,20 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database Configuration
 # Primary database: MongoDB (via MongoEngine)
-# SQLite for Django ORM and authentication
+# SQLite for Django ORM and authentication, and the local telemetry_logs backup copy.
+# TELEMETRY_DB_PATH picks the SQLite file (absolute, or relative to backend/); the default keeps the existing
+# backend/db.sqlite3. The ORM, the telemetry logger and its startup table check all use this one path.
+# On a host with an ephemeral filesystem, point it at persistent storage (e.g. a mounted disk).
+TELEMETRY_DB_PATH = Path(os.getenv('TELEMETRY_DB_PATH') or (BASE_DIR / 'db.sqlite3')).expanduser()
+if not TELEMETRY_DB_PATH.is_absolute():
+    TELEMETRY_DB_PATH = BASE_DIR / TELEMETRY_DB_PATH
+TELEMETRY_DB_PATH = TELEMETRY_DB_PATH.resolve()
+TELEMETRY_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': TELEMETRY_DB_PATH,
     }
 }
 
