@@ -15,7 +15,7 @@ from django.utils.http import urlsafe_base64_decode
 from rest_framework.test import APIClient
 
 from api import email_verification as ev
-from api.views import hash_password
+from api.views import FORGOT_PASSWORD_GENERIC as GENERIC, hash_password
 
 STRONG = 'Sleuth$2024!'
 NEW_STRONG = 'Cipher!Case9'
@@ -200,11 +200,12 @@ class PasswordResetTests(TestCase):
 
     # ── error surfacing ──
     @override_settings(DEBUG=True)
-    def test_smtp_failure_returns_json_500_in_debug(self):
+    def test_send_failure_stays_generic_even_in_debug(self):
+        """A send failure can only happen for a real account, so it must not change the answer (TC-UC09-01)."""
         with mock.patch('api.email_transport.send_mail', side_effect=OSError('smtp down')):
             res = self._forgot()
-        self.assertEqual(res.status_code, 500)
-        self.assertEqual(res.json()['detail'], 'Failed to send reset email. Check SMTP settings.')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {'message': GENERIC})
 
     def test_unhandled_errors_are_json(self):
         with mock.patch('api.views.ForgotPasswordThrottle.allow_request', side_effect=RuntimeError('boom')):
@@ -243,3 +244,79 @@ class PasswordResetTests(TestCase):
         # TC-AUTH-023: Other symbols like # do not satisfy the symbol rule
         self.assertIn(f'a special character ({ev.PASSWORD_SPECIALS})', ev.password_policy_errors('Abcdefg1#'))
         self.assertIn(f'a special character ({ev.PASSWORD_SPECIALS})', ev.password_policy_errors('Sleuth~Case2026'))
+
+
+@override_settings(EMAIL_DELIVERY_CONFIGURED=True, EMAIL_PROVIDER='brevo', FRONTEND_URL='http://localhost:3000',
+                   DEFAULT_FROM_EMAIL='Critica Bureau <bureau@example.com>')
+class ForgotPasswordRegisteredOnlyTests(TestCase):
+    """TC-UC09-01 (FR-1.7): only registered addresses get a token and a Brevo email; every answer is identical."""
+
+    def setUp(self):
+        FakeUser.store = []
+        cache.clear()
+        p = mock.patch('api.views.User', FakeUser)
+        p.start()
+        self.addCleanup(p.stop)
+        self.brevo = mock.patch('api.email_transport._brevo_request', return_value={'messageId': '<m1@brevo>'}).start()
+        self.addCleanup(mock.patch.stopall)
+        self.client = APIClient()
+        self.user = FakeUser(email='ada@example.com', password=hash_password(STRONG)).save()
+
+    def _forgot(self, email):
+        return self.client.post('/api/auth/forgot-password/', {'email': email}, format='json')
+
+    def test_unregistered_email_gets_no_token_and_no_brevo_email(self):
+        with mock.patch('api.views.issue_reset_token') as issue, self.assertLogs('api.views', level='INFO') as logs:
+            res = self._forgot('Example@gmail.com')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {'message': GENERIC})
+        issue.assert_not_called()                     # no reset token created
+        self.brevo.assert_not_called()                # no Brevo call at all
+        self.assertIsNone(self.user.password_reset_hash)
+        self.assertTrue(any('no token issued, no email sent' in line for line in logs.output))
+        self.assertFalse(any('example@gmail.com' in line.lower() for line in logs.output))   # address not logged
+
+    def test_registered_email_gets_a_token_and_one_brevo_email(self):
+        res = self._forgot('  ADA@Example.com ')     # normalized with strip().lower()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {'message': GENERIC})
+        self.assertIsNotNone(self.user.password_reset_hash)
+        self.assertIsNotNone(self.user.password_reset_expires_at)
+        self.brevo.assert_called_once()
+        method, path, payload = self.brevo.call_args.args
+        self.assertEqual((method, path), ('POST', '/smtp/email'))
+        self.assertEqual(payload['to'], [{'email': 'ada@example.com'}])
+        self.assertRegex(payload['textContent'], r'http://localhost:3000/auth/reset-password\?token=[\w-]+&uid=[\w-]+')
+
+    def test_registered_and_unregistered_answers_are_identical(self):
+        known = self._forgot('ada@example.com')
+        unknown = self._forgot('Example@gmail.com')
+        self.assertEqual((known.status_code, known.json()), (unknown.status_code, unknown.json()))
+        self.assertEqual(known['Content-Type'], unknown['Content-Type'])
+        self.assertEqual(self.brevo.call_count, 1)    # only the registered address was emailed
+
+    def test_inactive_account_is_treated_as_unregistered(self):
+        self.user.is_active = False
+        res = self._forgot('ada@example.com')
+        self.assertEqual(res.json(), {'message': GENERIC})
+        self.brevo.assert_not_called()
+        self.assertIsNone(self.user.password_reset_hash)
+
+    @override_settings(PASSWORD_RESET_EMAIL_ASYNC=True)
+    def test_registered_answer_does_not_wait_for_the_email(self):
+        """The email goes out off the request thread, so response time cannot reveal a registered address."""
+        import threading
+        release, done = threading.Event(), threading.Event()
+
+        def slow_send(user, token):
+            release.wait(5)
+            done.set()
+            return True
+
+        with mock.patch('api.views.send_password_reset_email', side_effect=slow_send) as send:
+            res = self._forgot('ada@example.com')
+            self.assertEqual(res.json(), {'message': GENERIC})
+            self.assertFalse(done.is_set())           # answered while the email was still "sending"
+            release.set()
+            self.assertTrue(done.wait(5))
+        send.assert_called_once()

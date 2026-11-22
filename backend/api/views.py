@@ -353,7 +353,21 @@ def resend_verification(request):
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-FORGOT_PASSWORD_GENERIC = 'If that cadet email is registered, a passphrase reset link is on its way.'
+FORGOT_PASSWORD_GENERIC = 'If an account with that email exists, a password reset link has been sent.'
+
+
+def _dispatch_reset_email(user, token):
+    """
+    Sends the reset email off the request thread (settings.PASSWORD_RESET_EMAIL_ASYNC), so a registered address
+    answers as fast as an unregistered one: response time must not reveal which emails have accounts.
+    send_password_reset_email never raises and logs its own failures.
+    """
+    import threading
+    from django.conf import settings
+    if getattr(settings, 'PASSWORD_RESET_EMAIL_ASYNC', True):
+        threading.Thread(target=send_password_reset_email, args=(user, token), daemon=True).start()
+    else:
+        send_password_reset_email(user, token)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -362,40 +376,31 @@ FORGOT_PASSWORD_GENERIC = 'If that cadet email is registered, a passphrase reset
 def forgot_password(request):
     """
     POST /api/auth/forgot-password/  { email }
-    Always answers 200 with the same message (no account enumeration).
-    If the account exists, emails a single-use reset link (30 min expiry).
+
+    Registered (active) account: issues a single-use reset token (30 min expiry) and emails the
+    /auth/reset-password link. Unregistered or inactive address: no token, no email.
+    Either way the answer is the same 200 and the same message, and comes back just as fast (the email is sent
+    off the request thread), so the endpoint cannot be used to find out which emails have accounts.
     """
-    email = normalize_email(request.data.get('email'))
+    email = normalize_email(request.data.get('email'))   # strip().lower()
     if not is_valid_email(email):
         return Response({'error': 'Please enter a valid email address'}, status=status.HTTP_400_BAD_REQUEST)
 
-    from django.conf import settings
     import logging
     log = logging.getLogger(__name__)
 
-    sent = True
     try:
         user = _find_user_by_email(email)
-        # Silently skip unknown/inactive accounts and rapid repeats (per-account cooldown)
         if user and user.is_active and not reset_cooldown_active(user):
             token = issue_reset_token(user)
-            try:
-                sent = send_password_reset_email(user, token)
-            except Exception:
-                log.exception('Password reset email failed for %s', email)
-                sent = False
+            _dispatch_reset_email(user, token)
+        elif not user or not user.is_active:
+            # The address is not logged: unknown emails are not ours to keep
+            log.info('forgot_password: no active account for the submitted email; no token issued, no email sent')
+        # A rapid repeat for a real account (per-account cooldown) is skipped silently too
     except Exception:
-        log.exception('forgot_password failed for %s', email)
-        sent = False
-
-    if not sent:
-        # Development: surface SMTP problems. Production: stay generic so a mail
-        # failure (which only happens for real accounts) can't reveal which
-        # emails are registered.
-        if settings.DEBUG:
-            return Response({'detail': 'Failed to send reset email. Check SMTP settings.'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        log.error('Password reset email not delivered for %s (SMTP failure)', email)
+        # Stay generic: an error that only real accounts can hit must not reveal that the account exists
+        log.exception('forgot_password failed')
 
     return Response({'message': FORGOT_PASSWORD_GENERIC}, status=status.HTTP_200_OK)
 
