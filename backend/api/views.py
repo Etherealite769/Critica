@@ -27,6 +27,7 @@ from .password_reset import (
     find_user_for_reset,
     complete_password_reset,
     reset_cooldown_active,
+    claim_reset_request,
     ForgotPasswordThrottle,
     ResetPasswordThrottle,
 )
@@ -388,6 +389,16 @@ def forgot_password(request):
 
     import logging
     log = logging.getLogger(__name__)
+
+    # One request per email per 60 s, for every address (registered or not): a repeat gets no token and no email,
+    # and is told exactly how long to wait instead of a confirmation that no email will follow.
+    wait = claim_reset_request(email)
+    if wait:
+        res = Response({'error': 'rate_limited', 'retry_after': wait,
+                        'detail': f'Please wait {wait}s before requesting another reset link.'},
+                       status=status.HTTP_429_TOO_MANY_REQUESTS)
+        res['Retry-After'] = str(wait)
+        return res
 
     try:
         user = _find_user_by_email(email)

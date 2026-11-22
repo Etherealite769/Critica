@@ -922,3 +922,126 @@
   color: #6b5a44;
 }
 
+
+/* ── Passphrase Recovery modal (Forgot Password): an official case slip ── */
+.recoveryModal {
+  width: min(448px, calc(100vw - 32px));        /* max-w-md, with 16px side margins on small screens */
+  padding: 24px;
+  background-image: radial-gradient(rgba(78, 54, 41, 0.05) 1px, transparent 1.2px);
+  background-size: 7px 7px;
+  border: 2px solid #57524e;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    0 22px 48px rgba(0, 0, 0, 0.55);
+}
+
+@media (min-width: 640px) {
+  .recoveryModal { padding: 28px; }
+}
+
+.recoveryHead {
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #d5ccb6;
+}
+
+.recoveryStampWrap {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+  padding: 4px 0;                               /* room for the tilted double border */
+}
+
+.recoveryStamp {
+  position: relative;
+  top: auto;
+  right: auto;
+  font-size: 17px;
+  color: #a63a3a;
+  border-color: #a63a3a;
+  transform: rotate(-4deg);
+}
+
+.recoveryNotice {
+  padding: 16px;
+  text-align: left;
+  background: rgba(239, 232, 216, 0.7);
+  border: 1px solid #d5ccb6;
+  border-radius: 6px;
+}
+
+.recoveryNoticeHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #2b2623;
+}
+
+.recoveryNoticeIcon { flex-shrink: 0; margin-top: 2px; color: #a63a3a; }
+
+.recoveryNoticeHint {
+  margin: 8px 0 0;
+  padding-left: 26px;                           /* lines up with the headline text, past the icon */
+  font-size: 12px;
+  line-height: 1.625;
+  color: #57524e;
+}
+
+.recoveryActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+@media (min-width: 640px) {
+  .recoveryActions { grid-template-columns: 1fr 1fr; }
+}
+
+.recoveryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;           /* the countdown does not jitter the label width */
+  border: 1.5px solid;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recoveryBtn:focus-visible { outline: 2px solid #a63a3a; outline-offset: 2px; }
+
+.recoveryResend { color: #2b2623; background: #f9f6ed; border-color: #57524e; }
+.recoveryResend:hover:not(:disabled) { background: #efe8d8; }
+
+/* Locked during the 60 s cooldown: a recessed dossier button */
+.recoveryResend:disabled {
+  color: #7a736a;
+  background: #ede6d6;
+  border-color: #c9bfa8;
+  box-shadow: inset 0 2px 3px rgba(87, 82, 78, 0.18);
+  cursor: not-allowed;
+}
+
+.recoveryPrimary { color: #f7f3e8; background: #2b2623; border-color: #2b2623; }
+.recoveryPrimary:hover { background: #3d3632; border-color: #3d3632; }
+
+@media (prefers-reduced-motion: reduce) {
+  .recoveryBtn { transition: none; }
+}
