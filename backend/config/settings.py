@@ -336,6 +336,9 @@ EMAIL_TIMEOUT = 15
 # without a password Gmail answers "530 Authentication Required"
 # (SMTPSenderRefused), so verification emails fall back to console logging.
 EMAIL_DELIVERY_CONFIGURED = bool(BREVO_API_KEY) or bool(RESEND_API_KEY) or bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+# Send password reset emails off the request thread, so the forgot-password response time is the same whether or
+# not the address has an account. Tests send synchronously so they can inspect the outbox.
+PASSWORD_RESET_EMAIL_ASYNC = not TESTING
 DEFAULT_FROM_EMAIL = (os.getenv('EMAIL_FROM') or '').strip() or (
     'Critica Bureau <onboarding@resend.dev>' if EMAIL_PROVIDER == 'resend'
     else f'Inspector Crit <{EMAIL_HOST_USER}>')

@@ -54,7 +54,8 @@ function ForgotPasswordDialog({ onClose, initialEmail = '' }: ForgotPasswordModa
         setError((data.detail || data.error || `COULD NOT FILE THE REQUEST (HTTP ${res.status}).`).toUpperCase());
         return;
       }
-      setSentMessage(data.message || 'If that cadet email is registered, a passphrase reset link is on its way.');
+      // Same message whether or not the address has an account (the server never says which)
+      setSentMessage(data.message || 'If an account with that email exists, a password reset link has been sent.');
     } catch {
       setError('COULD NOT REACH THE SERVER. PLEASE CHECK YOUR CONNECTION.');
     } finally {
@@ -89,7 +90,7 @@ function ForgotPasswordDialog({ onClose, initialEmail = '' }: ForgotPasswordModa
               <MailCheck size={15} aria-hidden style={{ verticalAlign: '-3px', marginRight: 6 }} />
               {sentMessage}
             </p>
-            <p className={styles.verifyHint}>The link expires in 30 minutes and works once. Check your spam folder too.</p>
+            <p className={styles.verifyHint}>If you have an account, the link expires in 30 minutes and works once. Check your spam folder too.</p>
             <div className={styles.modalActions}>
               <button type="button" className={styles.btn} onClick={onClose}>Back to Sign In</button>
             </div>
