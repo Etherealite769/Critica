@@ -102,6 +102,8 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 CORS_ALLOW_PRIVATE_NETWORK = True
 
 CORS_ALLOW_CREDENTIALS = True
+# Let the frontend read Retry-After on 429s (forgot-password cooldown and per-IP throttles)
+CORS_EXPOSE_HEADERS = ['Retry-After']
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-user-email',

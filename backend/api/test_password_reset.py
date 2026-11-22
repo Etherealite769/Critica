@@ -16,6 +16,7 @@ from rest_framework.test import APIClient
 
 from api import email_verification as ev
 from api.views import FORGOT_PASSWORD_GENERIC as GENERIC, hash_password
+from api.password_reset import PasswordResetRequest
 
 STRONG = 'Sleuth$2024!'
 NEW_STRONG = 'Cipher!Case9'
@@ -75,6 +76,7 @@ class PasswordResetTests(TestCase):
     def setUp(self):
         FakeUser.store = []
         cache.clear()
+        PasswordResetRequest.drop_collection()   # mongomock keeps collections between tests
         for target in ('api.views.User',):
             p = mock.patch(target, FakeUser)
             p.start()
@@ -84,6 +86,13 @@ class PasswordResetTests(TestCase):
 
     def _forgot(self, email='ada@example.com'):
         return self.client.post('/api/auth/forgot-password/', {'email': email}, format='json')
+
+    def _let_cooldown_pass(self):
+        """Move every recorded request 61 s into the past, as if the 60-second window had elapsed."""
+        coll = PasswordResetRequest._get_collection()
+        for doc in coll.find():
+            coll.update_one({'_id': doc['_id']}, {'$set': {'requested_at': doc['requested_at'] - timedelta(seconds=61)}})
+        self.user.password_reset_sent_at = ev._now() - timedelta(minutes=2)
 
     def _link(self):
         m = re.search(r'/auth/reset-password\?token=([\w-]+)&uid=([\w-]+)', mail.outbox[-1].body)
@@ -121,10 +130,10 @@ class PasswordResetTests(TestCase):
 
     def test_per_account_cooldown(self):
         self._forgot()
-        self._forgot()
+        self.assertEqual(self._forgot().status_code, 429)   # TC-UC09-03: blocked, not silently dropped
         self.assertEqual(len(mail.outbox), 1)
-        self.user.password_reset_sent_at = ev._now() - timedelta(minutes=2)
-        self._forgot()
+        self._let_cooldown_pass()
+        self.assertEqual(self._forgot().status_code, 200)
         self.assertEqual(len(mail.outbox), 2)
 
     def test_send_failure_still_generic(self):
@@ -153,7 +162,7 @@ class PasswordResetTests(TestCase):
     def test_new_request_invalidates_old_link(self):
         self._forgot()
         old_token, uid = self._link()
-        self.user.password_reset_sent_at = ev._now() - timedelta(minutes=2)
+        self._let_cooldown_pass()
         self._forgot()
         self.assertEqual(self._reset(old_token, uid).data['code'], 'invalid_link')
 
@@ -254,6 +263,7 @@ class ForgotPasswordRegisteredOnlyTests(TestCase):
     def setUp(self):
         FakeUser.store = []
         cache.clear()
+        PasswordResetRequest.drop_collection()   # mongomock keeps collections between tests
         p = mock.patch('api.views.User', FakeUser)
         p.start()
         self.addCleanup(p.stop)
@@ -320,3 +330,68 @@ class ForgotPasswordRegisteredOnlyTests(TestCase):
             release.set()
             self.assertTrue(done.wait(5))
         send.assert_called_once()
+
+
+@override_settings(EMAIL_DELIVERY_CONFIGURED=True, EMAIL_PROVIDER='brevo', FRONTEND_URL='http://localhost:3000',
+                   DEFAULT_FROM_EMAIL='Critica Bureau <bureau@example.com>')
+class ForgotPasswordCooldownTests(TestCase):
+    """TC-UC09-03 (FR-1.7): one reset request per email per 60 s; a repeat is refused with the seconds left."""
+
+    def setUp(self):
+        FakeUser.store = []
+        cache.clear()
+        PasswordResetRequest.drop_collection()
+        mock.patch('api.views.User', FakeUser).start()
+        self.brevo = mock.patch('api.email_transport._brevo_request', return_value={'messageId': '<m@brevo>'}).start()
+        self.addCleanup(mock.patch.stopall)
+        self.client = APIClient()
+        self.user = FakeUser(email='ada@example.com', password=hash_password(STRONG)).save()
+
+    def _forgot(self, email):
+        return self.client.post('/api/auth/forgot-password/', {'email': email}, format='json')
+
+    def _age(self, seconds):
+        coll = PasswordResetRequest._get_collection()
+        for doc in coll.find():
+            coll.update_one({'_id': doc['_id']}, {'$set': {'requested_at': doc['requested_at'] - timedelta(seconds=seconds)}})
+        self.user.password_reset_sent_at = (self.user.password_reset_sent_at or ev._now()) - timedelta(seconds=seconds)
+
+    def test_repeat_within_60s_is_429_with_seconds_left_and_sends_nothing(self):
+        self.assertEqual(self._forgot('ada@example.com').status_code, 200)
+        first_hash = self.user.password_reset_hash
+        self.assertEqual(self.brevo.call_count, 1)
+        self._age(15)
+        with mock.patch('api.views.issue_reset_token') as issue:
+            res = self._forgot('  ADA@example.COM ')   # same address once normalized
+        self.assertEqual(res.status_code, 429)
+        body = res.json()
+        self.assertEqual(body['error'], 'rate_limited')
+        self.assertIn(body['retry_after'], (45, 46))     # whole seconds left (rounded up)
+        self.assertEqual(body['detail'], f"Please wait {body['retry_after']}s before requesting another reset link.")
+        self.assertEqual(res['Retry-After'], str(body['retry_after']))
+        issue.assert_not_called()                        # no new token
+        self.assertEqual(self.user.password_reset_hash, first_hash)
+        self.assertEqual(self.brevo.call_count, 1)       # no new email
+
+    def test_after_60s_a_new_link_is_sent(self):
+        self._forgot('ada@example.com')
+        self._age(61)
+        res = self._forgot('ada@example.com')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(self.brevo.call_count, 2)
+
+    def test_cooldown_is_the_same_for_unregistered_emails(self):
+        """Registered or not, the second request in 60 s gets the same 429, so it reveals nothing."""
+        known = [self._forgot('ada@example.com') for _ in range(2)]
+        unknown = [self._forgot('Example@gmail.com') for _ in range(2)]
+        self.assertEqual([r.status_code for r in known], [200, 429])
+        self.assertEqual([r.status_code for r in unknown], [200, 429])
+        self.assertEqual(known[0].json(), unknown[0].json())
+        self.assertEqual(set(known[1].json()), set(unknown[1].json()))
+        self.assertEqual(self.brevo.call_count, 1)       # still only the registered address is emailed
+
+    def test_addresses_are_not_stored(self):
+        self._forgot('ada@example.com')
+        docs = list(PasswordResetRequest._get_collection().find())
+        self.assertEqual(len(docs), 1)
+        self.assertNotIn('ada', str(docs[0]))            # only a SHA-256 key and a timestamp

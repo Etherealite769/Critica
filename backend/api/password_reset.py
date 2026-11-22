@@ -8,10 +8,15 @@ RESET_TTL, it is cleared when used, and a new request replaces any previous
 token. Requests are rate-limited per IP (DRF throttle) and per account
 (cooldown) and always answer generically to avoid account enumeration.
 """
+import hashlib
 import logging
+import math
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from html import escape
+
+import mongoengine as me
+from pymongo.errors import DuplicateKeyError
 
 import hmac
 from django.conf import settings
@@ -26,6 +31,52 @@ logger = logging.getLogger(__name__)
 
 RESET_TTL = timedelta(minutes=30)
 RESET_COOLDOWN = timedelta(seconds=60)
+
+
+# ── Per-email request cooldown ──────────────────────────────────────────────
+class PasswordResetRequest(me.Document):
+    """
+    When a forgot-password request was last accepted for an email address. Keyed by a SHA-256 of the normalized
+    address (the address itself is never stored), and kept for every submitted email, registered or not, so the
+    cooldown behaves the same for both and cannot reveal which addresses have accounts. Lives in MongoDB so every
+    worker and restart sees it. Old entries expire after a day.
+    """
+    key = me.StringField(primary_key=True)
+    requested_at = me.DateTimeField(required=True)
+    meta = {
+        'collection': 'password_reset_requests',
+        'indexes': [{'fields': ['requested_at'], 'expireAfterSeconds': 86400}],
+    }
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)   # MongoDB stores and returns naive UTC
+
+
+def claim_reset_request(email: str) -> int:
+    """
+    Atomically claims a reset request for a normalized email. Returns 0 if the request may go ahead (and records
+    it), otherwise the whole seconds left in the RESET_COOLDOWN window (at least 1). Fails open on a database error.
+    """
+    key = hashlib.sha256(email.encode('utf-8')).hexdigest()
+    now = _utcnow_naive()
+    try:
+        coll = PasswordResetRequest._get_collection()
+        # Seen before and the window has passed: take it (atomic, so two parallel requests cannot both pass)
+        if coll.find_one_and_update({'_id': key, 'requested_at': {'$lte': now - RESET_COOLDOWN}},
+                                    {'$set': {'requested_at': now}}) is not None:
+            return 0
+        # First request for this address: the unique _id lets exactly one parallel insert win
+        try:
+            coll.insert_one({'_id': key, 'requested_at': now})
+            return 0
+        except DuplicateKeyError:
+            pass
+        last = (coll.find_one({'_id': key}) or {}).get('requested_at') or now
+        return max(1, math.ceil((last + RESET_COOLDOWN - now).total_seconds()))
+    except Exception:
+        logger.exception('Password reset cooldown check failed; allowing the request')
+        return 0
 
 
 # ── Tokens ──────────────────────────────────────────────────────────────────
