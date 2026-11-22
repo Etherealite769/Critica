@@ -431,3 +431,74 @@ class SyncScriptTests(MongoTestCase):
         self.run_sync(dry_run=False)
         doc = TelemetryLogDocument.objects.get(event_id='e-5')
         self.assertEqual((doc.event_type, doc.hint_used, doc.hint_tier), ('hint', True, 2))
+
+
+
+# ── SQLite telemetry_logs table is created on demand ──────────────────
+class TelemetryTableTests(MongoTestCase):
+    """The SQLite backup table always exists: created at startup, and recreated on a "no such table" write."""
+
+    EXPECTED_COLUMNS = ['id', 'student_id', 'node_id', 'module', 'word_id', 'clue_word_id', 'is_correct', 'hint_used',
+                        'hint_tier', 'consecutive_errors', 'inactivity_trigger', 'event_id', 'event_type', 'timestamp']
+
+    def test_new_sqlite_file_gets_the_migrated_table(self):
+        """A brand-new file (in a folder that does not exist yet) gets exactly the migrated schema."""
+        import sqlite3
+        import tempfile
+        from api.scaffold.telemetry_db import ensure_telemetry_table
+        path = os.path.join(tempfile.mkdtemp(), 'not', 'yet', 'telemetry.sqlite3')
+        self.assertFalse(os.path.exists(path))
+        self.assertTrue(ensure_telemetry_table(path))
+        conn = sqlite3.connect(path)
+        try:
+            columns = [row[1] for row in conn.execute('PRAGMA table_info("telemetry_logs")')]
+            self.assertEqual(columns, self.EXPECTED_COLUMNS)
+            # ...the same columns the model writes (in migration order: 0002 appended event_id/event_type)
+            self.assertEqual(set(columns), {f.column for f in TelemetryLog._meta.concrete_fields})
+            indexes = [row[1] for row in conn.execute('PRAGMA index_list("telemetry_logs")')]
+            self.assertIn('telemetry_logs_event_id_f954a060', indexes)
+            self.assertEqual(sorted(r[0] for r in conn.execute(
+                "SELECT name FROM django_migrations WHERE app = 'scaffold'")),
+                ['0001_initial', '0002_telemetry_event_type'])
+            conn.execute("INSERT INTO telemetry_logs (student_id, node_id, module, word_id, clue_word_id, is_correct, "
+                         "hint_used, hint_tier, consecutive_errors, inactivity_trigger, event_id, event_type, timestamp) "
+                         "VALUES ('s', 'n', 'm', '', '', 0, 0, 0, 0, 0, '', '', '2026-01-01 00:00:00')")
+            conn.commit()
+        finally:
+            conn.close()
+        # idempotent: a second run creates nothing and keeps the row
+        self.assertFalse(ensure_telemetry_table(path))
+        conn = sqlite3.connect(path)
+        try:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM telemetry_logs').fetchone()[0], 1)
+        finally:
+            conn.close()
+
+    def test_logging_into_a_database_without_the_table_creates_it_and_saves_the_row(self):
+        """Start from a database with no telemetry_logs table, log one event, and find the row."""
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute('DROP TABLE "telemetry_logs"')
+        with self.assertLogs('api.scaffold.scaffold_service', level='WARNING') as logs:
+            import logging
+            logging.getLogger('api.scaffold.scaffold_service').warning('probe')   # assertLogs needs one record
+            event_id = ScaffoldEngineService.log_attempt(
+                student_id=STUDENT, node_id='tap_node_02', module='tap_clues',
+                is_correct=True, event_type='step', word_id='w1', clue_word_id='careful')
+        self.assertFalse(any('SQLite' in line for line in logs.output), logs.output)   # no failed save
+        row = TelemetryLog.objects.get(event_id=event_id)
+        self.assertEqual((row.student_id, row.event_type, row.is_correct, row.clue_word_id),
+                         (STUDENT, 'step', True, 'careful'))
+        self.assertEqual(TelemetryLogDocument.objects(event_id=event_id).count(), 1)   # Mongo copy unaffected
+
+    def test_startup_creates_the_table_before_requests(self):
+        """config.wsgi runs the table check when the app is loaded."""
+        import importlib
+        from django.db import connection
+        with connection.cursor() as cur:
+            cur.execute('DROP TABLE "telemetry_logs"')
+        import config.wsgi
+        importlib.reload(config.wsgi)
+        with connection.cursor() as cur:
+            cur.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'telemetry_logs'")
+            self.assertIsNotNone(cur.fetchone())

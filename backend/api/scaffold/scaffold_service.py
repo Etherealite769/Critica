@@ -2,7 +2,11 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
+from django.db import transaction
+from django.db.utils import OperationalError
+
 from .models import TelemetryLog
+from .telemetry_db import ensure_telemetry_table
 from .mongo_models import TelemetryLogDocument
 
 logger = logging.getLogger(__name__)
@@ -159,7 +163,16 @@ class ScaffoldEngineService:
 
         # 2. Secondary / Local backup: Save to SQLite
         try:
-            TelemetryLog.objects.create(**fields)
+            try:
+                # A savepoint, so a failed insert inside a caller's transaction can still be retried
+                with transaction.atomic():
+                    TelemetryLog.objects.create(**fields)
+            except OperationalError as e:
+                if 'no such table' not in str(e).lower():
+                    raise
+                # The table is missing (e.g. a fresh database file): create it once, then retry the insert
+                ensure_telemetry_table()
+                TelemetryLog.objects.create(**fields)
         except Exception as e:
             logger.warning("Failed to save telemetry event %s to SQLite: %s", event_id, e)
 
